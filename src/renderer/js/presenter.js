@@ -81,6 +81,20 @@
     });
   }
 
+  function renderMath(container) {
+    if (window.renderMathInElement) {
+      window.renderMathInElement(container, {
+        delimiters: [
+          { left: '$$', right: '$$', display: true },
+          { left: '$', right: '$', display: false },
+          { left: '\\[', right: '\\]', display: true },
+          { left: '\\(', right: '\\)', display: false }
+        ],
+        throwOnError: false
+      });
+    }
+  }
+
   function render() {
     // Current slide
     if (slides.length === 0) {
@@ -95,6 +109,7 @@
     const slide = slides[currentIndex];
     currentSlideEl.innerHTML = renderMarkdown(slide.content);
     highlightCode(currentSlideEl);
+    renderMath(currentSlideEl);
 
     // Next slide
     const nextIndex = currentIndex + 1;
@@ -103,10 +118,12 @@
     } else {
       nextSlideEl.innerHTML = renderMarkdown(slides[nextIndex].content);
       highlightCode(nextSlideEl);
+      renderMath(nextSlideEl);
     }
 
     // Notes
     notesContent.innerHTML = slide.notes ? renderMarkdown(slide.notes) : '';
+    renderMath(notesContent);
 
     // Counter
     currentNum.textContent = currentIndex + 1;

@@ -6,6 +6,7 @@
   <title>PDF Export</title>
   <link rel="stylesheet" href="css/themes.css">
   <link rel="stylesheet" href="css/highlight.css">
+  <link rel="stylesheet" href="css/katex.min.css">
   <style>
     * {
       margin: 0;
@@ -147,6 +148,8 @@
 
   <script src="js/marked.min.js"></script>
   <script src="js/highlight.min.js"></script>
+  <script src="js/katex.min.js"></script>
+  <script src="js/katex-auto-render.min.js"></script>
   <script>
     let basePath = null;
 
@@ -215,6 +218,19 @@
       container.querySelectorAll('pre code').forEach(block => {
         if (window.hljs) window.hljs.highlightElement(block);
       });
+
+      // Render LaTeX math
+      if (window.renderMathInElement) {
+        window.renderMathInElement(container, {
+          delimiters: [
+            { left: '$$', right: '$$', display: true },
+            { left: '$', right: '$', display: false },
+            { left: '\\[', right: '\\]', display: true },
+            { left: '\\(', right: '\\)', display: false }
+          ],
+          throwOnError: false
+        });
+      }
 
       // Signal ready for PDF export
       setTimeout(() => {

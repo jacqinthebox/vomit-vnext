@@ -339,6 +339,14 @@ html, body {
   color: var(--text-muted);
 }
 
+#editor .CodeMirror-cursor {
+  border-left: 2px solid var(--text-primary) !important;
+}
+
+#editor .CodeMirror-focused .CodeMirror-cursor {
+  border-left: 2px solid var(--accent-color) !important;
+}
+
 /* Markdown syntax highlighting - override CodeMirror default theme */
 #editor .CodeMirror .cm-header,
 .cm-s-default .cm-header {

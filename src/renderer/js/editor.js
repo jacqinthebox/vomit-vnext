@@ -458,6 +458,19 @@ class Editor {
         window.hljs.highlightElement(block);
       }
     });
+
+    // Render LaTeX math
+    if (window.renderMathInElement) {
+      window.renderMathInElement(this.preview, {
+        delimiters: [
+          { left: '$$', right: '$$', display: true },
+          { left: '$', right: '$', display: false },
+          { left: '\\[', right: '\\]', display: true },
+          { left: '\\(', right: '\\)', display: false }
+        ],
+        throwOnError: false
+      });
+    }
   }
 
   renderMarkdownWithSlides(content) {

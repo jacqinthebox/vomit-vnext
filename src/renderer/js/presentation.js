@@ -86,6 +86,19 @@
       if (window.hljs) window.hljs.highlightElement(block);
     });
 
+    // Render LaTeX math
+    if (window.renderMathInElement) {
+      window.renderMathInElement(slideContent, {
+        delimiters: [
+          { left: '$$', right: '$$', display: true },
+          { left: '$', right: '$', display: false },
+          { left: '\\[', right: '\\]', display: true },
+          { left: '\\(', right: '\\)', display: false }
+        ],
+        throwOnError: false
+      });
+    }
+
     // Check if title slide
     const container = document.getElementById('slide');
     const hasOnlyTitles = slide.content.match(/^#[^#]/) && !slide.content.match(/^[^#\n]/m);
