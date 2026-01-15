@@ -21,7 +21,7 @@ let currentFilePath = null;
 let currentContent = '';
 
 function createMainWindow() {
-  const iconPath = path.join(__dirname, '../../build/AppIcon.iconset/icon_512x512.png');
+  const iconPath = path.join(__dirname, '../icon.png');
 
   // Set dock icon on macOS
   if (process.platform === 'darwin' && app.dock) {
