@@ -179,6 +179,10 @@ class Editor {
       this.toggleSearch();
     });
 
+    window.addEventListener('vomit:open-folder', (e) => {
+      this.openFolder(e.detail);
+    });
+
     window.addEventListener('vomit:format-command', (e) => {
       const command = e.detail;
       switch (command) {
@@ -228,6 +232,18 @@ class Editor {
       this.sidebarSearch.classList.add('hidden');
       this.updateOutline();
     }
+  }
+
+  openFolder(folderPath) {
+    this.currentDirectory = folderPath;
+    // Show file tree sidebar
+    this.isFileTreeVisible = true;
+    this.isOutlineVisible = false;
+    this.isSearchVisible = false;
+    this.sidebarFiles.classList.remove('hidden');
+    this.sidebarOutline.classList.add('hidden');
+    this.sidebarSearch.classList.add('hidden');
+    this.loadFileTree();
   }
 
   setupSearch() {

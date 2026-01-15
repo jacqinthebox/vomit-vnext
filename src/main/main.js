@@ -120,9 +120,14 @@ function createMenu() {
           click: () => newFile()
         },
         {
-          label: 'Open...',
+          label: 'Open File...',
           accelerator: 'CmdOrCtrl+O',
           click: () => openFile()
+        },
+        {
+          label: 'Open Folder...',
+          accelerator: 'CmdOrCtrl+Alt+O',
+          click: () => openFolder()
         },
         { type: 'separator' },
         {
@@ -347,6 +352,20 @@ async function openFile() {
   if (!result.canceled && result.filePaths.length > 0) {
     const filePath = result.filePaths[0];
     loadFile(filePath);
+  }
+}
+
+async function openFolder() {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: 'Open Folder',
+    properties: ['openDirectory']
+  });
+
+  if (!result.canceled && result.filePaths.length > 0) {
+    const folderPath = result.filePaths[0];
+    store.set('lastOpenedFolder', folderPath);
+    mainWindow.webContents.send('open-folder', folderPath);
+    mainWindow.setTitle(`${path.basename(folderPath)} - Vomit vNext`);
   }
 }
 
@@ -581,6 +600,7 @@ function showHelp() {
 File:
   Cmd+N - New file
   Cmd+O - Open file
+  Cmd+Alt+O - Open folder
   Cmd+S - Save file
   Cmd+Shift+S - Save as
   Cmd+E - Export to PDF
