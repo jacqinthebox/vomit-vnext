@@ -241,6 +241,24 @@ function createMenu() {
             }
           }
         },
+        {
+          label: 'Toggle Files',
+          accelerator: 'CmdOrCtrl+Shift+E',
+          click: () => {
+            if (mainWindow) {
+              mainWindow.webContents.send('toggle-files');
+            }
+          }
+        },
+        {
+          label: 'Search in Files',
+          accelerator: 'CmdOrCtrl+Shift+F',
+          click: () => {
+            if (mainWindow) {
+              mainWindow.webContents.send('toggle-search');
+            }
+          }
+        },
         { type: 'separator' },
         { role: 'reload' },
         { role: 'toggleDevTools' },
@@ -556,6 +574,7 @@ function showHelp() {
   dialog.showMessageBox(mainWindow, {
     type: 'info',
     title: 'Help',
+    buttons: ['OK'],
     message: 'Vomit vNext Help',
     detail: `KEYBOARD SHORTCUTS
 
@@ -582,6 +601,8 @@ Format:
 View:
   Cmd+P - Toggle preview
   Cmd+Shift+O - Toggle outline
+  Cmd+Shift+E - Toggle files
+  Cmd+Shift+F - Search in files
 
 Presentation:
   Cmd+Shift+P - Start presentation
@@ -628,6 +649,12 @@ ipcMain.on('save-content', (event, content) => {
   writeFile(content);
 });
 
+ipcMain.on('open-file-path', (event, filePath) => {
+  if (filePath && fs.existsSync(filePath)) {
+    loadFile(filePath);
+  }
+});
+
 ipcMain.on('content-changed', (event, content) => {
   currentContent = content;
   // Sync to presentation windows if open
@@ -670,6 +697,92 @@ ipcMain.handle('open-external', async (event, url) => {
   if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
     await shell.openExternal(url);
   }
+});
+
+// Get directory contents for file tree
+ipcMain.handle('get-directory-contents', async (event, dirPath) => {
+  try {
+    const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+    const items = entries
+      .filter(entry => !entry.name.startsWith('.')) // Hide hidden files
+      .map(entry => ({
+        name: entry.name,
+        path: path.join(dirPath, entry.name),
+        isDirectory: entry.isDirectory(),
+        isMarkdown: !entry.isDirectory() && (entry.name.endsWith('.md') || entry.name.endsWith('.markdown'))
+      }))
+      .sort((a, b) => {
+        // Directories first, then files
+        if (a.isDirectory && !b.isDirectory) return -1;
+        if (!a.isDirectory && b.isDirectory) return 1;
+        return a.name.localeCompare(b.name);
+      });
+    return items;
+  } catch (err) {
+    console.error('Failed to read directory:', err);
+    return [];
+  }
+});
+
+// Get current file directory
+ipcMain.handle('get-current-directory', async () => {
+  if (currentFilePath) {
+    return path.dirname(currentFilePath);
+  }
+  return null;
+});
+
+// Search in files
+ipcMain.handle('search-in-files', async (event, dirPath, query) => {
+  if (!query || query.length < 2) return [];
+
+  const results = [];
+  const searchQuery = query.toLowerCase();
+
+  function searchDir(dir) {
+    try {
+      const entries = fs.readdirSync(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (entry.name.startsWith('.')) continue;
+
+        const fullPath = path.join(dir, entry.name);
+
+        if (entry.isDirectory()) {
+          searchDir(fullPath); // Recurse into subdirectories
+        } else if (entry.name.endsWith('.md') || entry.name.endsWith('.markdown')) {
+          try {
+            const content = fs.readFileSync(fullPath, 'utf-8');
+            const lines = content.split('\n');
+            const matches = [];
+
+            lines.forEach((line, index) => {
+              if (line.toLowerCase().includes(searchQuery)) {
+                matches.push({
+                  line: index + 1,
+                  text: line.trim().substring(0, 100)
+                });
+              }
+            });
+
+            if (matches.length > 0) {
+              results.push({
+                file: entry.name,
+                path: fullPath,
+                matches: matches.slice(0, 10) // Limit matches per file
+              });
+            }
+          } catch (err) {
+            // Skip files that can't be read
+          }
+        }
+      }
+    } catch (err) {
+      // Skip directories that can't be read
+    }
+  }
+
+  searchDir(dirPath);
+  return results;
 });
 
 // Image handling

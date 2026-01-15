@@ -7,6 +7,15 @@
   --accent-color: #4a90d9;
   --border-color: #ddd;
   --code-bg: #f4f4f4;
+  /* Syntax highlighting */
+  --syntax-header: #0550ae;
+  --syntax-bold: #333333;
+  --syntax-italic: #6f42c1;
+  --syntax-link: #0969da;
+  --syntax-url: #8250df;
+  --syntax-code: #cf222e;
+  --syntax-quote: #57606a;
+  --syntax-hr: #d0d7de;
 }
 
 /* Dark Theme */
@@ -26,6 +35,15 @@
   --code-bg: #2d2d2d;
   --scrollbar-track: #1e1e1e;
   --scrollbar-thumb: #424242;
+  /* Syntax highlighting */
+  --syntax-header: #569cd6;
+  --syntax-bold: #d4d4d4;
+  --syntax-italic: #c586c0;
+  --syntax-link: #4ec9b0;
+  --syntax-url: #ce9178;
+  --syntax-code: #d7ba7d;
+  --syntax-quote: #6a9955;
+  --syntax-hr: #808080;
 }
 
 /* Catppuccin Theme */
@@ -45,6 +63,15 @@
   --code-bg: #313244;
   --scrollbar-track: #1e1e2e;
   --scrollbar-thumb: #45475a;
+  /* Syntax highlighting - Catppuccin Mocha */
+  --syntax-header: #89b4fa;
+  --syntax-bold: #cdd6f4;
+  --syntax-italic: #f5c2e7;
+  --syntax-link: #89dceb;
+  --syntax-url: #f9e2af;
+  --syntax-code: #a6e3a1;
+  --syntax-quote: #94e2d5;
+  --syntax-hr: #cba6f7;
 }
 
 /* Nord Theme */
@@ -64,6 +91,15 @@
   --code-bg: #3b4252;
   --scrollbar-track: #2e3440;
   --scrollbar-thumb: #4c566a;
+  /* Syntax highlighting - Nord */
+  --syntax-header: #81a1c1;
+  --syntax-bold: #eceff4;
+  --syntax-italic: #b48ead;
+  --syntax-link: #88c0d0;
+  --syntax-url: #ebcb8b;
+  --syntax-code: #a3be8c;
+  --syntax-quote: #5e81ac;
+  --syntax-hr: #d8dee9;
 }
 
 /* Solarized Dark Theme */
@@ -83,6 +119,15 @@
   --code-bg: #073642;
   --scrollbar-track: #002b36;
   --scrollbar-thumb: #094959;
+  /* Syntax highlighting - Solarized */
+  --syntax-header: #268bd2;
+  --syntax-bold: #93a1a1;
+  --syntax-italic: #d33682;
+  --syntax-link: #2aa198;
+  --syntax-url: #cb4b16;
+  --syntax-code: #859900;
+  --syntax-quote: #6c71c4;
+  --syntax-hr: #657b83;
 }
 
 /* Presentation-specific theme overrides */

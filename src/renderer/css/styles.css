@@ -20,6 +20,15 @@
   --code-bg: #f4f4f4;
   --scrollbar-track: #f1f1f1;
   --scrollbar-thumb: #c1c1c1;
+  /* Default syntax highlighting */
+  --syntax-header: #0550ae;
+  --syntax-bold: #333333;
+  --syntax-italic: #6f42c1;
+  --syntax-link: #0969da;
+  --syntax-url: #8250df;
+  --syntax-code: #cf222e;
+  --syntax-quote: #57606a;
+  --syntax-hr: #d0d7de;
 }
 
 html, body {
@@ -99,7 +108,7 @@ html, body {
 }
 
 /* Sidebar */
-#sidebar {
+.sidebar {
   width: 220px;
   background: var(--bg-secondary);
   border-right: 1px solid var(--border-color);
@@ -108,8 +117,129 @@ html, body {
   overflow: hidden;
 }
 
-#sidebar.hidden {
+.sidebar.hidden {
   display: none;
+}
+
+/* File tree */
+#file-tree {
+  padding: 8px 0;
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* Search */
+.search-input-container {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+#search-input {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+#search-input:focus {
+  outline: none;
+  border-color: var(--accent-color);
+}
+
+#search-results {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+
+.search-result-file {
+  padding: 8px 12px 4px;
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--text-secondary);
+  border-top: 1px solid var(--border-color);
+}
+
+.search-result-file:first-child {
+  border-top: none;
+}
+
+.search-result-item {
+  padding: 4px 12px 4px 20px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.search-result-item:hover {
+  background: var(--bg-tertiary);
+}
+
+.search-result-item .line-number {
+  color: var(--text-muted);
+  margin-right: 8px;
+}
+
+.search-result-item .match {
+  background: rgba(255, 213, 0, 0.3);
+  border-radius: 2px;
+}
+
+.search-no-results {
+  padding: 16px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.file-item {
+  display: flex;
+  align-items: center;
+  padding: 6px 16px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-item:hover {
+  background: var(--bg-tertiary);
+}
+
+.file-item.active {
+  background: var(--accent-color);
+  color: white;
+}
+
+.file-item.directory {
+  font-weight: 500;
+}
+
+.file-item .icon {
+  margin-right: 8px;
+  font-size: 14px;
+  width: 16px;
+  text-align: center;
+}
+
+.file-item.directory .icon::before {
+  content: '\01F4C1';
+}
+
+.file-item.markdown .icon::before {
+  content: '\01F4C4';
+}
+
+.file-item.file .icon::before {
+  content: '\01F4C4';
 }
 
 .sidebar-header {
@@ -183,20 +313,122 @@ html, body {
 #editor {
   flex: 1;
   width: 100%;
-  padding: 24px 32px;
-  border: none;
-  outline: none;
-  resize: none;
+  height: 100%;
+  overflow: hidden;
+}
+
+#editor .CodeMirror {
+  height: 100%;
   font-family: 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
   font-size: 14px;
   line-height: 1.6;
   background: var(--editor-bg);
   color: var(--text-primary);
-  tab-size: 2;
+  padding: 24px 32px;
 }
 
-#editor::placeholder {
+#editor .CodeMirror-scroll {
+  padding: 0;
+}
+
+#editor .CodeMirror-lines {
+  padding: 0;
+}
+
+#editor .CodeMirror pre.CodeMirror-placeholder {
   color: var(--text-muted);
+}
+
+/* Markdown syntax highlighting - override CodeMirror default theme */
+#editor .CodeMirror .cm-header,
+.cm-s-default .cm-header {
+  color: var(--syntax-header) !important;
+  font-weight: 600;
+}
+
+#editor .CodeMirror .cm-header-1 { font-size: 1.4em; }
+#editor .CodeMirror .cm-header-2 { font-size: 1.2em; }
+#editor .CodeMirror .cm-header-3 { font-size: 1.1em; }
+
+#editor .CodeMirror .cm-strong,
+.cm-s-default .cm-strong {
+  color: var(--syntax-bold) !important;
+  font-weight: bold;
+}
+
+#editor .CodeMirror .cm-em,
+.cm-s-default .cm-em {
+  color: var(--syntax-italic) !important;
+  font-style: italic;
+}
+
+#editor .CodeMirror .cm-link,
+.cm-s-default .cm-link {
+  color: var(--syntax-link) !important;
+}
+
+#editor .CodeMirror .cm-url,
+.cm-s-default .cm-url {
+  color: var(--syntax-url) !important;
+}
+
+#editor .CodeMirror .cm-comment {
+  color: var(--text-muted) !important;
+}
+
+#editor .CodeMirror .cm-quote,
+.cm-s-default .cm-quote {
+  color: var(--syntax-quote) !important;
+  font-style: italic;
+}
+
+#editor .CodeMirror .cm-hr,
+.cm-s-default .cm-hr {
+  color: var(--syntax-hr) !important;
+}
+
+#editor .CodeMirror .cm-image {
+  color: var(--syntax-link) !important;
+}
+
+#editor .CodeMirror .cm-image-alt-text {
+  color: var(--text-secondary) !important;
+}
+
+#editor .CodeMirror .cm-formatting {
+  color: var(--text-muted) !important;
+}
+
+#editor .CodeMirror .cm-formatting-header {
+  color: var(--syntax-header) !important;
+}
+
+#editor .CodeMirror .cm-formatting-strong,
+#editor .CodeMirror .cm-formatting-em {
+  color: var(--text-muted) !important;
+}
+
+#editor .CodeMirror .cm-formatting-code {
+  color: var(--syntax-code) !important;
+}
+
+#editor .CodeMirror .cm-formatting-link,
+#editor .CodeMirror .cm-formatting-link-string {
+  color: var(--text-muted) !important;
+}
+
+#editor .CodeMirror .cm-string,
+.cm-s-default .cm-string {
+  color: var(--syntax-code) !important;
+}
+
+#editor .CodeMirror .cm-code,
+#editor .CodeMirror .cm-inline-code {
+  color: var(--syntax-code) !important;
+  background: var(--code-bg);
+  border-radius: 3px;
+  padding: 1px 4px;
+  font-family: 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
 }
 
 #preview-pane {

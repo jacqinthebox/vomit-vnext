@@ -1,50 +1,76 @@
-// Editor - Simple markdown editor with preview
+// Editor - Markdown editor with CodeMirror syntax highlighting
 class Editor {
   constructor() {
-    this.editor = document.getElementById('editor');
+    this.editorContainer = document.getElementById('editor');
     this.preview = document.getElementById('preview');
     this.previewPane = document.getElementById('preview-pane');
     this.statusFile = document.getElementById('status-file');
     this.statusSlides = document.getElementById('status-slides');
     this.statusWords = document.getElementById('status-words');
-    this.sidebar = document.getElementById('sidebar');
+    this.sidebarFiles = document.getElementById('sidebar-files');
+    this.sidebarOutline = document.getElementById('sidebar-outline');
+    this.sidebarSearch = document.getElementById('sidebar-search');
     this.outlineList = document.getElementById('outline-list');
+    this.fileTree = document.getElementById('file-tree');
+    this.searchInput = document.getElementById('search-input');
+    this.searchResults = document.getElementById('search-results');
 
     this.currentFilePath = null;
     this.basePath = null;
+    this.currentDirectory = null;
     this.isPreviewVisible = true;
-    this.isSidebarVisible = false;
+    this.isFileTreeVisible = false;
+    this.isOutlineVisible = false;
+    this.isSearchVisible = false;
     this.isDirty = false;
+    this.searchTimeout = null;
+    this.pendingLineJump = null;
 
     this.setupEditor();
     this.setupToolbar();
+    this.setupSearch();
     this.setupIPC();
     this.togglePreview(); // Start with preview visible
   }
 
   setupEditor() {
-    this.editor.addEventListener('input', () => {
+    // Initialize CodeMirror
+    this.cm = CodeMirror(this.editorContainer, {
+      mode: 'markdown',
+      theme: 'default',
+      lineNumbers: false,
+      lineWrapping: true,
+      autofocus: true,
+      indentUnit: 2,
+      tabSize: 2,
+      indentWithTabs: false,
+      extraKeys: {
+        'Tab': (cm) => {
+          cm.replaceSelection('  ');
+        },
+        'Cmd-B': () => this.wrapSelection('**', '**'),
+        'Ctrl-B': () => this.wrapSelection('**', '**'),
+        'Cmd-I': () => this.wrapSelection('*', '*'),
+        'Ctrl-I': () => this.wrapSelection('*', '*'),
+        'Cmd-`': () => this.wrapSelection('`', '`'),
+        'Ctrl-`': () => this.wrapSelection('`', '`'),
+        'Cmd-K': () => this.insertLink(),
+        'Ctrl-K': () => this.insertLink()
+      },
+      placeholder: '# Start writing your presentation...\n\nUse --- on its own line to separate slides.\n\nAdd speaker notes after ??? on a slide.'
+    });
+
+    // Handle changes
+    this.cm.on('change', () => {
       this.updatePreview();
       this.updateStatus();
       this.updateOutline();
       this.isDirty = true;
-      window.vomit.contentChanged(this.editor.value);
-    });
-
-    // Tab key handling
-    this.editor.addEventListener('keydown', (e) => {
-      if (e.key === 'Tab') {
-        e.preventDefault();
-        const start = this.editor.selectionStart;
-        const end = this.editor.selectionEnd;
-        this.editor.value = this.editor.value.substring(0, start) + '  ' + this.editor.value.substring(end);
-        this.editor.selectionStart = this.editor.selectionEnd = start + 2;
-        this.updatePreview();
-      }
+      window.vomit.contentChanged(this.getValue());
     });
 
     // Paste image handling
-    this.editor.addEventListener('paste', async (e) => {
+    this.cm.on('paste', async (cm, e) => {
       const items = e.clipboardData?.items;
       if (!items) return;
 
@@ -72,30 +98,14 @@ class Editor {
         }
       }
     });
+  }
 
-    // Keyboard shortcuts
-    document.addEventListener('keydown', (e) => {
-      if (e.metaKey || e.ctrlKey) {
-        switch (e.key) {
-          case 'b':
-            e.preventDefault();
-            this.wrapSelection('**', '**');
-            break;
-          case 'i':
-            e.preventDefault();
-            this.wrapSelection('*', '*');
-            break;
-          case '`':
-            e.preventDefault();
-            this.wrapSelection('`', '`');
-            break;
-          case 'k':
-            e.preventDefault();
-            this.insertLink();
-            break;
-        }
-      }
-    });
+  getValue() {
+    return this.cm.getValue();
+  }
+
+  setValue(content) {
+    this.cm.setValue(content || '');
   }
 
   setupToolbar() {
@@ -114,11 +124,11 @@ class Editor {
 
     document.getElementById('btn-slide').addEventListener('click', () => this.insertSlide());
 
-    document.getElementById('btn-outline').addEventListener('click', () => this.toggleSidebar());
+    document.getElementById('btn-outline').addEventListener('click', () => this.toggleOutline());
     document.getElementById('btn-preview').addEventListener('click', () => this.togglePreview());
     document.getElementById('btn-present').addEventListener('click', () => {
       // Sync content and start presentation with presenter view
-      window.vomit.contentChanged(this.editor.value);
+      window.vomit.contentChanged(this.getValue());
       window.vomit.startPresentationWithPresenter();
     });
   }
@@ -126,17 +136,30 @@ class Editor {
   setupIPC() {
     window.addEventListener('vomit:load-content', (e) => {
       const { content, filePath, basePath } = e.detail;
-      this.editor.value = content;
+      this.setValue(content);
       this.currentFilePath = filePath;
       this.basePath = basePath;
+      this.currentDirectory = basePath;
       this.isDirty = false;
       this.updatePreview();
       this.updateStatus();
-      this.updateOutline();
+      if (this.isOutlineVisible) {
+        this.updateOutline();
+      }
+      if (this.isFileTreeVisible) {
+        this.loadFileTree();
+      }
+      // Handle pending line jump from search
+      if (this.pendingLineJump) {
+        setTimeout(() => {
+          this.goToLine(this.pendingLineJump - 1); // Convert to 0-based
+          this.pendingLineJump = null;
+        }, 100);
+      }
     });
 
     window.addEventListener('vomit:request-content', () => {
-      window.vomit.saveContent(this.editor.value);
+      window.vomit.saveContent(this.getValue());
       this.isDirty = false;
     });
 
@@ -145,7 +168,15 @@ class Editor {
     });
 
     window.addEventListener('vomit:toggle-outline', () => {
-      this.toggleSidebar();
+      this.toggleOutline();
+    });
+
+    window.addEventListener('vomit:toggle-files', () => {
+      this.toggleFileTree();
+    });
+
+    window.addEventListener('vomit:toggle-search', () => {
+      this.toggleSearch();
     });
 
     window.addEventListener('vomit:format-command', (e) => {
@@ -173,74 +204,234 @@ class Editor {
     });
   }
 
-  wrapSelection(before, after) {
-    const start = this.editor.selectionStart;
-    const end = this.editor.selectionEnd;
-    const text = this.editor.value;
-    const selected = text.substring(start, end);
+  toggleFileTree() {
+    this.isFileTreeVisible = !this.isFileTreeVisible;
+    this.sidebarFiles.classList.toggle('hidden', !this.isFileTreeVisible);
+    if (this.isFileTreeVisible) {
+      // Close other sidebars
+      this.isOutlineVisible = false;
+      this.isSearchVisible = false;
+      this.sidebarOutline.classList.add('hidden');
+      this.sidebarSearch.classList.add('hidden');
+      this.loadFileTree();
+    }
+  }
 
-    this.editor.value = text.substring(0, start) + before + selected + after + text.substring(end);
-    this.editor.selectionStart = start + before.length;
-    this.editor.selectionEnd = start + before.length + selected.length;
-    this.editor.focus();
+  toggleOutline() {
+    this.isOutlineVisible = !this.isOutlineVisible;
+    this.sidebarOutline.classList.toggle('hidden', !this.isOutlineVisible);
+    if (this.isOutlineVisible) {
+      // Close other sidebars
+      this.isFileTreeVisible = false;
+      this.isSearchVisible = false;
+      this.sidebarFiles.classList.add('hidden');
+      this.sidebarSearch.classList.add('hidden');
+      this.updateOutline();
+    }
+  }
+
+  setupSearch() {
+    // Debounced search on input
+    this.searchInput.addEventListener('input', () => {
+      clearTimeout(this.searchTimeout);
+      this.searchTimeout = setTimeout(() => this.performSearch(), 300);
+    });
+
+    // Search on Enter
+    this.searchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        clearTimeout(this.searchTimeout);
+        this.performSearch();
+      }
+    });
+  }
+
+  toggleSearch() {
+    this.isSearchVisible = !this.isSearchVisible;
+    this.sidebarSearch.classList.toggle('hidden', !this.isSearchVisible);
+    if (this.isSearchVisible) {
+      // Close other sidebars
+      this.isFileTreeVisible = false;
+      this.isOutlineVisible = false;
+      this.sidebarFiles.classList.add('hidden');
+      this.sidebarOutline.classList.add('hidden');
+      // Focus the search input
+      this.searchInput.focus();
+    }
+  }
+
+  async performSearch() {
+    const query = this.searchInput.value.trim();
+    if (!query || query.length < 2) {
+      this.searchResults.innerHTML = '<div class="search-no-results">Type at least 2 characters to search</div>';
+      return;
+    }
+
+    if (!this.currentDirectory) {
+      this.currentDirectory = await window.vomit.getCurrentDirectory();
+    }
+
+    if (!this.currentDirectory) {
+      this.searchResults.innerHTML = '<div class="search-no-results">Open a file to search in its directory</div>';
+      return;
+    }
+
+    const results = await window.vomit.searchInFiles(this.currentDirectory, query);
+    this.renderSearchResults(results, query);
+  }
+
+  renderSearchResults(results, query) {
+    if (!results || results.length === 0) {
+      this.searchResults.innerHTML = '<div class="search-no-results">No results found</div>';
+      return;
+    }
+
+    const html = results.map(file => {
+      const matchesHtml = file.matches.map(match => {
+        // Highlight the matching text
+        const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const highlightedText = match.text.replace(
+          new RegExp(`(${escapedQuery})`, 'gi'),
+          '<span class="match">$1</span>'
+        );
+        return `<div class="search-result-item" data-path="${file.path}" data-line="${match.line}">
+          <span class="line-number">${match.line}:</span>${highlightedText}
+        </div>`;
+      }).join('');
+
+      return `<div class="search-result-file">${file.file}</div>${matchesHtml}`;
+    }).join('');
+
+    this.searchResults.innerHTML = html;
+
+    // Add click handlers
+    this.searchResults.querySelectorAll('.search-result-item').forEach(el => {
+      el.addEventListener('click', () => {
+        const filePath = el.dataset.path;
+        const line = parseInt(el.dataset.line, 10);
+        window.vomit.openFile(filePath);
+        // After file loads, jump to line (handled via event)
+        this.pendingLineJump = line;
+      });
+    });
+  }
+
+  async loadFileTree() {
+    if (!this.currentDirectory) {
+      // Try to get current directory from main process
+      this.currentDirectory = await window.vomit.getCurrentDirectory();
+    }
+
+    if (!this.currentDirectory) {
+      this.fileTree.innerHTML = '<div class="file-item" style="color: var(--text-muted); padding: 16px;">Open a file to see its directory</div>';
+      return;
+    }
+
+    const items = await window.vomit.getDirectoryContents(this.currentDirectory);
+    this.renderFileTree(items);
+  }
+
+  renderFileTree(items) {
+    if (!items || items.length === 0) {
+      this.fileTree.innerHTML = '<div class="file-item" style="color: var(--text-muted);">No files</div>';
+      return;
+    }
+
+    this.fileTree.innerHTML = items.map(item => {
+      const isActive = item.path === this.currentFilePath;
+      const typeClass = item.isDirectory ? 'directory' : (item.isMarkdown ? 'markdown' : 'file');
+      const activeClass = isActive ? 'active' : '';
+
+      return `<div class="file-item ${typeClass} ${activeClass}" data-path="${item.path}" data-is-dir="${item.isDirectory}">
+        <span class="icon"></span>
+        <span class="name">${item.name}</span>
+      </div>`;
+    }).join('');
+
+    // Add click handlers
+    this.fileTree.querySelectorAll('.file-item').forEach(el => {
+      el.addEventListener('click', () => {
+        const filePath = el.dataset.path;
+        const isDir = el.dataset.isDir === 'true';
+
+        if (isDir) {
+          // Navigate into directory
+          this.currentDirectory = filePath;
+          this.loadFileTree();
+        } else if (filePath.endsWith('.md') || filePath.endsWith('.markdown')) {
+          // Open markdown file
+          window.vomit.openFile(filePath);
+        }
+      });
+    });
+
+    // Add parent directory item if not at root
+    const parentItem = document.createElement('div');
+    parentItem.className = 'file-item directory';
+    parentItem.innerHTML = '<span class="icon" style="transform: rotate(180deg);">&#x2191;</span><span class="name">..</span>';
+    parentItem.addEventListener('click', () => {
+      const parts = this.currentDirectory.split('/');
+      if (parts.length > 2) {
+        parts.pop();
+        this.currentDirectory = parts.join('/');
+        this.loadFileTree();
+      }
+    });
+    this.fileTree.insertBefore(parentItem, this.fileTree.firstChild);
+  }
+
+  wrapSelection(before, after) {
+    const selection = this.cm.getSelection();
+    this.cm.replaceSelection(before + selection + after);
+
+    if (!selection) {
+      // Move cursor between the markers
+      const cursor = this.cm.getCursor();
+      this.cm.setCursor({ line: cursor.line, ch: cursor.ch - after.length });
+    }
+    this.cm.focus();
     this.updatePreview();
   }
 
   insertAtLineStart(prefix) {
-    const start = this.editor.selectionStart;
-    const text = this.editor.value;
+    const cursor = this.cm.getCursor();
+    const line = cursor.line;
+    const lineContent = this.cm.getLine(line);
 
-    // Find the start of the current line
-    let lineStart = start;
-    while (lineStart > 0 && text[lineStart - 1] !== '\n') {
-      lineStart--;
-    }
-
-    this.editor.value = text.substring(0, lineStart) + prefix + text.substring(lineStart);
-    this.editor.selectionStart = this.editor.selectionEnd = start + prefix.length;
-    this.editor.focus();
+    this.cm.replaceRange(prefix, { line: line, ch: 0 }, { line: line, ch: 0 });
+    this.cm.setCursor({ line: line, ch: prefix.length + cursor.ch });
+    this.cm.focus();
     this.updatePreview();
   }
 
   insertText(text) {
-    const start = this.editor.selectionStart;
-    const value = this.editor.value;
-
-    this.editor.value = value.substring(0, start) + text + value.substring(start);
-    this.editor.selectionStart = this.editor.selectionEnd = start + text.length;
-    this.editor.focus();
+    this.cm.replaceSelection(text);
+    this.cm.focus();
     this.updatePreview();
   }
 
   insertLink() {
-    const start = this.editor.selectionStart;
-    const end = this.editor.selectionEnd;
-    const text = this.editor.value;
-    const selected = text.substring(start, end);
-
-    const linkText = selected || 'link text';
+    const selection = this.cm.getSelection();
+    const linkText = selection || 'link text';
     const link = `[${linkText}](url)`;
 
-    this.editor.value = text.substring(0, start) + link + text.substring(end);
+    this.cm.replaceSelection(link);
 
-    // Position cursor at 'url'
-    const urlStart = start + linkText.length + 3;
-    this.editor.selectionStart = urlStart;
-    this.editor.selectionEnd = urlStart + 3;
-    this.editor.focus();
+    // Select 'url' part
+    const cursor = this.cm.getCursor();
+    const urlStart = cursor.ch - 4;
+    this.cm.setSelection(
+      { line: cursor.line, ch: urlStart },
+      { line: cursor.line, ch: urlStart + 3 }
+    );
+    this.cm.focus();
     this.updatePreview();
   }
 
   insertSlide() {
-    const start = this.editor.selectionStart;
-    const text = this.editor.value;
-
-    // Add slide separator and template
     const slideTemplate = '\n\n---\n\n# New Slide\n\nContent here\n\n???\nSpeaker notes here\n';
-
-    this.editor.value = text.substring(0, start) + slideTemplate + text.substring(start);
-    this.editor.selectionStart = this.editor.selectionEnd = start + 9; // Position after "# "
-    this.editor.focus();
+    this.cm.replaceSelection(slideTemplate);
+    this.cm.focus();
     this.updatePreview();
   }
 
@@ -257,7 +448,7 @@ class Editor {
   updatePreview() {
     if (!this.isPreviewVisible) return;
 
-    const content = this.editor.value;
+    const content = this.getValue();
     const html = this.renderMarkdownWithSlides(content);
     this.preview.innerHTML = html;
 
@@ -355,7 +546,7 @@ class Editor {
   }
 
   updateStatus() {
-    const content = this.editor.value;
+    const content = this.getValue();
 
     // File name
     if (this.currentFilePath) {
@@ -381,18 +572,10 @@ class Editor {
     this.statusWords.textContent = `${words} words`;
   }
 
-  toggleSidebar() {
-    this.isSidebarVisible = !this.isSidebarVisible;
-    this.sidebar.classList.toggle('hidden', !this.isSidebarVisible);
-    if (this.isSidebarVisible) {
-      this.updateOutline();
-    }
-  }
-
   updateOutline() {
-    if (!this.isSidebarVisible) return;
+    if (!this.isOutlineVisible) return;
 
-    const content = this.editor.value;
+    const content = this.getValue();
     const lines = content.split('\n');
     const items = [];
     let slideNum = 1;
@@ -455,21 +638,9 @@ class Editor {
   }
 
   goToLine(lineNum) {
-    const content = this.editor.value;
-    const lines = content.split('\n');
-    let position = 0;
-
-    for (let i = 0; i < lineNum && i < lines.length; i++) {
-      position += lines[i].length + 1; // +1 for newline
-    }
-
-    this.editor.focus();
-    this.editor.setSelectionRange(position, position);
-
-    // Scroll the line into view
-    const lineHeight = 22; // approximate line height
-    const scrollTop = lineNum * lineHeight - this.editor.clientHeight / 2;
-    this.editor.scrollTop = Math.max(0, scrollTop);
+    this.cm.setCursor({ line: lineNum, ch: 0 });
+    this.cm.scrollIntoView({ line: lineNum, ch: 0 }, 200);
+    this.cm.focus();
   }
 }
 

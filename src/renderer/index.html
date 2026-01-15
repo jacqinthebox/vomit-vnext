@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="css/styles.css">
   <link rel="stylesheet" href="css/themes.css">
   <link rel="stylesheet" href="css/highlight.css">
+  <link rel="stylesheet" href="css/codemirror.css">
 </head>
 <body class="theme-default">
   <div id="app">
@@ -40,27 +41,24 @@
     </div>
 
     <div id="main-container">
-      <div id="sidebar" class="hidden">
+      <div id="sidebar-files" class="sidebar hidden">
+        <div class="sidebar-header">Files</div>
+        <div id="file-tree"></div>
+      </div>
+      <div id="sidebar-outline" class="sidebar hidden">
         <div class="sidebar-header">Outline</div>
         <div id="outline-list"></div>
       </div>
+      <div id="sidebar-search" class="sidebar hidden">
+        <div class="sidebar-header">Search</div>
+        <div class="search-input-container">
+          <input type="text" id="search-input" placeholder="Search in files...">
+        </div>
+        <div id="search-results"></div>
+      </div>
       <div id="editor-container">
       <div id="editor-pane">
-        <textarea id="editor" spellcheck="false" placeholder="# Start writing your presentation...
-
-Use --- on its own line to separate slides.
-
-Add speaker notes after ??? on a slide.
-
-Example:
----
-# Slide Title
-
-Your content here
-
-???
-Speaker notes go here
----"></textarea>
+        <div id="editor"></div>
       </div>
       <div id="preview-pane">
         <div id="preview"></div>
@@ -77,6 +75,9 @@ Speaker notes go here
 
   <script src="js/marked.min.js"></script>
   <script src="js/highlight.min.js"></script>
+  <script src="js/codemirror.min.js"></script>
+  <script src="js/codemirror-xml.min.js"></script>
+  <script src="js/codemirror-markdown.min.js"></script>
   <script src="js/editor.js"></script>
 </body>
 </html>

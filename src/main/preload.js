@@ -22,6 +22,14 @@ ipcRenderer.on('toggle-outline', () => {
   window.dispatchEvent(new CustomEvent('vomit:toggle-outline'));
 });
 
+ipcRenderer.on('toggle-files', () => {
+  window.dispatchEvent(new CustomEvent('vomit:toggle-files'));
+});
+
+ipcRenderer.on('toggle-search', () => {
+  window.dispatchEvent(new CustomEvent('vomit:toggle-search'));
+});
+
 ipcRenderer.on('format-command', (event, command) => {
   window.dispatchEvent(new CustomEvent('vomit:format-command', { detail: command }));
 });
@@ -49,6 +57,10 @@ ipcRenderer.on('render-for-pdf', (event, content, basePath) => {
 // Expose only the send methods (no callbacks needed)
 contextBridge.exposeInMainWorld('vomit', {
   openExternal: (url) => ipcRenderer.invoke('open-external', url),
+  getDirectoryContents: (dirPath) => ipcRenderer.invoke('get-directory-contents', dirPath),
+  getCurrentDirectory: () => ipcRenderer.invoke('get-current-directory'),
+  searchInFiles: (dirPath, query) => ipcRenderer.invoke('search-in-files', dirPath, query),
+  openFile: (filePath) => ipcRenderer.send('open-file-path', filePath),
   saveContent: (content) => ipcRenderer.send('save-content', content),
   contentChanged: (content) => ipcRenderer.send('content-changed', content),
   startPresentation: () => ipcRenderer.send('start-presentation'),

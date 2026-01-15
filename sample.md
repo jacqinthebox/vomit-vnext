@@ -110,5 +110,7 @@ The presenter view shows these shortcuts too.
 
 Questions?
 
+Check out [the GitHub repo](https://github.com/jacqinthebox/vomit-vnext) for more info.
+
 ???
 End of presentation. Open the floor for questions.
