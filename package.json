@@ -28,6 +28,7 @@
   "build": {
     "appId": "com.vomit.vnext",
     "productName": "Vomit vNext",
+    "publish": null,
     "mac": {
       "category": "public.app-category.productivity",
       "target": "dmg",
