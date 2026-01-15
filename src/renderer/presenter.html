@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data: file: blob:;">
+  <title>Presenter View</title>
+  <link rel="stylesheet" href="css/presenter.css">
+  <link rel="stylesheet" href="css/themes.css">
+  <link rel="stylesheet" href="css/highlight.css">
+</head>
+<body class="theme-dark presenter-view">
+  <div id="presenter-container">
+    <!-- Top row: Current and Next slides -->
+    <div id="slides-row">
+      <div id="current-slide-panel">
+        <div class="panel-header">Current Slide</div>
+        <div id="current-slide" class="slide-preview">
+          <div class="slide-content"></div>
+        </div>
+      </div>
+      <div id="next-slide-panel">
+        <div class="panel-header">Next Slide</div>
+        <div id="next-slide" class="slide-preview next">
+          <div class="slide-content"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom row: Notes and controls -->
+    <div id="bottom-row">
+      <div id="notes-panel">
+        <div class="panel-header">Speaker Notes</div>
+        <div id="notes-content"></div>
+      </div>
+      <div id="controls-panel">
+        <div id="slide-counter">
+          <span id="current-num">1</span> / <span id="total-num">1</span>
+        </div>
+        <div id="timer">
+          <span id="elapsed-time">00:00</span>
+        </div>
+        <div id="nav-buttons">
+          <button id="btn-first" title="First slide (Home)">|&lt;</button>
+          <button id="btn-prev" title="Previous slide (Left)">&lt;</button>
+          <button id="btn-next" title="Next slide (Right)">&gt;</button>
+          <button id="btn-last" title="Last slide (End)">&gt;|</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/marked.min.js"></script>
+  <script src="js/highlight.min.js"></script>
+  <script src="js/presenter.js"></script>
+</body>
+</html>

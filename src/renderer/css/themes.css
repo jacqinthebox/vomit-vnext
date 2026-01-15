@@ -1,0 +1,129 @@
+/* Default Theme (Light) */
+.theme-default {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f5f5f5;
+  --text-primary: #333333;
+  --text-secondary: #666666;
+  --accent-color: #4a90d9;
+  --border-color: #ddd;
+  --code-bg: #f4f4f4;
+}
+
+/* Dark Theme */
+.theme-dark {
+  --bg-primary: #1e1e1e;
+  --bg-secondary: #252526;
+  --bg-tertiary: #333333;
+  --text-primary: #d4d4d4;
+  --text-secondary: #a0a0a0;
+  --text-muted: #6e6e6e;
+  --accent-color: #569cd6;
+  --accent-hover: #4a8bc9;
+  --border-color: #404040;
+  --toolbar-bg: #252526;
+  --editor-bg: #1e1e1e;
+  --preview-bg: #252526;
+  --code-bg: #2d2d2d;
+  --scrollbar-track: #1e1e1e;
+  --scrollbar-thumb: #424242;
+}
+
+/* Catppuccin Theme */
+.theme-catppuccin {
+  --bg-primary: #1e1e2e;
+  --bg-secondary: #313244;
+  --bg-tertiary: #45475a;
+  --text-primary: #cdd6f4;
+  --text-secondary: #a6adc8;
+  --text-muted: #6c7086;
+  --accent-color: #cba6f7;
+  --accent-hover: #b4befe;
+  --border-color: #45475a;
+  --toolbar-bg: #181825;
+  --editor-bg: #1e1e2e;
+  --preview-bg: #181825;
+  --code-bg: #313244;
+  --scrollbar-track: #1e1e2e;
+  --scrollbar-thumb: #45475a;
+}
+
+/* Nord Theme */
+.theme-nord {
+  --bg-primary: #2e3440;
+  --bg-secondary: #3b4252;
+  --bg-tertiary: #434c5e;
+  --text-primary: #eceff4;
+  --text-secondary: #d8dee9;
+  --text-muted: #4c566a;
+  --accent-color: #88c0d0;
+  --accent-hover: #81a1c1;
+  --border-color: #4c566a;
+  --toolbar-bg: #2e3440;
+  --editor-bg: #2e3440;
+  --preview-bg: #3b4252;
+  --code-bg: #3b4252;
+  --scrollbar-track: #2e3440;
+  --scrollbar-thumb: #4c566a;
+}
+
+/* Solarized Dark Theme */
+.theme-solarized {
+  --bg-primary: #002b36;
+  --bg-secondary: #073642;
+  --bg-tertiary: #094959;
+  --text-primary: #839496;
+  --text-secondary: #93a1a1;
+  --text-muted: #586e75;
+  --accent-color: #268bd2;
+  --accent-hover: #2aa198;
+  --border-color: #094959;
+  --toolbar-bg: #002b36;
+  --editor-bg: #002b36;
+  --preview-bg: #073642;
+  --code-bg: #073642;
+  --scrollbar-track: #002b36;
+  --scrollbar-thumb: #094959;
+}
+
+/* Presentation-specific theme overrides */
+.presentation .slide {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.presentation h1 {
+  color: var(--text-primary);
+}
+
+.presentation h2, .presentation h3 {
+  color: var(--text-secondary);
+}
+
+.presentation code {
+  background: var(--code-bg);
+  color: var(--accent-color);
+}
+
+.presentation pre {
+  background: var(--code-bg);
+}
+
+.presentation blockquote {
+  border-left-color: var(--accent-color);
+  background: var(--bg-secondary);
+}
+
+/* Presenter window specific */
+.presenter-view {
+  background: var(--bg-secondary);
+}
+
+.presenter-view .notes-panel {
+  background: var(--bg-primary);
+  border-color: var(--border-color);
+}
+
+.presenter-view .next-slide-preview {
+  background: var(--bg-tertiary);
+  border-color: var(--accent-color);
+}

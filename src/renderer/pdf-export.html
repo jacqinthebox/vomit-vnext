@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDF Export</title>
+  <link rel="stylesheet" href="css/themes.css">
+  <link rel="stylesheet" href="css/highlight.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: white;
+      color: #333;
+    }
+
+    .slide-page {
+      width: 100%;
+      min-height: 100vh;
+      padding: 60px 80px;
+      page-break-after: always;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .slide-page:last-child {
+      page-break-after: avoid;
+    }
+
+    .slide-page h1 {
+      font-size: 2.5em;
+      font-weight: 600;
+      margin-bottom: 0.5em;
+      color: #333;
+    }
+
+    .slide-page h2 {
+      font-size: 2em;
+      font-weight: 500;
+      margin-bottom: 0.5em;
+      color: #555;
+    }
+
+    .slide-page h3 {
+      font-size: 1.5em;
+      font-weight: 500;
+      margin-bottom: 0.5em;
+      color: #555;
+    }
+
+    .slide-page p {
+      font-size: 1.2em;
+      line-height: 1.6;
+      margin-bottom: 0.8em;
+    }
+
+    .slide-page ul, .slide-page ol {
+      font-size: 1.2em;
+      line-height: 1.8;
+      margin-left: 1.5em;
+      margin-bottom: 0.8em;
+    }
+
+    .slide-page li {
+      margin-bottom: 0.3em;
+    }
+
+    .slide-page blockquote {
+      font-size: 1.1em;
+      padding: 1em 1.5em;
+      border-left: 4px solid #4a90d9;
+      background: #f5f5f5;
+      margin: 1em 0;
+    }
+
+    .slide-page code {
+      font-family: 'SF Mono', 'Menlo', 'Monaco', monospace;
+      font-size: 0.9em;
+      padding: 0.2em 0.4em;
+      background: #f0f0f0;
+      border-radius: 3px;
+    }
+
+    .slide-page pre {
+      font-size: 0.9em;
+      padding: 1em;
+      background: #f5f5f5;
+      border-radius: 6px;
+      overflow-x: auto;
+      margin: 1em 0;
+    }
+
+    .slide-page pre code {
+      padding: 0;
+      background: none;
+    }
+
+    .slide-page img {
+      max-width: 100%;
+      max-height: 50vh;
+      display: block;
+      margin: 1em auto;
+    }
+
+    .slide-page table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 1em;
+      margin: 1em 0;
+    }
+
+    .slide-page th, .slide-page td {
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      text-align: left;
+    }
+
+    .slide-page th {
+      background: #f5f5f5;
+      font-weight: 600;
+    }
+
+    .slide-number {
+      position: absolute;
+      bottom: 20px;
+      right: 30px;
+      font-size: 0.9em;
+      color: #999;
+    }
+
+    @media print {
+      .slide-page {
+        height: 100vh;
+        page-break-after: always;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="slides-container"></div>
+
+  <script src="js/marked.min.js"></script>
+  <script src="js/highlight.min.js"></script>
+  <script>
+    let basePath = null;
+
+    function parseSlides(content) {
+      let markdown = content || '';
+      if (markdown.startsWith('---')) {
+        const endIndex = markdown.indexOf('---', 3);
+        if (endIndex !== -1) {
+          markdown = markdown.substring(endIndex + 3).trim();
+        }
+      }
+      const slideTexts = markdown.split(/\n---\n/).filter(s => s.trim());
+      return slideTexts.map(slideText => {
+        const parts = slideText.split(/\n\?\?\?\n/);
+        return {
+          content: parts[0].trim(),
+          notes: parts[1] ? parts[1].trim() : ''
+        };
+      });
+    }
+
+    function renderMarkdown(text) {
+      let processed = text.replace(
+        /!\[([^\]]*)\]\(([^)\s]+)\s*=(\d*)x(\d*)\)/g,
+        (match, alt, src, width, height) => {
+          let style = '';
+          if (width) style += `width:${width}px;`;
+          if (height) style += `height:${height}px;`;
+          let resolvedSrc = src;
+          if (basePath && !src.startsWith('http') && !src.startsWith('file://') && !src.startsWith('data:')) {
+            resolvedSrc = `file://${basePath}/${src}`;
+          }
+          return `<img src="${resolvedSrc}" alt="${alt}" style="${style}">`;
+        }
+      );
+
+      processed = processed.replace(
+        /!\[([^\]]*)\]\(([^)\s]+)\)/g,
+        (match, alt, src) => {
+          if (src.includes('=')) return match;
+          let resolvedSrc = src;
+          if (basePath && !src.startsWith('http') && !src.startsWith('file://') && !src.startsWith('data:')) {
+            resolvedSrc = `file://${basePath}/${src}`;
+          }
+          return `![${alt}](${resolvedSrc})`;
+        }
+      );
+
+      if (window.marked) {
+        return window.marked.parse(processed);
+      }
+      return processed;
+    }
+
+    function renderSlides(content, bp) {
+      basePath = bp;
+      const slides = parseSlides(content);
+      const container = document.getElementById('slides-container');
+
+      container.innerHTML = slides.map((slide, index) => {
+        const html = renderMarkdown(slide.content);
+        return `<div class="slide-page">${html}<div class="slide-number">${index + 1} / ${slides.length}</div></div>`;
+      }).join('');
+
+      // Highlight code blocks
+      container.querySelectorAll('pre code').forEach(block => {
+        if (window.hljs) window.hljs.highlightElement(block);
+      });
+
+      // Signal ready for PDF export
+      setTimeout(() => {
+        window.pdfReady = true;
+      }, 500);
+    }
+
+    // Listen for content via custom event (from preload)
+    window.addEventListener('vomit:render-for-pdf', (e) => {
+      const { content, basePath: bp } = e.detail;
+      renderSlides(content, bp);
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data: file: blob:;">
+  <title>Vomit vNext</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/themes.css">
+  <link rel="stylesheet" href="css/highlight.css">
+</head>
+<body class="theme-default">
+  <div id="app">
+    <div id="toolbar">
+      <div class="toolbar-group">
+        <button id="btn-bold" title="Bold (Cmd+B)"><strong>B</strong></button>
+        <button id="btn-italic" title="Italic (Cmd+I)"><em>I</em></button>
+        <button id="btn-code" title="Code (Cmd+`)"><code>&lt;/&gt;</code></button>
+        <button id="btn-link" title="Link (Cmd+K)">Link</button>
+      </div>
+      <div class="toolbar-group">
+        <button id="btn-h1" title="Heading 1 (Cmd+1)">H1</button>
+        <button id="btn-h2" title="Heading 2 (Cmd+2)">H2</button>
+        <button id="btn-h3" title="Heading 3 (Cmd+3)">H3</button>
+      </div>
+      <div class="toolbar-group">
+        <button id="btn-bullet" title="Bullet List (Cmd+L)">List</button>
+        <button id="btn-quote" title="Quote (Cmd+')">Quote</button>
+        <button id="btn-hr" title="Horizontal Rule (Cmd+-)">---</button>
+      </div>
+      <div class="toolbar-group">
+        <button id="btn-slide" title="Insert Slide (Cmd+Enter)">+ Slide</button>
+      </div>
+      <div class="toolbar-spacer"></div>
+      <div class="toolbar-group">
+        <button id="btn-outline" title="Toggle Outline (Cmd+Shift+O)">Outline</button>
+        <button id="btn-preview" title="Toggle Preview (Cmd+P)">Preview</button>
+        <button id="btn-present" title="Present (Cmd+Shift+P)">Present</button>
+      </div>
+    </div>
+
+    <div id="main-container">
+      <div id="sidebar" class="hidden">
+        <div class="sidebar-header">Outline</div>
+        <div id="outline-list"></div>
+      </div>
+      <div id="editor-container">
+      <div id="editor-pane">
+        <textarea id="editor" spellcheck="false" placeholder="# Start writing your presentation...
+
+Use --- on its own line to separate slides.
+
+Add speaker notes after ??? on a slide.
+
+Example:
+---
+# Slide Title
+
+Your content here
+
+???
+Speaker notes go here
+---"></textarea>
+      </div>
+      <div id="preview-pane">
+        <div id="preview"></div>
+      </div>
+    </div>
+    </div>
+
+    <div id="statusbar">
+      <span id="status-file">Untitled</span>
+      <span id="status-slides">0 slides</span>
+      <span id="status-words">0 words</span>
+    </div>
+  </div>
+
+  <script src="js/marked.min.js"></script>
+  <script src="js/highlight.min.js"></script>
+  <script src="js/editor.js"></script>
+</body>
+</html>
