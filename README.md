@@ -9,6 +9,9 @@ It turns plain Markdown files into polished slide decks, similar to preview plug
 
 - **Markdown Editor** - Live preview, syntax highlighting, outline sidebar
 - **Presenter View** - Current slide, next slide preview, speaker notes, timer
+- **LaTeX Math** - Render formulas with KaTeX (`$inline$` and `$$display$$`)
+- **File Tree** - Browse and open files in current directory (Cmd+Shift+E)
+- **Search in Files** - Search across all markdown files (Cmd+Shift+F)
 - **Laser Pointer** - Press L during presentation to highlight
 - **PDF Export** - Export slides to PDF for sharing
 - **Image Support** - Paste images directly, resize with simple syntax
@@ -17,9 +20,34 @@ It turns plain Markdown files into polished slide decks, similar to preview plug
 
 ## Installation
 
+### Option 1: Download DMG
+
 Download the latest `.dmg` from [Releases](https://github.com/jacqinthebox/vomit-vnext/releases), open it, and drag to Applications.
 
-Note: The app is not code-signed. On first launch, right-click and select "Open", or allow it in System Preferences > Privacy & Security.
+**Important:** The app is not code-signed with an Apple Developer certificate. macOS will block it by default. After installing, run this command in Terminal to remove the quarantine flag:
+
+```bash
+xattr -cr /Applications/Vomit\ vNext.app
+```
+
+Then the app will open normally.
+
+### Option 2: Build from Source
+
+```bash
+# Clone the repository
+git clone https://github.com/jacqinthebox/vomit-vnext.git
+cd vomit-vnext
+
+# Install dependencies
+npm install
+
+# Run the app
+npm start
+
+# Or build a DMG
+npm run build
+```
 
 ## Usage
 
@@ -78,6 +106,8 @@ Resize images with this syntax:
 | Cmd+E | Export to PDF |
 | Cmd+P | Toggle preview |
 | Cmd+Shift+O | Toggle outline |
+| Cmd+Shift+E | Toggle file tree |
+| Cmd+Shift+F | Search in files |
 | Cmd+B | Bold |
 | Cmd+I | Italic |
 | Cmd+K | Insert link |
@@ -101,24 +131,13 @@ Resize images with this syntax:
 | R | Reset timer |
 | Escape | End presentation |
 
-## Development
-
-```bash
-# Install dependencies
-npm install
-
-# Run in development
-npm start
-
-# Build DMG
-npm run build
-```
-
 ## Tech Stack
 
 - Electron
+- CodeMirror 5 (editor with syntax highlighting)
 - Marked (markdown parsing)
-- Highlight.js (code highlighting)
+- Highlight.js (code block highlighting)
+- KaTeX (LaTeX math rendering)
 
 ## License
 
