@@ -623,6 +623,12 @@ View:
   Cmd+Shift+O - Toggle outline
   Cmd+Shift+E - Toggle files
   Cmd+Shift+F - Search in files
+  Ctrl+W - Toggle focus editor/sidebar
+
+In Sidebar:
+  Arrow Up/Down - Navigate items
+  Enter - Open file/folder
+  Escape - Return to editor
 
 Presentation:
   Cmd+Shift+P - Start presentation

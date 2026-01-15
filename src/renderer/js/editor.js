@@ -25,10 +25,13 @@ class Editor {
     this.isDirty = false;
     this.searchTimeout = null;
     this.pendingLineJump = null;
+    this.selectedSearchIndex = -1;
+    this.focusedPane = 'editor'; // 'editor' or 'sidebar'
 
     this.setupEditor();
     this.setupToolbar();
     this.setupSearch();
+    this.setupKeyboardNavigation();
     this.setupIPC();
     this.togglePreview(); // Start with preview visible
   }
@@ -250,16 +253,82 @@ class Editor {
     // Debounced search on input
     this.searchInput.addEventListener('input', () => {
       clearTimeout(this.searchTimeout);
+      this.selectedSearchIndex = -1;
       this.searchTimeout = setTimeout(() => this.performSearch(), 300);
     });
 
-    // Search on Enter
+    // Keyboard navigation in search
     this.searchInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        clearTimeout(this.searchTimeout);
-        this.performSearch();
+      const items = this.searchResults.querySelectorAll('.search-result-item');
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        this.selectedSearchIndex = Math.min(this.selectedSearchIndex + 1, items.length - 1);
+        this.updateSearchSelection(items);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        this.selectedSearchIndex = Math.max(this.selectedSearchIndex - 1, -1);
+        this.updateSearchSelection(items);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (this.selectedSearchIndex >= 0 && items[this.selectedSearchIndex]) {
+          items[this.selectedSearchIndex].click();
+        } else {
+          clearTimeout(this.searchTimeout);
+          this.performSearch();
+        }
+      } else if (e.key === 'Escape') {
+        this.toggleSearch();
+        this.cm.focus();
       }
     });
+  }
+
+  updateSearchSelection(items) {
+    items.forEach((item, i) => {
+      item.classList.toggle('selected', i === this.selectedSearchIndex);
+    });
+    if (this.selectedSearchIndex >= 0 && items[this.selectedSearchIndex]) {
+      items[this.selectedSearchIndex].scrollIntoView({ block: 'nearest' });
+    }
+  }
+
+  setupKeyboardNavigation() {
+    // Ctrl+W to toggle focus between editor and sidebar (vim-style)
+    document.addEventListener('keydown', (e) => {
+      if (e.ctrlKey && e.key === 'w') {
+        e.preventDefault();
+        this.togglePaneFocus();
+      }
+    });
+  }
+
+  togglePaneFocus() {
+    const anySidebarOpen = this.isFileTreeVisible || this.isOutlineVisible || this.isSearchVisible;
+
+    if (!anySidebarOpen) {
+      // No sidebar open, stay in editor
+      this.cm.focus();
+      return;
+    }
+
+    if (this.focusedPane === 'editor') {
+      // Move focus to sidebar
+      this.focusedPane = 'sidebar';
+      if (this.isSearchVisible) {
+        this.searchInput.focus();
+      } else if (this.isFileTreeVisible) {
+        const firstItem = this.fileTree.querySelector('.file-item');
+        if (firstItem) firstItem.focus();
+      } else if (this.isOutlineVisible) {
+        const firstItem = this.outlineList.querySelector('.outline-item');
+        if (firstItem) firstItem.focus();
+      }
+    } else {
+      // Move focus back to editor
+      this.focusedPane = 'editor';
+      this.cm.focus();
+    }
   }
 
   toggleSearch() {
@@ -297,6 +366,8 @@ class Editor {
   }
 
   renderSearchResults(results, query) {
+    this.selectedSearchIndex = -1;
+
     if (!results || results.length === 0) {
       this.searchResults.innerHTML = '<div class="search-no-results">No results found</div>';
       return;
@@ -353,44 +424,77 @@ class Editor {
       return;
     }
 
-    this.fileTree.innerHTML = items.map(item => {
+    this.fileTree.innerHTML = items.map((item, index) => {
       const isActive = item.path === this.currentFilePath;
       const typeClass = item.isDirectory ? 'directory' : (item.isMarkdown ? 'markdown' : 'file');
       const activeClass = isActive ? 'active' : '';
 
-      return `<div class="file-item ${typeClass} ${activeClass}" data-path="${item.path}" data-is-dir="${item.isDirectory}">
+      return `<div class="file-item ${typeClass} ${activeClass}" data-path="${item.path}" data-is-dir="${item.isDirectory}" tabindex="0">
         <span class="icon"></span>
         <span class="name">${item.name}</span>
       </div>`;
     }).join('');
 
-    // Add click handlers
+    // Add click and keyboard handlers
     this.fileTree.querySelectorAll('.file-item').forEach(el => {
-      el.addEventListener('click', () => {
+      const handleAction = () => {
         const filePath = el.dataset.path;
         const isDir = el.dataset.isDir === 'true';
 
         if (isDir) {
-          // Navigate into directory
           this.currentDirectory = filePath;
           this.loadFileTree();
         } else if (filePath.endsWith('.md') || filePath.endsWith('.markdown')) {
-          // Open markdown file
           window.vomit.openFile(filePath);
+        }
+      };
+
+      el.addEventListener('click', handleAction);
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          handleAction();
+        } else if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          const next = el.nextElementSibling;
+          if (next && next.classList.contains('file-item')) next.focus();
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          const prev = el.previousElementSibling;
+          if (prev && prev.classList.contains('file-item')) prev.focus();
+        } else if (e.key === 'Escape') {
+          this.cm.focus();
+          this.focusedPane = 'editor';
         }
       });
     });
 
     // Add parent directory item if not at root
     const parentItem = document.createElement('div');
-    parentItem.className = 'file-item directory';
-    parentItem.innerHTML = '<span class="icon" style="transform: rotate(180deg);">&#x2191;</span><span class="name">..</span>';
-    parentItem.addEventListener('click', () => {
+    parentItem.className = 'file-item directory parent-dir';
+    parentItem.tabIndex = 0;
+    parentItem.innerHTML = '<span class="icon"></span><span class="name">..</span>';
+
+    const goUp = () => {
       const parts = this.currentDirectory.split('/');
       if (parts.length > 2) {
         parts.pop();
         this.currentDirectory = parts.join('/');
         this.loadFileTree();
+      }
+    };
+    parentItem.addEventListener('click', goUp);
+    parentItem.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        goUp();
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        const next = parentItem.nextElementSibling;
+        if (next && next.classList.contains('file-item')) next.focus();
+      } else if (e.key === 'Escape') {
+        this.cm.focus();
+        this.focusedPane = 'editor';
       }
     });
     this.fileTree.insertBefore(parentItem, this.fileTree.firstChild);

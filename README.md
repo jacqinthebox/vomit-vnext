@@ -101,6 +101,7 @@ Resize images with this syntax:
 |----------|--------|
 | Cmd+N | New file |
 | Cmd+O | Open file |
+| Cmd+Alt+O | Open folder |
 | Cmd+S | Save |
 | Cmd+Shift+S | Save as |
 | Cmd+E | Export to PDF |
@@ -108,6 +109,7 @@ Resize images with this syntax:
 | Cmd+Shift+O | Toggle outline |
 | Cmd+Shift+E | Toggle file tree |
 | Cmd+Shift+F | Search in files |
+| Ctrl+W | Toggle focus editor/sidebar |
 | Cmd+B | Bold |
 | Cmd+I | Italic |
 | Cmd+K | Insert link |
@@ -116,6 +118,14 @@ Resize images with this syntax:
 | Cmd+' | Quote |
 | Cmd+- | Horizontal rule |
 | Cmd+Enter | Insert slide |
+
+### Sidebar Navigation
+
+| Shortcut | Action |
+|----------|--------|
+| Arrow Up/Down | Navigate items |
+| Enter | Open file/folder |
+| Escape | Return to editor |
 
 ### Presentation
 
