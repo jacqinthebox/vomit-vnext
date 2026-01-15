@@ -758,6 +758,58 @@ ipcMain.handle('get-current-directory', async () => {
   return null;
 });
 
+// Rename file or folder
+ipcMain.handle('rename-item', async (event, oldPath, newName) => {
+  try {
+    const dir = path.dirname(oldPath);
+    const newPath = path.join(dir, newName);
+
+    if (fs.existsSync(newPath)) {
+      return { success: false, error: 'A file with that name already exists' };
+    }
+
+    fs.renameSync(oldPath, newPath);
+
+    // Update currentFilePath if we renamed the open file
+    if (currentFilePath === oldPath) {
+      currentFilePath = newPath;
+      mainWindow.setTitle(`${path.basename(newPath)} - Vomit vNext`);
+    }
+
+    return { success: true, newPath };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+// Delete file or folder
+ipcMain.handle('delete-item', async (event, itemPath) => {
+  try {
+    const result = await dialog.showMessageBox(mainWindow, {
+      type: 'warning',
+      buttons: ['Cancel', 'Delete'],
+      defaultId: 0,
+      cancelId: 0,
+      title: 'Delete',
+      message: `Delete "${path.basename(itemPath)}"?`,
+      detail: 'This action cannot be undone.'
+    });
+
+    if (result.response === 1) {
+      const stat = fs.statSync(itemPath);
+      if (stat.isDirectory()) {
+        fs.rmSync(itemPath, { recursive: true });
+      } else {
+        fs.unlinkSync(itemPath);
+      }
+      return { success: true };
+    }
+    return { success: false, cancelled: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
 // Search in files
 ipcMain.handle('search-in-files', async (event, dirPath, query) => {
   if (!query || query.length < 2) return [];

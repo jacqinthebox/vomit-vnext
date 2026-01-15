@@ -465,6 +465,12 @@ class Editor {
         } else if (e.key === 'Escape') {
           this.cm.focus();
           this.focusedPane = 'editor';
+        } else if (e.key === 'F2') {
+          e.preventDefault();
+          this.startRename(el);
+        } else if (e.key === 'Delete' || e.key === 'Backspace') {
+          e.preventDefault();
+          this.deleteItem(el.dataset.path);
         }
       });
     });
@@ -774,6 +780,64 @@ class Editor {
     this.cm.setCursor({ line: lineNum, ch: 0 });
     this.cm.scrollIntoView({ line: lineNum, ch: 0 }, 200);
     this.cm.focus();
+  }
+
+  startRename(el) {
+    const filePath = el.dataset.path;
+    const nameSpan = el.querySelector('.name');
+    const currentName = nameSpan.textContent;
+
+    // Create inline input
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'rename-input';
+    input.value = currentName;
+
+    // Replace name span with input
+    nameSpan.style.display = 'none';
+    el.appendChild(input);
+    input.focus();
+    input.select();
+
+    const finishRename = async (save) => {
+      if (save) {
+        const newName = input.value.trim();
+        if (newName && newName !== currentName) {
+          const result = await window.vomit.renameItem(filePath, newName);
+          if (!result.success) {
+            alert(result.error || 'Failed to rename');
+          }
+        }
+      }
+      input.remove();
+      nameSpan.style.display = '';
+      this.loadFileTree();
+    };
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        finishRename(true);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        finishRename(false);
+      }
+    });
+
+    input.addEventListener('blur', () => {
+      finishRename(true);
+    });
+  }
+
+  async deleteItem(itemPath) {
+    const result = await window.vomit.deleteItem(itemPath);
+    if (result.success) {
+      this.loadFileTree();
+    } else if (result.error) {
+      alert(result.error);
+    }
   }
 }
 

@@ -125,6 +125,8 @@ Resize images with this syntax:
 |----------|--------|
 | Arrow Up/Down | Navigate items |
 | Enter | Open file/folder |
+| F2 | Rename file/folder |
+| Delete | Delete file/folder |
 | Escape | Return to editor |
 
 ### Presentation

@@ -64,6 +64,8 @@ contextBridge.exposeInMainWorld('vomit', {
   getDirectoryContents: (dirPath) => ipcRenderer.invoke('get-directory-contents', dirPath),
   getCurrentDirectory: () => ipcRenderer.invoke('get-current-directory'),
   searchInFiles: (dirPath, query) => ipcRenderer.invoke('search-in-files', dirPath, query),
+  renameItem: (oldPath, newName) => ipcRenderer.invoke('rename-item', oldPath, newName),
+  deleteItem: (itemPath) => ipcRenderer.invoke('delete-item', itemPath),
   openFile: (filePath) => ipcRenderer.send('open-file-path', filePath),
   saveContent: (content) => ipcRenderer.send('save-content', content),
   contentChanged: (content) => ipcRenderer.send('content-changed', content),
