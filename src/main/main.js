@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, dialog, ipcMain, globalShortcut } = require('electron');
+const { app, BrowserWindow, Menu, dialog, ipcMain, globalShortcut, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const Store = require('electron-store');
@@ -662,6 +662,13 @@ ipcMain.on('go-to-slide', (event, index) => {
   }
   if (presenterWindow && !presenterWindow.isDestroyed()) {
     presenterWindow.webContents.send('go-to-slide', index);
+  }
+});
+
+// Open external links
+ipcMain.handle('open-external', async (event, url) => {
+  if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+    await shell.openExternal(url);
   }
 });
 

@@ -48,6 +48,7 @@ ipcRenderer.on('render-for-pdf', (event, content, basePath) => {
 
 // Expose only the send methods (no callbacks needed)
 contextBridge.exposeInMainWorld('vomit', {
+  openExternal: (url) => ipcRenderer.invoke('open-external', url),
   saveContent: (content) => ipcRenderer.send('save-content', content),
   contentChanged: (content) => ipcRenderer.send('content-changed', content),
   startPresentation: () => ipcRenderer.send('start-presentation'),

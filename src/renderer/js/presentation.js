@@ -157,6 +157,15 @@
     }
   });
 
+  // Handle external links
+  document.addEventListener('click', e => {
+    const link = e.target.closest('a');
+    if (link && link.href && (link.href.startsWith('http://') || link.href.startsWith('https://'))) {
+      e.preventDefault();
+      window.vomit.openExternal(link.href);
+    }
+  });
+
   // Keyboard controls
   document.addEventListener('keydown', e => {
     switch (e.key) {
