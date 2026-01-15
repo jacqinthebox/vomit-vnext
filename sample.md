@@ -106,6 +106,12 @@ The presenter view shows these shortcuts too.
 
 ---
 
+# LaTeX
+
+$$|\psi\rangle = \frac{1}{\sqrt{2^n}} \sum_{x=0}^{2^n - 1} |x\rangle$$
+
+---
+
 # Thank You!
 
 Questions?
