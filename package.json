@@ -1,6 +1,6 @@
 {
   "name": "vomit-vnext",
-  "version": "1.3.1",
+  "version": "1.3.2",
   "description": "A Typora-like markdown editor with presentation capabilities",
   "main": "src/main/main.js",
   "scripts": {
@@ -27,7 +27,7 @@
   },
   "build": {
     "appId": "com.vomit.vnext",
-    "productName": "Vomit vNext",
+    "productName": "Vomit",
     "publish": null,
     "mac": {
       "category": "public.app-category.productivity",

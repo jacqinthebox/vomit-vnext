@@ -3,6 +3,9 @@ const path = require('path');
 const fs = require('fs');
 const Store = require('electron-store');
 
+// Set app name for About dialog
+app.setName('Vomit');
+
 const store = new Store({
   defaults: {
     theme: 'default',
@@ -18,12 +21,20 @@ let currentFilePath = null;
 let currentContent = '';
 
 function createMainWindow() {
+  const iconPath = path.join(__dirname, '../../build/AppIcon.iconset/icon_512x512.png');
+
+  // Set dock icon on macOS
+  if (process.platform === 'darwin' && app.dock) {
+    app.dock.setIcon(iconPath);
+  }
+
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     minWidth: 600,
     minHeight: 400,
-    title: 'Vomit vNext',
+    title: 'Vomit',
+    icon: iconPath,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -98,7 +109,7 @@ function createPresenterWindow() {
 function createMenu() {
   const template = [
     {
-      label: 'Vomit vNext',
+      label: 'Vomit',
       submenu: [
         { role: 'about' },
         { type: 'separator' },
@@ -319,7 +330,7 @@ function createMenu() {
       label: 'Help',
       submenu: [
         {
-          label: 'Keyboard Shortcuts',
+          label: 'Vomit Help',
           click: () => showHelp()
         }
       ]
@@ -335,7 +346,7 @@ async function newFile() {
   currentContent = '';
   if (mainWindow) {
     mainWindow.webContents.send('load-content', '', null);
-    mainWindow.setTitle('Untitled - Vomit vNext');
+    mainWindow.setTitle('Untitled - Vomit');
   }
 }
 
@@ -365,7 +376,7 @@ async function openFolder() {
     const folderPath = result.filePaths[0];
     store.set('lastOpenedFolder', folderPath);
     mainWindow.webContents.send('open-folder', folderPath);
-    mainWindow.setTitle(`${path.basename(folderPath)} - Vomit vNext`);
+    mainWindow.setTitle(`${path.basename(folderPath)} - Vomit`);
   }
 }
 
@@ -381,7 +392,7 @@ function loadFile(filePath) {
     if (mainWindow) {
       const basePath = path.dirname(filePath);
       mainWindow.webContents.send('load-content', content, filePath, basePath);
-      mainWindow.setTitle(`${path.basename(filePath)} - Vomit vNext`);
+      mainWindow.setTitle(`${path.basename(filePath)} - Vomit`);
     }
   } catch (err) {
     dialog.showErrorBox('Error', `Failed to open file: ${err.message}`);
@@ -418,7 +429,7 @@ function writeFile(content) {
     fs.writeFileSync(currentFilePath, content, 'utf-8');
     currentContent = content;
     if (mainWindow) {
-      mainWindow.setTitle(`${path.basename(currentFilePath)} - Vomit vNext`);
+      mainWindow.setTitle(`${path.basename(currentFilePath)} - Vomit`);
     }
   } catch (err) {
     dialog.showErrorBox('Error', `Failed to save file: ${err.message}`);
@@ -590,84 +601,7 @@ function setTheme(theme) {
 }
 
 function showHelp() {
-  dialog.showMessageBox(mainWindow, {
-    type: 'info',
-    title: 'Help',
-    buttons: ['OK'],
-    message: 'Vomit vNext Help',
-    detail: `KEYBOARD SHORTCUTS
-
-File:
-  Cmd+N - New file
-  Cmd+O - Open file
-  Cmd+Alt+O - Open folder
-  Cmd+S - Save file
-  Cmd+Shift+S - Save as
-  Cmd+E - Export to PDF
-
-Format:
-  Cmd+B - Bold
-  Cmd+I - Italic
-  Cmd+\` - Inline code
-  Cmd+K - Insert link
-  Cmd+1 - Heading 1
-  Cmd+2 - Heading 2
-  Cmd+3 - Heading 3
-  Cmd+L - Bullet list
-  Cmd+' - Quote
-  Cmd+- - Horizontal rule
-  Cmd+Enter - Insert slide
-
-View:
-  Cmd+P - Toggle preview
-  Cmd+Shift+O - Toggle outline
-  Cmd+Shift+E - Toggle files
-  Cmd+Shift+F - Search in files
-  Ctrl+W - Toggle focus editor/sidebar
-
-In Sidebar:
-  Arrow Up/Down - Navigate items
-  Enter - Open file/folder
-  Escape - Return to editor
-
-Presentation:
-  Cmd+Shift+P - Start presentation
-  Cmd+Alt+P - Start with presenter view
-
-During Presentation:
-  Right/Space/N - Next slide
-  Left/P - Previous slide
-  Home - First slide
-  End - Last slide
-  L - Toggle laser pointer
-  R - Reset timer
-  Escape - End presentation
-
-SLIDE FORMAT
-
-Use --- to separate slides:
-  # Slide 1
-  Content here
-  ---
-  # Slide 2
-  More content
-
-Use ??? for speaker notes:
-  # Slide Title
-  Content
-  ???
-  Speaker notes (only visible in presenter view)
-
-IMAGES
-
-Paste images directly (Cmd+V) - saved to images/ folder
-
-Resize syntax:
-  ![alt](image.png =400x)     - width 400px
-  ![alt](image.png =x300)     - height 300px
-  ![alt](image.png =400x300)  - both
-`
-  });
+  shell.openExternal('https://github.com/jacqinthebox/vomit-vnext/blob/main/README.md');
 }
 
 // IPC Handlers
@@ -773,7 +707,7 @@ ipcMain.handle('rename-item', async (event, oldPath, newName) => {
     // Update currentFilePath if we renamed the open file
     if (currentFilePath === oldPath) {
       currentFilePath = newPath;
-      mainWindow.setTitle(`${path.basename(newPath)} - Vomit vNext`);
+      mainWindow.setTitle(`${path.basename(newPath)} - Vomit`);
     }
 
     return { success: true, newPath };

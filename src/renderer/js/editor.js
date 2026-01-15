@@ -127,6 +127,8 @@ class Editor {
 
     document.getElementById('btn-slide').addEventListener('click', () => this.insertSlide());
 
+    document.getElementById('btn-files').addEventListener('click', () => this.toggleFileTree());
+    document.getElementById('btn-search').addEventListener('click', () => this.toggleSearch());
     document.getElementById('btn-outline').addEventListener('click', () => this.toggleOutline());
     document.getElementById('btn-preview').addEventListener('click', () => this.togglePreview());
     document.getElementById('btn-present').addEventListener('click', () => {
