@@ -1,6 +1,9 @@
 # Vomit vNext
 
-A markdown presentation app for macOS. Write your slides in markdown, present with a proper presenter view.
+Vomit vNext is a fully vibe‑coded macOS app built with Claude Code, initiated by me, even though I’m not a front‑end developer and freely admit I suck at it.
+It turns plain Markdown files into polished slide decks, similar to preview plugins in VS Code or Obsidian, but focused entirely on presentation.
+
+ Write your slides in Markdown and present them with a proper presenter view, like a PowerPoint‑style slideshow powered by text files.
 
 ## Features
 
