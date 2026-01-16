@@ -599,6 +599,19 @@ class Editor {
         throwOnError: false
       });
     }
+
+    // Render PlantUML diagrams
+    if (window.plantumlEncoder) {
+      this.preview.querySelectorAll('pre code.language-plantuml').forEach((block) => {
+        const code = block.textContent;
+        const encoded = window.plantumlEncoder.encode(code);
+        const img = document.createElement('img');
+        img.src = `https://www.plantuml.com/plantuml/svg/${encoded}`;
+        img.alt = 'PlantUML diagram';
+        img.className = 'plantuml-diagram';
+        block.parentElement.replaceWith(img);
+      });
+    }
   }
 
   renderMarkdownWithSlides(content) {
