@@ -14,6 +14,7 @@ class Editor {
     this.fileTree = document.getElementById('file-tree');
     this.searchInput = document.getElementById('search-input');
     this.searchResults = document.getElementById('search-results');
+    this.sidebarResize = document.getElementById('sidebar-resize');
 
     this.currentFilePath = null;
     this.basePath = null;
@@ -24,11 +25,14 @@ class Editor {
     this.isSearchVisible = false;
     this.isDirty = false;
     this.searchTimeout = null;
+    this.autoSaveTimeout = null;
     this.pendingLineJump = null;
     this.selectedSearchIndex = -1;
     this.focusedPane = 'editor'; // 'editor' or 'sidebar'
 
     this.setupEditor();
+    this.setupAutoSave();
+    this.setupSidebarResize();
     this.setupToolbar();
     this.setupSearch();
     this.setupKeyboardNavigation();
@@ -70,6 +74,9 @@ class Editor {
       this.updateOutline();
       this.isDirty = true;
       window.vomit.contentChanged(this.getValue());
+
+      // Debounced auto-save (2 seconds after last change)
+      this.scheduleAutoSave();
     });
 
     // Paste image handling
@@ -216,6 +223,7 @@ class Editor {
   toggleFileTree() {
     this.isFileTreeVisible = !this.isFileTreeVisible;
     this.sidebarFiles.classList.toggle('hidden', !this.isFileTreeVisible);
+    this.updateResizeHandle();
     if (this.isFileTreeVisible) {
       // Close other sidebars
       this.isOutlineVisible = false;
@@ -229,6 +237,7 @@ class Editor {
   toggleOutline() {
     this.isOutlineVisible = !this.isOutlineVisible;
     this.sidebarOutline.classList.toggle('hidden', !this.isOutlineVisible);
+    this.updateResizeHandle();
     if (this.isOutlineVisible) {
       // Close other sidebars
       this.isFileTreeVisible = false;
@@ -248,6 +257,7 @@ class Editor {
     this.sidebarFiles.classList.remove('hidden');
     this.sidebarOutline.classList.add('hidden');
     this.sidebarSearch.classList.add('hidden');
+    this.updateResizeHandle();
     this.loadFileTree();
   }
 
@@ -305,6 +315,84 @@ class Editor {
     });
   }
 
+  setupAutoSave() {
+    // Save when window loses focus
+    window.addEventListener('blur', () => {
+      if (this.isDirty && this.currentFilePath) {
+        this.autoSave();
+      }
+    });
+
+    // Save before closing/navigating away
+    window.addEventListener('beforeunload', (e) => {
+      if (this.isDirty && this.currentFilePath) {
+        this.autoSave();
+      }
+    });
+  }
+
+  scheduleAutoSave() {
+    // Only auto-save if file has been saved before (has a path)
+    if (!this.currentFilePath) return;
+
+    // Clear existing timeout
+    clearTimeout(this.autoSaveTimeout);
+
+    // Schedule save for 2 seconds after last change
+    this.autoSaveTimeout = setTimeout(() => {
+      if (this.isDirty) {
+        this.autoSave();
+      }
+    }, 2000);
+  }
+
+  autoSave() {
+    if (!this.isDirty || !this.currentFilePath) return;
+
+    window.vomit.saveContent(this.getValue());
+    this.isDirty = false;
+    this.updateStatus();
+  }
+
+  setupSidebarResize() {
+    let isResizing = false;
+    let currentSidebar = null;
+
+    this.sidebarResize.addEventListener('mousedown', (e) => {
+      isResizing = true;
+      this.sidebarResize.classList.add('dragging');
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+
+      // Find which sidebar is visible
+      if (this.isFileTreeVisible) currentSidebar = this.sidebarFiles;
+      else if (this.isOutlineVisible) currentSidebar = this.sidebarOutline;
+      else if (this.isSearchVisible) currentSidebar = this.sidebarSearch;
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isResizing || !currentSidebar) return;
+
+      const newWidth = Math.max(150, Math.min(500, e.clientX));
+      currentSidebar.style.width = `${newWidth}px`;
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (isResizing) {
+        isResizing = false;
+        currentSidebar = null;
+        this.sidebarResize.classList.remove('dragging');
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      }
+    });
+  }
+
+  updateResizeHandle() {
+    const anySidebarVisible = this.isFileTreeVisible || this.isOutlineVisible || this.isSearchVisible;
+    this.sidebarResize.classList.toggle('hidden', !anySidebarVisible);
+  }
+
   togglePaneFocus() {
     const anySidebarOpen = this.isFileTreeVisible || this.isOutlineVisible || this.isSearchVisible;
 
@@ -336,6 +424,7 @@ class Editor {
   toggleSearch() {
     this.isSearchVisible = !this.isSearchVisible;
     this.sidebarSearch.classList.toggle('hidden', !this.isSearchVisible);
+    this.updateResizeHandle();
     if (this.isSearchVisible) {
       // Close other sidebars
       this.isFileTreeVisible = false;

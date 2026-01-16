@@ -121,6 +121,24 @@ html, body {
   display: none;
 }
 
+/* Sidebar resize handle */
+#sidebar-resize {
+  width: 4px;
+  background: transparent;
+  cursor: col-resize;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+
+#sidebar-resize:hover,
+#sidebar-resize.dragging {
+  background: var(--accent-color);
+}
+
+#sidebar-resize.hidden {
+  display: none;
+}
+
 /* File tree */
 #file-tree {
   padding: 8px 0;

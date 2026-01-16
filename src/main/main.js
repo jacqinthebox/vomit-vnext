@@ -46,6 +46,32 @@ function createMainWindow() {
 
   mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
 
+  // Warning for unsaved untitled files
+  mainWindow.on('close', async (e) => {
+    if (!currentFilePath && currentContent && currentContent.trim()) {
+      e.preventDefault();
+      const result = await dialog.showMessageBox(mainWindow, {
+        type: 'warning',
+        buttons: ['Save', "Don't Save", 'Cancel'],
+        defaultId: 0,
+        cancelId: 2,
+        title: 'Unsaved Changes',
+        message: 'Do you want to save your changes?',
+        detail: 'Your changes will be lost if you close without saving.'
+      });
+
+      if (result.response === 0) {
+        // Save
+        await saveFileAs();
+        mainWindow.destroy();
+      } else if (result.response === 1) {
+        // Don't Save
+        mainWindow.destroy();
+      }
+      // Cancel: do nothing, window stays open
+    }
+  });
+
   mainWindow.on('closed', () => {
     mainWindow = null;
     if (presentationWindow) presentationWindow.close();
