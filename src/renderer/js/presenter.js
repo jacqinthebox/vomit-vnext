@@ -95,6 +95,20 @@
     }
   }
 
+  function renderPlantUML(container) {
+    if (window.plantumlEncoder) {
+      container.querySelectorAll('pre code.language-plantuml').forEach((block) => {
+        const code = block.textContent;
+        const encoded = window.plantumlEncoder.encode(code);
+        const img = document.createElement('img');
+        img.src = `https://www.plantuml.com/plantuml/svg/${encoded}`;
+        img.alt = 'PlantUML diagram';
+        img.className = 'plantuml-diagram';
+        block.parentElement.replaceWith(img);
+      });
+    }
+  }
+
   function render() {
     // Current slide
     if (slides.length === 0) {
@@ -110,6 +124,7 @@
     currentSlideEl.innerHTML = renderMarkdown(slide.content);
     highlightCode(currentSlideEl);
     renderMath(currentSlideEl);
+    renderPlantUML(currentSlideEl);
 
     // Next slide
     const nextIndex = currentIndex + 1;
@@ -119,11 +134,13 @@
       nextSlideEl.innerHTML = renderMarkdown(slides[nextIndex].content);
       highlightCode(nextSlideEl);
       renderMath(nextSlideEl);
+      renderPlantUML(nextSlideEl);
     }
 
     // Notes
     notesContent.innerHTML = slide.notes ? renderMarkdown(slide.notes) : '';
     renderMath(notesContent);
+    renderPlantUML(notesContent);
 
     // Counter
     currentNum.textContent = currentIndex + 1;

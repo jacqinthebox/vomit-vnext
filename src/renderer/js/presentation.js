@@ -99,6 +99,19 @@
       });
     }
 
+    // Render PlantUML diagrams
+    if (window.plantumlEncoder) {
+      slideContent.querySelectorAll('pre code.language-plantuml').forEach((block) => {
+        const code = block.textContent;
+        const encoded = window.plantumlEncoder.encode(code);
+        const img = document.createElement('img');
+        img.src = `https://www.plantuml.com/plantuml/svg/${encoded}`;
+        img.alt = 'PlantUML diagram';
+        img.className = 'plantuml-diagram';
+        block.parentElement.replaceWith(img);
+      });
+    }
+
     // Check if title slide
     const container = document.getElementById('slide');
     const hasOnlyTitles = slide.content.match(/^#[^#]/) && !slide.content.match(/^[^#\n]/m);

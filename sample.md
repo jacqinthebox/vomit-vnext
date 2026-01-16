@@ -112,6 +112,18 @@ $$|\psi\rangle = \frac{1}{\sqrt{2^n}} \sum_{x=0}^{2^n - 1} |x\rangle$$
 
 ---
 
+# Plant UML
+
+
+```plantuml
+@startuml
+Alice -> Bob: Hello
+Bob --> Alice: Hi there!
+@enduml
+```
+
+---
+
 # Thank You!
 
 Questions?

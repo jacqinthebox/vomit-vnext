@@ -212,6 +212,17 @@ html, body {
   max-width: 100%;
 }
 
+/* PlantUML diagrams */
+.slide-content .plantuml-diagram {
+  max-width: 100%;
+  max-height: 150px;
+  display: block;
+  margin: 0.5em auto;
+  background: white;
+  padding: 10px;
+  border-radius: 6px;
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
