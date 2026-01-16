@@ -139,6 +139,22 @@ Bob --> Alice: Hi there!
 
 ---
 
+## Emoji Shortcodes :tada:
+
+Use shortcodes like GitHub/Slack:
+
+- `:smile:` :smile:
+- `:rocket:` :rocket:
+- `:fire:` :fire:
+- `:heart:` :heart:
+- `:thumbsup:` :thumbsup:
+- `:vomit:` :vomit:
+
+???
+Over 200 emoji shortcodes are supported!
+
+---
+
 # Thank You!
 
 Questions?

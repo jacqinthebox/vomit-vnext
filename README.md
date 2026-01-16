@@ -11,6 +11,7 @@ It turns plain Markdown files into polished slide decks, similar to preview plug
 - **Presenter View** - Current slide, next slide preview, speaker notes, timer
 - **LaTeX Math** - Render formulas with KaTeX (`$inline$` and `$$display$$`)
 - **PlantUML Diagrams** - Render sequence diagrams, flowcharts, and more
+- **Emoji Shortcodes** - Use `:smile:` syntax like GitHub/Slack
 - **File Tree** - Browse and open files in current directory (Cmd+Shift+E)
 - **Search in Files** - Search across all markdown files (Cmd+Shift+F)
 - **Laser Pointer** - Press L during presentation to highlight
@@ -108,6 +109,18 @@ Bob --> Alice: Hi there!
 ~~~
 
 Diagrams are rendered via the PlantUML server. Supports sequence diagrams, class diagrams, flowcharts, and more. See [PlantUML documentation](https://plantuml.com/) for syntax.
+
+### Emoji Shortcodes
+
+Use GitHub/Slack-style emoji shortcodes:
+
+```markdown
+:smile: :rocket: :fire: :heart: :thumbsup: :vomit:
+```
+
+Renders as: :smile: :rocket: :fire: :heart: :thumbsup: :vomit:
+
+Over 200 shortcodes are supported including smileys, gestures, objects, animals, food, and more.
 
 ## Keyboard Shortcuts
 

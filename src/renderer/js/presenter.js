@@ -33,6 +33,11 @@
   }
 
   function renderMarkdown(text) {
+    // Replace emoji shortcodes
+    if (window.replaceEmojis) {
+      text = window.replaceEmojis(text);
+    }
+
     // Pre-process: convert image size syntax ![alt](path =WxH) to HTML
     let processed = text.replace(
       /!\[([^\]]*)\]\(([^)\s]+)\s*=(\d*)x(\d*)\)/g,
