@@ -10,6 +10,7 @@ It turns plain Markdown files into polished slide decks, similar to preview plug
 - **Markdown Editor** - Live preview, syntax highlighting, outline sidebar
 - **Presenter View** - Current slide, next slide preview, speaker notes, timer
 - **LaTeX Math** - Render formulas with KaTeX (`$inline$` and `$$display$$`)
+- **PlantUML Diagrams** - Render sequence diagrams, flowcharts, and more
 - **File Tree** - Browse and open files in current directory (Cmd+Shift+E)
 - **Search in Files** - Search across all markdown files (Cmd+Shift+F)
 - **Laser Pointer** - Press L during presentation to highlight
@@ -93,6 +94,21 @@ Resize images with this syntax:
 ![alt text](image.png =400x300)   # both
 ```
 
+### PlantUML Diagrams
+
+Create diagrams using PlantUML syntax in fenced code blocks:
+
+~~~markdown
+```plantuml
+@startuml
+Alice -> Bob: Hello
+Bob --> Alice: Hi there!
+@enduml
+```
+~~~
+
+Diagrams are rendered via the PlantUML server. Supports sequence diagrams, class diagrams, flowcharts, and more. See [PlantUML documentation](https://plantuml.com/) for syntax.
+
 ## Keyboard Shortcuts
 
 ### Editor
@@ -150,6 +166,7 @@ Resize images with this syntax:
 - Marked (markdown parsing)
 - Highlight.js (code block highlighting)
 - KaTeX (LaTeX math rendering)
+- PlantUML (diagram rendering)
 
 ## License
 
