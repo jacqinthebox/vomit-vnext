@@ -61,6 +61,21 @@ Images are saved to an images/ folder next to your markdown file.
 
 ---
 
+## Image Demo
+
+Here's the Vomit logo at different sizes:
+
+![Vomit Logo](logo.png =64x) Small (64px)
+
+![Vomit Logo](logo.png =128x) Medium (128px)
+
+![Vomit Logo](logo.png =200x) Large (200px)
+
+???
+This demonstrates the image resize syntax in action.
+
+---
+
 ## Code Highlighting
 
 ```javascript

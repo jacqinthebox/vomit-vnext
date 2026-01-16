@@ -83,7 +83,8 @@ function createMainWindow() {
     mainWindow.webContents.send('set-theme', currentTheme);
 
     if (currentFilePath && currentContent) {
-      mainWindow.webContents.send('load-content', currentContent, currentFilePath);
+      const basePath = path.dirname(currentFilePath);
+      mainWindow.webContents.send('load-content', currentContent, currentFilePath, basePath);
     }
   });
 }
