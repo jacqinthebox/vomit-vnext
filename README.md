@@ -1,9 +1,24 @@
-# Vomit vNext
+# Vomit
 
-Vomit vNext is a fully vibe‑coded macOS app built with Claude Code, initiated by me, even though I’m not a front‑end developer and freely admit I suck at it.
-It turns plain Markdown files into polished slide decks, similar to preview plugins in VS Code or Obsidian, but focused entirely on presentation.
+A markdown presentation app with a real presenter view. Write your talks in plain markdown, present like a pro.
 
- Write your slides in Markdown and present them with a proper presenter view, like a PowerPoint‑style slideshow powered by text files.
+> **The pitch:** Markdown simplicity meets real presentation tooling. No plugins, no config, no browser - just one app.
+
+*Fully vibe-coded with [Claude Code](https://claude.com/claude-code).*
+
+## Why Vomit?
+
+| Feature | PowerPoint | Obsidian | Marp | Vomit |
+|---------|:----------:|:--------:|:----:|:-----:|
+| Markdown native | ❌ | ✅ | ✅ | ✅ |
+| Live preview | ❌ | ✅ | ✅ | ✅ |
+| Presenter view with notes | ✅ | ❌ | ❌ | ✅ |
+| Timer | ✅ | ❌ | ❌ | ✅ |
+| Next slide preview | ✅ | ❌ | ❌ | ✅ |
+| Standalone app | ✅ | ✅ | ❌ | ✅ |
+| PlantUML diagrams | ❌ | Plugin | ❌ | ✅ |
+| LaTeX math | ❌ | Plugin | ✅ | ✅ |
+| Code syntax highlighting | ❌ | ✅ | ✅ | ✅ |
 
 ## Features
 
@@ -129,23 +144,14 @@ Over 200 shortcodes are supported including smileys, gestures, objects, animals,
 | Shortcut | Action |
 |----------|--------|
 | Cmd+N | New file |
-| Cmd+O | Open file |
-| Cmd+Alt+O | Open folder |
 | Cmd+S | Save |
 | Cmd+Shift+S | Save as |
-| Cmd+E | Export to PDF |
 | Cmd+P | Toggle preview |
-| Cmd+Shift+O | Toggle outline |
-| Cmd+Shift+E | Toggle file tree |
+| Cmd+O | Toggle outline |
+| Cmd+E | Toggle file tree |
+| Cmd+F | Find in file |
 | Cmd+Shift+F | Search in files |
-| Ctrl+W | Toggle focus editor/sidebar |
-| Cmd+B | Bold |
-| Cmd+I | Italic |
 | Cmd+K | Insert link |
-| Cmd+1/2/3 | Heading 1/2/3 |
-| Cmd+L | Bullet list |
-| Cmd+' | Quote |
-| Cmd+- | Horizontal rule |
 | Cmd+Enter | Insert slide |
 
 ### Sidebar Navigation
