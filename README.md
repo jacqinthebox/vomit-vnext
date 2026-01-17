@@ -2,7 +2,7 @@
 
 A markdown presentation app with a presenter view, speaker notes and a laser pointer.
 
-![Vomit Screenshot](screenshot.png) 
+<img src="screenshot.png" alt="Vomit Screenshot" width="600"> 
 
 *[Claude Code](https://claude.com/claude-code) crushes React. This app is fully vibe-coded.*
 
@@ -160,8 +160,7 @@ Over 200 shortcodes are supported including smileys, gestures, objects, animals,
 |----------|--------|
 | Arrow Up/Down | Navigate items |
 | Enter | Open file/folder |
-| F2 | Rename file/folder |
-| Delete | Delete file/folder |
+| Right-click | Rename, Delete, Show in Finder |
 | Escape | Return to editor |
 
 ### Presentation

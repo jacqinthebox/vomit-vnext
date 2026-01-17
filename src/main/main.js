@@ -781,6 +781,11 @@ ipcMain.handle('delete-item', async (event, itemPath) => {
   }
 });
 
+// Show in Finder/Explorer
+ipcMain.handle('show-in-finder', async (event, itemPath) => {
+  shell.showItemInFolder(itemPath);
+});
+
 // Search in files
 ipcMain.handle('search-in-files', async (event, dirPath, query) => {
   if (!query || query.length < 2) return [];

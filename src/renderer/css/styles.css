@@ -331,6 +331,36 @@ html, body {
   margin-left: 4px;
 }
 
+/* File context menu */
+.file-context-menu {
+  position: fixed;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 4px 0;
+  min-width: 150px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+}
+
+.context-menu-item {
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.context-menu-item:hover {
+  background: var(--accent-color);
+  color: white;
+}
+
+.context-menu-divider {
+  height: 1px;
+  background: var(--border-color);
+  margin: 4px 0;
+}
+
 .sidebar-header {
   padding: 12px 16px;
   font-weight: 600;

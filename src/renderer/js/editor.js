@@ -546,13 +546,13 @@ class Editor {
         } else if (e.key === 'Escape') {
           this.cm.focus();
           this.focusedPane = 'editor';
-        } else if (e.key === 'F2') {
-          e.preventDefault();
-          this.startRename(el);
-        } else if (e.key === 'Delete' || e.key === 'Backspace') {
-          e.preventDefault();
-          this.deleteItem(el.dataset.path);
         }
+      });
+
+      // Context menu for rename, delete, show in finder
+      el.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        this.showFileContextMenu(el, e.clientX, e.clientY);
       });
     });
 
@@ -891,6 +891,52 @@ class Editor {
     this.cm.setCursor({ line: lineNum, ch: 0 });
     this.cm.scrollIntoView({ line: lineNum, ch: 0 }, 200);
     this.cm.focus();
+  }
+
+  showFileContextMenu(el, x, y) {
+    // Remove any existing context menu
+    const existingMenu = document.querySelector('.file-context-menu');
+    if (existingMenu) existingMenu.remove();
+
+    const filePath = el.dataset.path;
+    const isParentDir = el.classList.contains('parent-dir');
+
+    // Don't show menu for parent directory (..)
+    if (isParentDir) return;
+
+    const menu = document.createElement('div');
+    menu.className = 'file-context-menu';
+    menu.innerHTML = `
+      <div class="context-menu-item" data-action="rename">Rename</div>
+      <div class="context-menu-item" data-action="delete">Delete</div>
+      <div class="context-menu-divider"></div>
+      <div class="context-menu-item" data-action="finder">Show in Finder</div>
+    `;
+    menu.style.left = `${x}px`;
+    menu.style.top = `${y}px`;
+    document.body.appendChild(menu);
+
+    // Handle menu item clicks
+    menu.addEventListener('click', (e) => {
+      const action = e.target.dataset.action;
+      if (action === 'rename') {
+        this.startRename(el);
+      } else if (action === 'delete') {
+        this.deleteItem(filePath);
+      } else if (action === 'finder') {
+        window.vomit.showInFinder(filePath);
+      }
+      menu.remove();
+    });
+
+    // Close menu on outside click
+    const closeMenu = (e) => {
+      if (!menu.contains(e.target)) {
+        menu.remove();
+        document.removeEventListener('click', closeMenu);
+      }
+    };
+    setTimeout(() => document.addEventListener('click', closeMenu), 0);
   }
 
   startRename(el) {

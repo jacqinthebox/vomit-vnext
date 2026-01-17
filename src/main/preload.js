@@ -70,6 +70,7 @@ contextBridge.exposeInMainWorld('vomit', {
   searchInFiles: (dirPath, query) => ipcRenderer.invoke('search-in-files', dirPath, query),
   renameItem: (oldPath, newName) => ipcRenderer.invoke('rename-item', oldPath, newName),
   deleteItem: (itemPath) => ipcRenderer.invoke('delete-item', itemPath),
+  showInFinder: (itemPath) => ipcRenderer.invoke('show-in-finder', itemPath),
   openFile: (filePath) => ipcRenderer.send('open-file-path', filePath),
   saveContent: (content) => ipcRenderer.send('save-content', content),
   contentChanged: (content) => ipcRenderer.send('content-changed', content),
