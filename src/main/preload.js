@@ -30,6 +30,10 @@ ipcRenderer.on('toggle-search', () => {
   window.dispatchEvent(new CustomEvent('vomit:toggle-search'));
 });
 
+ipcRenderer.on('find-in-file', () => {
+  window.dispatchEvent(new CustomEvent('vomit:find-in-file'));
+});
+
 ipcRenderer.on('open-folder', (event, folderPath) => {
   window.dispatchEvent(new CustomEvent('vomit:open-folder', { detail: folderPath }));
 });

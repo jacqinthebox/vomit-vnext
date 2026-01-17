@@ -43,7 +43,7 @@ class Editor {
   setupEditor() {
     // Initialize CodeMirror
     this.cm = CodeMirror(this.editorContainer, {
-      mode: 'markdown',
+      mode: 'gfm',  // GitHub Flavored Markdown with code block highlighting
       theme: 'default',
       lineNumbers: false,
       lineWrapping: true,
@@ -119,24 +119,9 @@ class Editor {
   }
 
   setupToolbar() {
-    document.getElementById('btn-bold').addEventListener('click', () => this.wrapSelection('**', '**'));
-    document.getElementById('btn-italic').addEventListener('click', () => this.wrapSelection('*', '*'));
-    document.getElementById('btn-code').addEventListener('click', () => this.wrapSelection('`', '`'));
     document.getElementById('btn-link').addEventListener('click', () => this.insertLink());
-
-    document.getElementById('btn-h1').addEventListener('click', () => this.insertAtLineStart('# '));
-    document.getElementById('btn-h2').addEventListener('click', () => this.insertAtLineStart('## '));
-    document.getElementById('btn-h3').addEventListener('click', () => this.insertAtLineStart('### '));
-
-    document.getElementById('btn-bullet').addEventListener('click', () => this.insertAtLineStart('- '));
-    document.getElementById('btn-quote').addEventListener('click', () => this.insertAtLineStart('> '));
-    document.getElementById('btn-hr').addEventListener('click', () => this.insertText('\n---\n'));
-
+    document.getElementById('btn-table').addEventListener('click', () => this.insertTable());
     document.getElementById('btn-slide').addEventListener('click', () => this.insertSlide());
-
-    document.getElementById('btn-files').addEventListener('click', () => this.toggleFileTree());
-    document.getElementById('btn-search').addEventListener('click', () => this.toggleSearch());
-    document.getElementById('btn-outline').addEventListener('click', () => this.toggleOutline());
     document.getElementById('btn-preview').addEventListener('click', () => this.togglePreview());
     document.getElementById('btn-present').addEventListener('click', () => {
       // Sync content and start presentation with presenter view
@@ -189,6 +174,11 @@ class Editor {
 
     window.addEventListener('vomit:toggle-search', () => {
       this.toggleSearch();
+    });
+
+    window.addEventListener('vomit:find-in-file', () => {
+      // Trigger CodeMirror's built-in find dialog
+      this.cm.execCommand('find');
     });
 
     window.addEventListener('vomit:open-folder', (e) => {
@@ -648,6 +638,18 @@ class Editor {
   insertSlide() {
     const slideTemplate = '\n\n---\n\n# New Slide\n\nContent here\n\n???\nSpeaker notes here\n';
     this.cm.replaceSelection(slideTemplate);
+    this.cm.focus();
+    this.updatePreview();
+  }
+
+  insertTable() {
+    const tableTemplate = `
+| Header 1 | Header 2 | Header 3 |
+|----------|----------|----------|
+| Cell 1   | Cell 2   | Cell 3   |
+| Cell 4   | Cell 5   | Cell 6   |
+`;
+    this.cm.replaceSelection(tableTemplate);
     this.cm.focus();
     this.updatePreview();
   }

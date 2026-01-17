@@ -277,7 +277,7 @@ function createMenu() {
         },
         {
           label: 'Toggle Outline',
-          accelerator: 'CmdOrCtrl+Shift+O',
+          accelerator: 'CmdOrCtrl+O',
           click: () => {
             if (mainWindow) {
               mainWindow.webContents.send('toggle-outline');
@@ -286,10 +286,20 @@ function createMenu() {
         },
         {
           label: 'Toggle Files',
-          accelerator: 'CmdOrCtrl+Shift+E',
+          accelerator: 'CmdOrCtrl+E',
           click: () => {
             if (mainWindow) {
               mainWindow.webContents.send('toggle-files');
+            }
+          }
+        },
+        { type: 'separator' },
+        {
+          label: 'Find in File',
+          accelerator: 'CmdOrCtrl+F',
+          click: () => {
+            if (mainWindow) {
+              mainWindow.webContents.send('find-in-file');
             }
           }
         },

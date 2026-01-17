@@ -1,0 +1,58 @@
+.CodeMirror-dialog {
+  position: absolute;
+  left: 0;
+  right: 0;
+  background: var(--bg-secondary);
+  z-index: 15;
+  padding: 8px 16px;
+  overflow: hidden;
+  color: var(--text-primary);
+}
+.CodeMirror-dialog-top {
+  border-bottom: 1px solid var(--border-color);
+  top: 0;
+}
+.CodeMirror-dialog-bottom {
+  border-top: 1px solid var(--border-color);
+  bottom: 0;
+}
+.CodeMirror-dialog input {
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  outline: none;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  width: 20em;
+  padding: 4px 8px;
+  font-family: monospace;
+}
+.CodeMirror-dialog input:focus {
+  border-color: var(--accent-color);
+}
+.CodeMirror-dialog button {
+  font-size: 12px;
+  padding: 4px 8px;
+  margin-left: 8px;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.CodeMirror-dialog button:hover {
+  background: var(--accent-color);
+}
+
+/* Search match highlighting */
+.CodeMirror-searching {
+  background: #eed49f !important;  /* Yellow */
+  color: #24273a !important;       /* Dark text */
+}
+
+.cm-matchhighlight {
+  background: rgba(238, 212, 159, 0.3);
+}
+
+.CodeMirror-selection-highlight-scrollbar {
+  background: var(--accent-color);
+}
