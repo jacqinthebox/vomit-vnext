@@ -1,22 +1,22 @@
 # Vomit
 
-A markdown presentation app with a real presenter view. Write your talks in plain markdown, present like a pro.
+A markdown presentation app with a presenter view, speaker notes and a laser pointer.
 
-> **The pitch:** Markdown simplicity meets real presentation tooling. No plugins, no config, no browser - just one app.
+![Vomit Screenshot](screenshot.png) 
 
-*Fully vibe-coded with [Claude Code](https://claude.com/claude-code).*
+*[Claude Code](https://claude.com/claude-code) crushes React. This app is fully vibe-coded.*
 
 ## Why Vomit?
 
 | Feature | PowerPoint | Obsidian | Marp | Vomit |
 |---------|:----------:|:--------:|:----:|:-----:|
 | Markdown native | ❌ | ✅ | ✅ | ✅ |
-| Live preview | ❌ | ✅ | ✅ | ✅ |
-| Presenter view with notes | ✅ | ❌ | ❌ | ✅ |
-| Timer | ✅ | ❌ | ❌ | ✅ |
-| Next slide preview | ✅ | ❌ | ❌ | ✅ |
+| Live preview | ✅ | ✅ | ✅ | ✅ |
+| Presenter view with notes | ✅ | ❌ | ✅ | ✅ |
+| Timer | ✅ | ❌ | ✅ | ✅ |
+| Next slide preview | ✅ | ❌ | ✅ | ✅ |
 | Standalone app | ✅ | ✅ | ❌ | ✅ |
-| PlantUML diagrams | ❌ | Plugin | ❌ | ✅ |
+| PlantUML diagrams | ❌ | Plugin | ✅  | ✅ |
 | LaTeX math | ❌ | Plugin | ✅ | ✅ |
 | Code syntax highlighting | ❌ | ✅ | ✅ | ✅ |
 
