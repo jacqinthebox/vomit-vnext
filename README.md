@@ -1,10 +1,11 @@
 # Vomit
 
+*[Claude Code](https://claude.com/claude-code) crushes React. This app is fully vibe-coded.*
+
 A markdown presentation app with a presenter view, speaker notes and a laser pointer.
 
 <img src="screenshot.png" alt="Vomit Screenshot" width="600"> 
 
-*[Claude Code](https://claude.com/claude-code) crushes React. This app is fully vibe-coded.*
 
 ## Why Vomit?
 
