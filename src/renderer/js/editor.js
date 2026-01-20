@@ -124,17 +124,32 @@ class Editor {
     document.getElementById('btn-slide').addEventListener('click', () => this.insertSlide());
     document.getElementById('btn-preview').addEventListener('click', () => this.togglePreview());
     document.getElementById('btn-present').addEventListener('click', () => {
+      if (!this.isMarkdownFile()) return;
       // Sync content and start presentation with presenter view
       window.vomit.contentChanged(this.getValue());
       window.vomit.startPresentationWithPresenter();
     });
   }
 
+  updateToolbarState() {
+    const isMarkdown = this.isMarkdownFile();
+    const presentBtn = document.getElementById('btn-present');
+    const slideBtn = document.getElementById('btn-slide');
+
+    presentBtn.disabled = !isMarkdown;
+    slideBtn.disabled = !isMarkdown;
+
+    presentBtn.style.opacity = isMarkdown ? '1' : '0.4';
+    slideBtn.style.opacity = isMarkdown ? '1' : '0.4';
+  }
+
   setupIPC() {
     window.addEventListener('vomit:load-content', (e) => {
       const { content, filePath, basePath } = e.detail;
-      this.setValue(content);
       this.currentFilePath = filePath;
+      this.updateEditorMode();
+      this.updateToolbarState();
+      this.setValue(content);
       this.basePath = basePath;
       this.currentDirectory = basePath;
       this.isDirty = false;
@@ -525,7 +540,7 @@ class Editor {
         if (isDir) {
           this.currentDirectory = filePath;
           this.loadFileTree();
-        } else if (filePath.endsWith('.md') || filePath.endsWith('.markdown')) {
+        } else {
           window.vomit.openFile(filePath);
         }
       };
@@ -664,10 +679,70 @@ class Editor {
     }
   }
 
+  isMarkdownFile() {
+    if (!this.currentFilePath) return true; // Default to markdown for new files
+    const ext = this.currentFilePath.split('.').pop().toLowerCase();
+    return ['md', 'markdown'].includes(ext);
+  }
+
+  getEditorMode() {
+    if (!this.currentFilePath) return 'gfm';
+    const ext = this.currentFilePath.split('.').pop().toLowerCase();
+    const modeMap = {
+      'md': 'gfm', 'markdown': 'gfm',
+      'js': 'javascript', 'ts': 'javascript', 'json': 'javascript',
+      'py': 'python',
+      'yml': 'yaml', 'yaml': 'yaml',
+      'sh': 'shell', 'bash': 'shell', 'zsh': 'shell',
+      'go': 'go',
+      'sql': 'sql',
+      'lua': 'lua',
+      'cs': 'clike', 'java': 'clike', 'c': 'clike', 'cpp': 'clike', 'h': 'clike',
+      'xml': 'xml', 'html': 'xml', 'htm': 'xml',
+      'css': 'css',
+      'dockerfile': 'dockerfile',
+      'tf': 'javascript', 'hcl': 'javascript' // HCL is similar enough to JS for basic highlighting
+    };
+    return modeMap[ext] || 'text/plain';
+  }
+
+  updateEditorMode() {
+    const mode = this.getEditorMode();
+    this.cm.setOption('mode', mode);
+  }
+
+  getFileLanguage() {
+    if (!this.currentFilePath) return 'text';
+    const ext = this.currentFilePath.split('.').pop().toLowerCase();
+    const langMap = {
+      'js': 'javascript', 'ts': 'typescript', 'py': 'python',
+      'rb': 'ruby', 'go': 'go', 'rs': 'rust', 'java': 'java',
+      'tf': 'hcl', 'hcl': 'hcl', 'yml': 'yaml', 'yaml': 'yaml',
+      'json': 'json', 'sh': 'bash', 'bash': 'bash', 'zsh': 'bash',
+      'sql': 'sql', 'cs': 'csharp', 'lua': 'lua', 'dockerfile': 'dockerfile',
+      'html': 'html', 'css': 'css', 'xml': 'xml', 'toml': 'toml'
+    };
+    return langMap[ext] || ext;
+  }
+
   updatePreview() {
     if (!this.isPreviewVisible) return;
 
     const content = this.getValue();
+
+    // For non-markdown files, render as syntax-highlighted code
+    if (!this.isMarkdownFile()) {
+      const lang = this.getFileLanguage();
+      const escaped = content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      this.preview.innerHTML = `<pre><code class="language-${lang}">${escaped}</code></pre>`;
+      if (window.hljs) {
+        this.preview.querySelectorAll('pre code').forEach(block => {
+          window.hljs.highlightElement(block);
+        });
+      }
+      return;
+    }
+
     const html = this.renderMarkdownWithSlides(content);
     this.preview.innerHTML = html;
 
