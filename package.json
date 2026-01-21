@@ -1,6 +1,6 @@
 {
   "name": "vomit-vnext",
-  "version": "1.4.2",
+  "version": "1.4.3",
   "description": "A Typora-like markdown editor with presentation capabilities",
   "main": "src/main/main.js",
   "scripts": {

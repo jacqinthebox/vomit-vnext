@@ -223,6 +223,11 @@ function createMenu() {
           accelerator: 'CmdOrCtrl+K',
           click: () => sendFormatCommand('link')
         },
+        {
+          label: 'Table',
+          accelerator: 'CmdOrCtrl+T',
+          click: () => sendFormatCommand('table')
+        },
         { type: 'separator' },
         {
           label: 'Heading 1',

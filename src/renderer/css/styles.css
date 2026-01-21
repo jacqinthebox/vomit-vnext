@@ -20,6 +20,7 @@
   --code-bg: #f4f4f4;
   --scrollbar-track: #f1f1f1;
   --scrollbar-thumb: #c1c1c1;
+  --editor-font-size: 14px;
   /* Default syntax highlighting */
   --syntax-header: #0550ae;
   --syntax-bold: #333333;
@@ -43,61 +44,6 @@ html, body {
   display: flex;
   flex-direction: column;
   height: 100%;
-}
-
-/* Toolbar */
-#toolbar {
-  display: flex;
-  align-items: center;
-  padding: 8px 16px;
-  background: var(--toolbar-bg);
-  border-bottom: 1px solid var(--border-color);
-  -webkit-app-region: drag;
-  padding-left: 80px; /* Space for traffic lights */
-}
-
-.toolbar-group {
-  display: flex;
-  gap: 4px;
-  -webkit-app-region: no-drag;
-}
-
-.toolbar-group + .toolbar-group {
-  margin-left: 16px;
-}
-
-.toolbar-spacer {
-  flex: 1;
-}
-
-#toolbar button {
-  padding: 6px 12px;
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  cursor: pointer;
-  font-size: 13px;
-  transition: all 0.15s ease;
-}
-
-#toolbar button:hover {
-  background: var(--bg-secondary);
-  border-color: var(--accent-color);
-}
-
-#toolbar button:active {
-  background: var(--bg-tertiary);
-}
-
-#btn-present {
-  background: var(--accent-color) !important;
-  color: white !important;
-  border-color: var(--accent-color) !important;
-}
-
-#btn-present:hover {
-  background: var(--accent-hover) !important;
 }
 
 /* Main Container with Sidebar */
@@ -439,7 +385,7 @@ html, body {
 #editor .CodeMirror {
   height: 100%;
   font-family: 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
-  font-size: 14px;
+  font-size: var(--editor-font-size);
   line-height: 1.6;
   background: var(--editor-bg);
   color: var(--text-primary);

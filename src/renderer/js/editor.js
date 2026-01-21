@@ -33,7 +33,6 @@ class Editor {
     this.setupEditor();
     this.setupAutoSave();
     this.setupSidebarResize();
-    this.setupToolbar();
     this.setupSearch();
     this.setupKeyboardNavigation();
     this.setupIPC();
@@ -118,38 +117,13 @@ class Editor {
     this.cm.setValue(content || '');
   }
 
-  setupToolbar() {
-    document.getElementById('btn-link').addEventListener('click', () => this.insertLink());
-    document.getElementById('btn-table').addEventListener('click', () => this.insertTable());
-    document.getElementById('btn-slide').addEventListener('click', () => this.insertSlide());
-    document.getElementById('btn-preview').addEventListener('click', () => this.togglePreview());
-    document.getElementById('btn-present').addEventListener('click', () => {
-      if (!this.isMarkdownFile()) return;
-      // Sync content and start presentation with presenter view
-      window.vomit.contentChanged(this.getValue());
-      window.vomit.startPresentationWithPresenter();
-    });
-  }
-
-  updateToolbarState() {
-    const isMarkdown = this.isMarkdownFile();
-    const presentBtn = document.getElementById('btn-present');
-    const slideBtn = document.getElementById('btn-slide');
-
-    presentBtn.disabled = !isMarkdown;
-    slideBtn.disabled = !isMarkdown;
-
-    presentBtn.style.opacity = isMarkdown ? '1' : '0.4';
-    slideBtn.style.opacity = isMarkdown ? '1' : '0.4';
-  }
-
   setupIPC() {
     window.addEventListener('vomit:load-content', (e) => {
       const { content, filePath, basePath } = e.detail;
       this.currentFilePath = filePath;
       this.updateEditorMode();
-      this.updateToolbarState();
       this.setValue(content);
+      this.applyFrontmatterSettings(content);
       this.basePath = basePath;
       this.currentDirectory = basePath;
       this.isDirty = false;
@@ -207,6 +181,7 @@ class Editor {
         case 'italic': this.wrapSelection('*', '*'); break;
         case 'code': this.wrapSelection('`', '`'); break;
         case 'link': this.insertLink(); break;
+        case 'table': this.insertTable(); break;
         case 'h1': this.insertAtLineStart('# '); break;
         case 'h2': this.insertAtLineStart('## '); break;
         case 'h3': this.insertAtLineStart('### '); break;
@@ -683,6 +658,52 @@ class Editor {
     if (!this.currentFilePath) return true; // Default to markdown for new files
     const ext = this.currentFilePath.split('.').pop().toLowerCase();
     return ['md', 'markdown'].includes(ext);
+  }
+
+  parseFrontmatter(content) {
+    if (!content.startsWith('---')) return {};
+
+    const endIndex = content.indexOf('---', 3);
+    if (endIndex === -1) return {};
+
+    const frontmatter = content.substring(3, endIndex).trim();
+    const settings = {};
+
+    frontmatter.split('\n').forEach(line => {
+      const colonIndex = line.indexOf(':');
+      if (colonIndex !== -1) {
+        const key = line.substring(0, colonIndex).trim();
+        const value = line.substring(colonIndex + 1).trim();
+        settings[key] = value;
+      }
+    });
+
+    return settings;
+  }
+
+  applyFrontmatterSettings(content) {
+    const settings = this.parseFrontmatter(content);
+
+    // Apply theme
+    if (settings.theme) {
+      const theme = settings.theme.toLowerCase();
+      const validThemes = ['default', 'dark', 'catppuccin', 'nord', 'solarized', 'light'];
+      if (validThemes.includes(theme)) {
+        document.body.className = `theme-${theme}`;
+        if (this.isPreviewVisible) {
+          document.body.classList.add('split-view');
+        }
+      }
+    }
+
+    // Apply fontSize
+    if (settings.fontSize) {
+      const size = parseInt(settings.fontSize, 10);
+      if (!isNaN(size) && size >= 6 && size <= 72) {
+        document.documentElement.style.setProperty('--editor-font-size', `${size}px`);
+        this.preview.style.fontSize = `${size}px`;
+      }
+    }
   }
 
   getEditorMode() {

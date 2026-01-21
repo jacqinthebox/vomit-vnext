@@ -1,6 +1,6 @@
 ---
-theme: dark
-fontSize: 32
+theme: light
+fontSize: 8
 ---
 
 # Welcome to Vomit vNext
