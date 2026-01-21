@@ -173,10 +173,52 @@
     }
   }
 
+  function parseFrontmatter(content) {
+    if (!content.startsWith('---')) return {};
+    const endIndex = content.indexOf('---', 3);
+    if (endIndex === -1) return {};
+    const frontmatter = content.substring(3, endIndex).trim();
+    const settings = {};
+    frontmatter.split('\n').forEach(line => {
+      const colonIndex = line.indexOf(':');
+      if (colonIndex !== -1) {
+        const key = line.substring(0, colonIndex).trim();
+        const value = line.substring(colonIndex + 1).trim();
+        settings[key] = value;
+      }
+    });
+    return settings;
+  }
+
+  function applyFrontmatterSettings(content) {
+    const settings = parseFrontmatter(content);
+
+    // Apply theme
+    if (settings.theme) {
+      const theme = settings.theme.toLowerCase();
+      const validThemes = ['default', 'dark', 'catppuccin', 'nord', 'solarized', 'light'];
+      if (validThemes.includes(theme)) {
+        document.body.className = `theme-${theme} presenter-view`;
+      }
+    }
+
+    // Apply font-size to slide previews
+    const fontSize = settings['font-size'] || settings.fontSize;
+    if (fontSize) {
+      const size = parseInt(fontSize, 10);
+      if (!isNaN(size) && size >= 6 && size <= 72) {
+        document.querySelectorAll('.slide-content').forEach(el => {
+          el.style.fontSize = `${size}px`;
+        });
+      }
+    }
+  }
+
   function loadContent(content, newBasePath) {
     if (newBasePath !== undefined) {
       basePath = newBasePath;
     }
+    applyFrontmatterSettings(content);
     slides = parseSlides(content);
     currentIndex = Math.min(currentIndex, Math.max(0, slides.length - 1));
     render();

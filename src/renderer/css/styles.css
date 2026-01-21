@@ -51,6 +51,18 @@ html, body {
   flex: 1;
   display: flex;
   overflow: hidden;
+  padding-top: 38px; /* Space for traffic lights */
+}
+
+/* Draggable area for window */
+#app::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 38px;
+  -webkit-app-region: drag;
 }
 
 /* Sidebar */

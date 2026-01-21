@@ -1,6 +1,6 @@
 ---
-theme: light
-fontSize: 8
+theme: catp1uccin
+font-size: 16
 ---
 
 # Welcome to Vomit vNext
@@ -62,8 +62,6 @@ Images are saved to an images/ folder next to your markdown file.
 ---
 
 ## Image Demo
-
-Here's the Vomit logo at different sizes:
 
 ![Vomit Logo](logo.png =64x) Small (64px)
 
@@ -156,6 +154,12 @@ Use shortcodes like GitHub/Slack:
 
 ???
 Over 200 emoji shortcodes are supported!
+
+---
+
+# Check the down menus for more commands
+
+> and see the keyboard shortcuts
 
 ---
 

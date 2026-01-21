@@ -42,7 +42,7 @@ class Editor {
   setupEditor() {
     // Initialize CodeMirror
     this.cm = CodeMirror(this.editorContainer, {
-      mode: 'gfm',  // GitHub Flavored Markdown with code block highlighting
+      mode: 'yaml-frontmatter',  // GFM with YAML frontmatter support
       theme: 'default',
       lineNumbers: false,
       lineWrapping: true,
@@ -696,9 +696,10 @@ class Editor {
       }
     }
 
-    // Apply fontSize
-    if (settings.fontSize) {
-      const size = parseInt(settings.fontSize, 10);
+    // Apply font-size (support both kebab-case and camelCase)
+    const fontSize = settings['font-size'] || settings.fontSize;
+    if (fontSize) {
+      const size = parseInt(fontSize, 10);
       if (!isNaN(size) && size >= 6 && size <= 72) {
         document.documentElement.style.setProperty('--editor-font-size', `${size}px`);
         this.preview.style.fontSize = `${size}px`;
@@ -707,10 +708,10 @@ class Editor {
   }
 
   getEditorMode() {
-    if (!this.currentFilePath) return 'gfm';
+    if (!this.currentFilePath) return 'yaml-frontmatter';
     const ext = this.currentFilePath.split('.').pop().toLowerCase();
     const modeMap = {
-      'md': 'gfm', 'markdown': 'gfm',
+      'md': 'yaml-frontmatter', 'markdown': 'yaml-frontmatter',
       'js': 'javascript', 'ts': 'javascript', 'json': 'javascript',
       'py': 'python',
       'yml': 'yaml', 'yaml': 'yaml',
