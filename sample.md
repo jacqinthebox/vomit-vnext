@@ -1,6 +1,6 @@
 ---
-theme: catp1uccin
-font-size: 16
+theme: catppuccin
+font-size: 14
 ---
 
 # Welcome to Vomit vNext

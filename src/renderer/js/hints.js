@@ -219,8 +219,8 @@
         return bashKeywords;
       case 'yaml':
       case 'yaml-frontmatter':
-        // Check content for kubernetes/helm patterns
-        return [...kubernetesKeywords, ...helmKeywords];
+        // helmKeywords already includes kubernetesKeywords
+        return helmKeywords;
       case 'markdown':
       case 'gfm':
         return markdownKeywords;

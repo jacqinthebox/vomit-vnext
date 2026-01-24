@@ -65,10 +65,6 @@ class Editor {
         'Ctrl-J': (cm) => this.showHints(cm),
         'Ctrl-Space': (cm) => this.showHints(cm)
       },
-      hintOptions: {
-        hint: CodeMirror.hint.custom,
-        completeSingle: false
-      },
       placeholder: '# Start writing your presentation...\n\nUse --- on its own line to separate slides.\n\nAdd speaker notes after ??? on a slide.'
     });
 

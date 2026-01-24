@@ -24,3 +24,4 @@ npm-debug.log*
 
 # Electron builder cache
 .cache/
+Vomit-stable.app/
