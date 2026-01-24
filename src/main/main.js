@@ -318,6 +318,25 @@ function createMenu() {
           }
         },
         { type: 'separator' },
+        {
+          label: 'Toggle Line Numbers',
+          accelerator: 'CmdOrCtrl+L',
+          click: () => {
+            if (mainWindow) {
+              mainWindow.webContents.send('toggle-line-numbers');
+            }
+          }
+        },
+        {
+          label: 'Go to Parent Folder',
+          accelerator: 'CmdOrCtrl+Up',
+          click: () => {
+            if (mainWindow) {
+              mainWindow.webContents.send('navigate-parent');
+            }
+          }
+        },
+        { type: 'separator' },
         { role: 'reload' },
         { role: 'toggleDevTools' },
         { type: 'separator' },

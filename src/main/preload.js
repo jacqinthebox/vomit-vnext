@@ -34,6 +34,14 @@ ipcRenderer.on('find-in-file', () => {
   window.dispatchEvent(new CustomEvent('vomit:find-in-file'));
 });
 
+ipcRenderer.on('toggle-line-numbers', () => {
+  window.dispatchEvent(new CustomEvent('vomit:toggle-line-numbers'));
+});
+
+ipcRenderer.on('navigate-parent', () => {
+  window.dispatchEvent(new CustomEvent('vomit:navigate-parent'));
+});
+
 ipcRenderer.on('open-folder', (event, folderPath) => {
   window.dispatchEvent(new CustomEvent('vomit:open-folder', { detail: folderPath }));
 });

@@ -133,7 +133,14 @@ class Editor {
         this.updateOutline();
       }
       if (this.isFileTreeVisible) {
-        this.loadFileTree();
+        const preserveFocus = this.focusedPane === 'sidebar';
+        this.loadFileTree().then(() => {
+          if (preserveFocus) {
+            // Re-focus the active file after tree re-renders
+            const activeItem = this.fileTree.querySelector('.file-item.active');
+            if (activeItem) activeItem.focus();
+          }
+        });
       }
       // Handle pending line jump from search
       if (this.pendingLineJump) {
@@ -159,6 +166,14 @@ class Editor {
 
     window.addEventListener('vomit:toggle-files', () => {
       this.toggleFileTree();
+    });
+
+    window.addEventListener('vomit:toggle-line-numbers', () => {
+      this.toggleLineNumbers();
+    });
+
+    window.addEventListener('vomit:navigate-parent', () => {
+      this.navigateToParent();
     });
 
     window.addEventListener('vomit:toggle-search', () => {
@@ -210,7 +225,15 @@ class Editor {
       this.isSearchVisible = false;
       this.sidebarOutline.classList.add('hidden');
       this.sidebarSearch.classList.add('hidden');
-      this.loadFileTree();
+      this.focusedPane = 'sidebar';
+      this.loadFileTree().then(() => {
+        const firstItem = this.fileTree.querySelector('.file-item');
+        if (firstItem) firstItem.focus();
+      });
+    } else {
+      // Return focus to editor when hiding
+      this.focusedPane = 'editor';
+      this.cm.focus();
     }
   }
 
@@ -225,6 +248,25 @@ class Editor {
       this.sidebarFiles.classList.add('hidden');
       this.sidebarSearch.classList.add('hidden');
       this.updateOutline();
+    }
+  }
+
+  toggleLineNumbers() {
+    const current = this.cm.getOption('lineNumbers');
+    this.cm.setOption('lineNumbers', !current);
+  }
+
+  navigateToParent() {
+    if (!this.currentDirectory) return;
+    const parts = this.currentDirectory.split('/');
+    if (parts.length > 2) {
+      parts.pop();
+      this.currentDirectory = parts.join('/');
+      this.loadFileTree().then(() => {
+        // Focus first item after navigating up
+        const firstItem = this.fileTree.querySelector('.file-item');
+        if (firstItem) firstItem.focus();
+      });
     }
   }
 
@@ -286,9 +328,9 @@ class Editor {
   }
 
   setupKeyboardNavigation() {
-    // Ctrl+W to toggle focus between editor and sidebar (vim-style)
+    // Ctrl+W or Ctrl+Tab to toggle focus between editor and sidebar
     document.addEventListener('keydown', (e) => {
-      if (e.ctrlKey && e.key === 'w') {
+      if (e.ctrlKey && (e.key === 'w' || e.key === 'Tab')) {
         e.preventDefault();
         this.togglePaneFocus();
       }
@@ -491,11 +533,9 @@ class Editor {
 
   renderFileTree(items) {
     if (!items || items.length === 0) {
-      this.fileTree.innerHTML = '<div class="file-item" style="color: var(--text-muted);">No files</div>';
-      return;
-    }
-
-    this.fileTree.innerHTML = items.map((item, index) => {
+      this.fileTree.innerHTML = '<div class="file-item empty-message" style="color: var(--text-muted);">Empty folder</div>';
+    } else {
+      this.fileTree.innerHTML = items.map((item, index) => {
       const isActive = item.path === this.currentFilePath;
       const typeClass = item.isDirectory ? 'directory' : (item.isMarkdown ? 'markdown' : 'file');
       const activeClass = isActive ? 'active' : '';
@@ -514,8 +554,16 @@ class Editor {
 
         if (isDir) {
           this.currentDirectory = filePath;
-          this.loadFileTree();
+          this.loadFileTree().then(() => {
+            const firstItem = this.fileTree.querySelector('.file-item');
+            if (firstItem) firstItem.focus();
+          });
         } else {
+          // Update active state for preview
+          this.fileTree.querySelectorAll('.file-item.active').forEach(item => item.classList.remove('active'));
+          el.classList.add('active');
+          // Mark that focus should stay in sidebar
+          this.focusedPane = 'sidebar';
           window.vomit.openFile(filePath);
         }
       };
@@ -533,6 +581,15 @@ class Editor {
           e.preventDefault();
           const prev = el.previousElementSibling;
           if (prev && prev.classList.contains('file-item')) prev.focus();
+        } else if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          const isDir = el.dataset.isDir === 'true';
+          if (isDir) {
+            handleAction(); // Enter folder
+          }
+        } else if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          this.navigateToParent();
         } else if (e.key === 'Escape') {
           this.cm.focus();
           this.focusedPane = 'editor';
@@ -545,6 +602,7 @@ class Editor {
         this.showFileContextMenu(el, e.clientX, e.clientY);
       });
     });
+    }
 
     // Add parent directory item if not at root
     const parentItem = document.createElement('div');
@@ -557,12 +615,15 @@ class Editor {
       if (parts.length > 2) {
         parts.pop();
         this.currentDirectory = parts.join('/');
-        this.loadFileTree();
+        this.loadFileTree().then(() => {
+          const firstItem = this.fileTree.querySelector('.file-item');
+          if (firstItem) firstItem.focus();
+        });
       }
     };
     parentItem.addEventListener('click', goUp);
     parentItem.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
+      if (e.key === 'Enter' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
         e.preventDefault();
         goUp();
       } else if (e.key === 'ArrowDown') {
