@@ -42,6 +42,10 @@ ipcRenderer.on('navigate-parent', () => {
   window.dispatchEvent(new CustomEvent('vomit:navigate-parent'));
 });
 
+ipcRenderer.on('show-shortcuts', () => {
+  window.dispatchEvent(new CustomEvent('vomit:show-shortcuts'));
+});
+
 ipcRenderer.on('open-folder', (event, folderPath) => {
   window.dispatchEvent(new CustomEvent('vomit:open-folder', { detail: folderPath }));
 });

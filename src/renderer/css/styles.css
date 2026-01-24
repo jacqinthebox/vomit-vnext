@@ -748,3 +748,203 @@ html, body {
 .preview-only #preview-pane {
   display: block;
 }
+
+/* Autocomplete hints - Light theme (default) */
+.CodeMirror-hints {
+  background: #f5f5f5 !important;
+  border: 1px solid #ddd !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  font-family: 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace !important;
+  font-size: 13px !important;
+  max-height: 250px !important;
+  padding: 4px 0 !important;
+}
+
+.CodeMirror-hint {
+  color: #333 !important;
+  padding: 4px 12px !important;
+  border-radius: 0 !important;
+}
+
+.CodeMirror-hint:hover {
+  background: #e0e0e0 !important;
+}
+
+li.CodeMirror-hint-active {
+  background: #4a90d9 !important;
+  color: #fff !important;
+}
+
+/* Dark theme hints */
+.theme-dark .CodeMirror-hints {
+  background: #252526 !important;
+  border-color: #404040 !important;
+}
+
+.theme-dark .CodeMirror-hint {
+  color: #d4d4d4 !important;
+}
+
+.theme-dark .CodeMirror-hint:hover {
+  background: #333 !important;
+}
+
+.theme-dark li.CodeMirror-hint-active {
+  background: #569cd6 !important;
+}
+
+/* Catppuccin theme hints */
+.theme-catppuccin .CodeMirror-hints {
+  background: #1e2030 !important;
+  border-color: #494d64 !important;
+}
+
+.theme-catppuccin .CodeMirror-hint {
+  color: #cad3f5 !important;
+}
+
+.theme-catppuccin .CodeMirror-hint:hover {
+  background: #363a4f !important;
+}
+
+.theme-catppuccin li.CodeMirror-hint-active {
+  background: #c6a0f6 !important;
+}
+
+/* Nord theme hints */
+.theme-nord .CodeMirror-hints {
+  background: #3b4252 !important;
+  border-color: #4c566a !important;
+}
+
+.theme-nord .CodeMirror-hint {
+  color: #eceff4 !important;
+}
+
+.theme-nord .CodeMirror-hint:hover {
+  background: #434c5e !important;
+}
+
+.theme-nord li.CodeMirror-hint-active {
+  background: #88c0d0 !important;
+  color: #2e3440 !important;
+}
+
+/* Solarized theme hints */
+.theme-solarized .CodeMirror-hints {
+  background: #fdf6e3 !important;
+  border-color: #eee8d5 !important;
+}
+
+.theme-solarized .CodeMirror-hint {
+  color: #657b83 !important;
+}
+
+.theme-solarized .CodeMirror-hint:hover {
+  background: #eee8d5 !important;
+}
+
+.theme-solarized li.CodeMirror-hint-active {
+  background: #268bd2 !important;
+  color: #fff !important;
+}
+
+/* Shortcuts Modal */
+.shortcuts-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.shortcuts-content {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  width: 90%;
+  max-width: 700px;
+  max-height: 80vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.shortcuts-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.shortcuts-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.shortcuts-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 0;
+  line-height: 1;
+}
+
+.shortcuts-close:hover {
+  color: var(--text-primary);
+}
+
+.shortcuts-body {
+  padding: 20px;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+}
+
+.shortcuts-section h3 {
+  margin: 0 0 12px 0;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--accent-color);
+}
+
+.shortcut-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.shortcut-row kbd {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-family: 'SF Mono', 'Menlo', monospace;
+  font-size: 11px;
+  color: var(--text-primary);
+  min-width: 70px;
+  text-align: center;
+}
+
+@media (max-width: 600px) {
+  .shortcuts-body {
+    grid-template-columns: 1fr;
+  }
+}

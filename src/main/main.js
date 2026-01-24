@@ -391,7 +391,17 @@ function createMenu() {
       label: 'Help',
       submenu: [
         {
-          label: 'Vomit Help',
+          label: 'Keyboard Shortcuts',
+          accelerator: 'CmdOrCtrl+/',
+          click: () => {
+            if (mainWindow) {
+              mainWindow.webContents.send('show-shortcuts');
+            }
+          }
+        },
+        { type: 'separator' },
+        {
+          label: 'Vomit on GitHub',
           click: () => showHelp()
         }
       ]

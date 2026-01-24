@@ -61,7 +61,13 @@ class Editor {
         'Cmd-`': () => this.wrapSelection('`', '`'),
         'Ctrl-`': () => this.wrapSelection('`', '`'),
         'Cmd-K': () => this.insertLink(),
-        'Ctrl-K': () => this.insertLink()
+        'Ctrl-K': () => this.insertLink(),
+        'Ctrl-J': (cm) => this.showHints(cm),
+        'Ctrl-Space': (cm) => this.showHints(cm)
+      },
+      hintOptions: {
+        hint: CodeMirror.hint.custom,
+        completeSingle: false
       },
       placeholder: '# Start writing your presentation...\n\nUse --- on its own line to separate slides.\n\nAdd speaker notes after ??? on a slide.'
     });
@@ -117,10 +123,18 @@ class Editor {
     this.cm.setValue(content || '');
   }
 
+  showHints(cm) {
+    cm.showHint({
+      hint: CodeMirror.hint.custom,
+      completeSingle: false
+    });
+  }
+
   setupIPC() {
     window.addEventListener('vomit:load-content', (e) => {
       const { content, filePath, basePath } = e.detail;
       this.currentFilePath = filePath;
+      this.cm.setOption('filename', filePath); // For hints file-type detection
       this.updateEditorMode();
       this.setValue(content);
       this.applyFrontmatterSettings(content);
@@ -174,6 +188,10 @@ class Editor {
 
     window.addEventListener('vomit:navigate-parent', () => {
       this.navigateToParent();
+    });
+
+    window.addEventListener('vomit:show-shortcuts', () => {
+      this.showShortcutsModal();
     });
 
     window.addEventListener('vomit:toggle-search', () => {
@@ -254,6 +272,90 @@ class Editor {
   toggleLineNumbers() {
     const current = this.cm.getOption('lineNumbers');
     this.cm.setOption('lineNumbers', !current);
+  }
+
+  showShortcutsModal() {
+    // Remove existing modal if any
+    const existing = document.querySelector('.shortcuts-modal');
+    if (existing) {
+      existing.remove();
+      return;
+    }
+
+    const modal = document.createElement('div');
+    modal.className = 'shortcuts-modal';
+    modal.innerHTML = `
+      <div class="shortcuts-content">
+        <div class="shortcuts-header">
+          <h2>Keyboard Shortcuts</h2>
+          <button class="shortcuts-close">&times;</button>
+        </div>
+        <div class="shortcuts-body">
+          <div class="shortcuts-section">
+            <h3>File</h3>
+            <div class="shortcut-row"><kbd>Cmd+N</kbd> New file</div>
+            <div class="shortcut-row"><kbd>Cmd+O</kbd> Open file</div>
+            <div class="shortcut-row"><kbd>Cmd+S</kbd> Save</div>
+            <div class="shortcut-row"><kbd>Cmd+Shift+S</kbd> Save as</div>
+          </div>
+          <div class="shortcuts-section">
+            <h3>View</h3>
+            <div class="shortcut-row"><kbd>Cmd+P</kbd> Toggle preview</div>
+            <div class="shortcut-row"><kbd>Cmd+E</kbd> Toggle explorer</div>
+            <div class="shortcut-row"><kbd>Cmd+L</kbd> Toggle line numbers</div>
+            <div class="shortcut-row"><kbd>Cmd+F</kbd> Find in file</div>
+            <div class="shortcut-row"><kbd>Cmd+Shift+F</kbd> Search in files</div>
+            <div class="shortcut-row"><kbd>Cmd+/</kbd> Show shortcuts</div>
+          </div>
+          <div class="shortcuts-section">
+            <h3>Format</h3>
+            <div class="shortcut-row"><kbd>Cmd+B</kbd> Bold</div>
+            <div class="shortcut-row"><kbd>Cmd+I</kbd> Italic</div>
+            <div class="shortcut-row"><kbd>Cmd+K</kbd> Insert link</div>
+            <div class="shortcut-row"><kbd>Cmd+T</kbd> Insert table</div>
+            <div class="shortcut-row"><kbd>Cmd+1/2/3</kbd> Headings</div>
+            <div class="shortcut-row"><kbd>Cmd+Enter</kbd> New slide</div>
+          </div>
+          <div class="shortcuts-section">
+            <h3>Code</h3>
+            <div class="shortcut-row"><kbd>Ctrl+J</kbd> Autocomplete</div>
+            <div class="shortcut-row"><kbd>Ctrl+Space</kbd> Autocomplete</div>
+          </div>
+          <div class="shortcuts-section">
+            <h3>Explorer</h3>
+            <div class="shortcut-row"><kbd>↑↓</kbd> Navigate files</div>
+            <div class="shortcut-row"><kbd>←→</kbd> Navigate folders</div>
+            <div class="shortcut-row"><kbd>Enter</kbd> Open file/folder</div>
+            <div class="shortcut-row"><kbd>Ctrl+Tab</kbd> Switch to editor</div>
+            <div class="shortcut-row"><kbd>Escape</kbd> Return to editor</div>
+          </div>
+          <div class="shortcuts-section">
+            <h3>Presentation</h3>
+            <div class="shortcut-row"><kbd>Cmd+Shift+P</kbd> Start presentation</div>
+            <div class="shortcut-row"><kbd>Cmd+Alt+P</kbd> With presenter view</div>
+            <div class="shortcut-row"><kbd>→/Space/N</kbd> Next slide</div>
+            <div class="shortcut-row"><kbd>←/P</kbd> Previous slide</div>
+            <div class="shortcut-row"><kbd>L</kbd> Laser pointer</div>
+            <div class="shortcut-row"><kbd>Escape</kbd> End presentation</div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Close handlers
+    const close = () => modal.remove();
+    modal.querySelector('.shortcuts-close').addEventListener('click', close);
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) close();
+    });
+    document.addEventListener('keydown', function handler(e) {
+      if (e.key === 'Escape') {
+        close();
+        document.removeEventListener('keydown', handler);
+      }
+    });
   }
 
   navigateToParent() {

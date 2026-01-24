@@ -140,43 +140,30 @@ Over 200 shortcodes are supported including smileys, gestures, objects, animals,
 
 ## Keyboard Shortcuts
 
-### Editor
+Press **Cmd+/** to view all shortcuts in the app. See [SHORTCUTS.md](SHORTCUTS.md) for the complete reference.
 
-| Shortcut | Action |
-|----------|--------|
-| Cmd+N | New file |
-| Cmd+S | Save |
-| Cmd+Shift+S | Save as |
-| Cmd+P | Toggle preview |
-| Cmd+O | Toggle outline |
-| Cmd+E | Toggle file tree |
-| Cmd+F | Find in file |
-| Cmd+Shift+F | Search in files |
-| Cmd+K | Insert link |
-| Cmd+Enter | Insert slide |
+### Quick Reference
 
-### Sidebar Navigation
-
-| Shortcut | Action |
-|----------|--------|
-| Arrow Up/Down | Navigate items |
-| Enter | Open file/folder |
-| Right-click | Rename, Delete, Show in Finder |
-| Escape | Return to editor |
-
-### Presentation
-
-| Shortcut | Action |
-|----------|--------|
-| Cmd+Shift+P | Start presentation |
-| Cmd+Alt+P | Start with presenter view |
-| Right / Space / N | Next slide |
-| Left / P | Previous slide |
-| Home | First slide |
-| End | Last slide |
-| L | Toggle laser pointer |
-| R | Reset timer |
-| Escape | End presentation |
+| Category | Shortcut | Action |
+|----------|----------|--------|
+| **File** | Cmd+N | New file |
+| | Cmd+O | Open file |
+| | Cmd+S | Save |
+| **View** | Cmd+P | Toggle preview |
+| | Cmd+E | Toggle file explorer |
+| | Cmd+L | Toggle line numbers |
+| | Cmd+/ | Show all shortcuts |
+| **Format** | Cmd+B | Bold |
+| | Cmd+I | Italic |
+| | Cmd+K | Insert link |
+| | Cmd+T | Insert table |
+| **Code** | Ctrl+J | Autocomplete |
+| **Explorer** | ↑↓ | Navigate files |
+| | ←→ | Navigate folders |
+| | Ctrl+Tab | Switch to editor |
+| **Present** | Cmd+Shift+P | Start presentation |
+| | Cmd+Alt+P | With presenter view |
+| | L | Laser pointer |
 
 ## Tech Stack
 
