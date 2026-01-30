@@ -51,7 +51,7 @@ html, body {
   flex: 1;
   display: flex;
   overflow: hidden;
-  padding-top: 38px; /* Space for traffic lights */
+  padding-top: 28px; /* Space for traffic lights */
 }
 
 /* Draggable area for window */
@@ -61,7 +61,7 @@ html, body {
   top: 0;
   left: 0;
   right: 0;
-  height: 38px;
+  height: 28px;
   -webkit-app-region: drag;
 }
 
@@ -701,6 +701,13 @@ html, body {
 
 #statusbar span {
   margin-right: 24px;
+}
+
+#status-file {
+  max-width: 50%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Scrollbar */

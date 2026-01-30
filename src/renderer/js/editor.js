@@ -134,8 +134,11 @@ class Editor {
       this.updateEditorMode();
       this.setValue(content);
       this.applyFrontmatterSettings(content);
-      this.basePath = basePath;
-      this.currentDirectory = basePath;
+      // Only update directory if basePath is provided (preserve on new file)
+      if (basePath) {
+        this.basePath = basePath;
+        this.currentDirectory = basePath;
+      }
       this.isDirty = false;
       this.updatePreview();
       this.updateStatus();
@@ -1054,12 +1057,16 @@ class Editor {
   updateStatus() {
     const content = this.getValue();
 
-    // File name
+    // File name and path
     if (this.currentFilePath) {
-      const fileName = this.currentFilePath.split('/').pop();
-      this.statusFile.textContent = this.isDirty ? `${fileName} (modified)` : fileName;
+      const modified = this.isDirty ? ' (modified)' : '';
+      // Shorten home directory to ~
+      const displayPath = this.currentFilePath.replace(/^\/Users\/[^/]+/, '~');
+      this.statusFile.textContent = displayPath + modified;
+      this.statusFile.title = this.currentFilePath; // Full path on hover
     } else {
       this.statusFile.textContent = this.isDirty ? 'Untitled (modified)' : 'Untitled';
+      this.statusFile.title = '';
     }
 
     // Count slides

@@ -41,7 +41,7 @@ function createMainWindow() {
       nodeIntegration: false
     },
     titleBarStyle: 'hiddenInset',
-    trafficLightPosition: { x: 15, y: 15 }
+    trafficLightPosition: { x: 12, y: 10 }
   });
 
   mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
