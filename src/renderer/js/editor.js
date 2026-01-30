@@ -19,7 +19,8 @@ class Editor {
     this.currentFilePath = null;
     this.basePath = null;
     this.currentDirectory = null;
-    this.isPreviewVisible = true;
+    this.isPreviewVisible = false;
+    this.viewMode = 'editor';
     this.isFileTreeVisible = false;
     this.isOutlineVisible = false;
     this.isSearchVisible = false;
@@ -807,12 +808,30 @@ class Editor {
   }
 
   togglePreview() {
-    this.isPreviewVisible = !this.isPreviewVisible;
-    this.previewPane.classList.toggle('visible', this.isPreviewVisible);
-    document.body.classList.toggle('split-view', this.isPreviewVisible);
+    // Cycle through: editor-only → split-view → preview-only → editor-only
+    const body = document.body;
 
-    if (this.isPreviewVisible) {
+    if (!this.isPreviewVisible) {
+      // editor-only → split-view
+      this.isPreviewVisible = true;
+      this.viewMode = 'split';
+      body.classList.remove('editor-only', 'preview-only');
+      body.classList.add('split-view');
+      this.previewPane.classList.add('visible');
       this.updatePreview();
+    } else if (this.viewMode === 'split') {
+      // split-view → preview-only
+      this.viewMode = 'preview';
+      body.classList.remove('split-view', 'editor-only');
+      body.classList.add('preview-only');
+    } else {
+      // preview-only → editor-only
+      this.isPreviewVisible = false;
+      this.viewMode = 'editor';
+      body.classList.remove('split-view', 'preview-only');
+      body.classList.add('editor-only');
+      this.previewPane.classList.remove('visible');
+      this.cm.focus();
     }
   }
 
