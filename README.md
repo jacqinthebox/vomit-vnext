@@ -2,7 +2,7 @@
 
 *[Claude Code](https://claude.com/claude-code) crushes React. This app is fully vibe-coded.*
 
-A markdown presentation app with a presenter view, speaker notes and a laser pointer.
+A keyboard-centric markdown editor and presentation app with IntelliSense, live preview, presenter view, and speaker notes.
 
 <img src="screenshot.png" alt="Vomit Screenshot" width="600"> 
 
