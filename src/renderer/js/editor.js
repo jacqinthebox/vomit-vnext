@@ -519,10 +519,13 @@ class Editor {
 
   togglePaneFocus() {
     const anySidebarOpen = this.isFileTreeVisible || this.isOutlineVisible || this.isSearchVisible;
+    const isPreviewOnly = this.viewMode === 'preview';
 
     if (!anySidebarOpen) {
-      // No sidebar open, stay in editor
-      this.cm.focus();
+      // No sidebar open, focus editor or preview
+      if (!isPreviewOnly) {
+        this.cm.focus();
+      }
       return;
     }
 
@@ -539,9 +542,14 @@ class Editor {
         if (firstItem) firstItem.focus();
       }
     } else {
-      // Move focus back to editor
+      // Move focus back to editor (or preview if in preview-only mode)
       this.focusedPane = 'editor';
-      this.cm.focus();
+      if (!isPreviewOnly) {
+        this.cm.focus();
+      } else {
+        // In preview-only mode, focus the preview pane
+        this.previewPane.focus();
+      }
     }
   }
 
