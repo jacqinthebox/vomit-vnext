@@ -158,6 +158,11 @@ function createMenu() {
           click: () => newFile()
         },
         {
+          label: 'New Presentation',
+          accelerator: 'CmdOrCtrl+Shift+N',
+          click: () => newPresentation()
+        },
+        {
           label: 'Open File...',
           accelerator: 'CmdOrCtrl+O',
           click: () => openFile()
@@ -282,7 +287,7 @@ function createMenu() {
         },
         {
           label: 'Toggle Outline',
-          accelerator: 'CmdOrCtrl+O',
+          accelerator: 'CmdOrCtrl+Shift+O',
           click: () => {
             if (mainWindow) {
               mainWindow.webContents.send('toggle-outline');
@@ -418,6 +423,58 @@ async function newFile() {
   if (mainWindow) {
     mainWindow.webContents.send('load-content', '', null);
     mainWindow.setTitle('Untitled - Vomit');
+  }
+}
+
+async function newPresentation() {
+  currentFilePath = null;
+  const template = `---
+theme: catppuccin
+font-size: 16px
+---
+
+# Welcome to Your Presentation
+
+Your first slide content goes here.
+
+Use **Cmd+Shift+P** to start presenting.
+
+???
+
+Speaker notes go here. Only visible in presenter view.
+
+---
+
+# Second Slide
+
+- Use \`---\` to separate slides
+- Add speaker notes after \`???\`
+- Press **L** for laser pointer during presentation
+
+???
+
+These are your private notes for this slide.
+
+---
+
+# Code Example
+
+\`\`\`javascript
+function greet(name) {
+  return \`Hello, \${name}!\`;
+}
+\`\`\`
+
+---
+
+# Thank You!
+
+Questions?
+`;
+  currentContent = template;
+  if (mainWindow) {
+    mainWindow.webContents.send('load-content', template, null);
+    mainWindow.setTitle('Untitled Presentation - Vomit');
   }
 }
 

@@ -37,7 +37,7 @@ class Editor {
     this.setupSearch();
     this.setupKeyboardNavigation();
     this.setupIPC();
-    this.togglePreview(); // Start with preview visible
+    // Start in editor-only mode (use Cmd+P to toggle preview)
   }
 
   setupEditor() {
@@ -797,6 +797,21 @@ class Editor {
   }
 
   insertSlide() {
+    const content = this.getValue();
+    const cursor = this.cm.getCursor();
+
+    // If cursor is at the very beginning and document has frontmatter,
+    // move cursor after frontmatter before inserting
+    if (cursor.line === 0 && cursor.ch === 0 && content.startsWith('---')) {
+      const endIndex = content.indexOf('---', 3);
+      if (endIndex !== -1) {
+        // Move cursor to after frontmatter
+        const frontmatterEnd = content.substring(0, endIndex + 3);
+        const lines = frontmatterEnd.split('\n').length - 1;
+        this.cm.setCursor({ line: lines, ch: 0 });
+      }
+    }
+
     const slideTemplate = '\n\n---\n\n# New Slide\n\nContent here\n\n???\nSpeaker notes here\n';
     this.cm.replaceSelection(slideTemplate);
     this.cm.focus();
