@@ -37,6 +37,10 @@ class Editor {
     this.setupSearch();
     this.setupKeyboardNavigation();
     this.setupIPC();
+
+    // Initialize TabManager and create first tab
+    this.tabManager = new TabManager(this);
+    this.tabManager.createTab(null, '');
     // Start in editor-only mode (use Cmd+P to toggle preview)
   }
 
@@ -76,6 +80,11 @@ class Editor {
       this.updateOutline();
       this.isDirty = true;
       window.vomit.contentChanged(this.getValue());
+
+      // Notify TabManager of dirty state
+      if (this.tabManager) {
+        this.tabManager.markCurrentTabDirty();
+      }
 
       // Debounced auto-save (2 seconds after last change)
       this.scheduleAutoSave();
@@ -130,19 +139,30 @@ class Editor {
   setupIPC() {
     window.addEventListener('vomit:load-content', (e) => {
       const { content, filePath, basePath } = e.detail;
-      this.currentFilePath = filePath;
-      this.cm.setOption('filename', filePath); // For hints file-type detection
-      this.updateEditorMode();
-      this.setValue(content);
-      this.applyFrontmatterSettings(content);
-      // Only update directory if basePath is provided (preserve on new file)
+
+      // Check if file is already open in a tab
+      if (filePath) {
+        const existingTab = this.tabManager.getTabByPath(filePath);
+        if (existingTab) {
+          this.tabManager.switchToTab(existingTab.id);
+          return;
+        }
+      }
+
+      // Create new tab for this file
+      this.tabManager.saveCurrentTabState();
+      const newTab = this.tabManager.createTab(filePath, content);
+
+      // Update directory if basePath is provided
       if (basePath) {
         this.basePath = basePath;
         this.currentDirectory = basePath;
       }
-      this.isDirty = false;
-      this.updatePreview();
-      this.updateStatus();
+
+      this.cm.setOption('filename', filePath); // For hints file-type detection
+      this.updateEditorMode();
+      this.applyFrontmatterSettings(content);
+
       if (this.isOutlineVisible) {
         this.updateOutline();
       }
@@ -150,7 +170,6 @@ class Editor {
         const preserveFocus = this.focusedPane === 'sidebar';
         this.loadFileTree().then(() => {
           if (preserveFocus) {
-            // Re-focus the active file after tree re-renders
             const activeItem = this.fileTree.querySelector('.file-item.active');
             if (activeItem) activeItem.focus();
           }
@@ -159,15 +178,48 @@ class Editor {
       // Handle pending line jump from search
       if (this.pendingLineJump) {
         setTimeout(() => {
-          this.goToLine(this.pendingLineJump - 1); // Convert to 0-based
+          this.goToLine(this.pendingLineJump - 1);
           this.pendingLineJump = null;
         }, 100);
       }
     });
 
+    // Tab management events
+    window.addEventListener('vomit:new-tab', () => {
+      this.tabManager.createTab(null, '');
+    });
+
+    window.addEventListener('vomit:close-tab', () => {
+      this.tabManager.closeCurrentTab();
+    });
+
+    window.addEventListener('vomit:next-tab', () => {
+      this.tabManager.nextTab();
+    });
+
+    window.addEventListener('vomit:prev-tab', () => {
+      this.tabManager.prevTab();
+    });
+
+    window.addEventListener('vomit:go-to-tab', (e) => {
+      this.tabManager.goToTab(e.detail);
+    });
+
     window.addEventListener('vomit:request-content', () => {
       window.vomit.saveContent(this.getValue());
       this.isDirty = false;
+      if (this.tabManager) {
+        this.tabManager.markCurrentTabClean();
+      }
+    });
+
+    window.addEventListener('vomit:file-saved', (e) => {
+      // Update tab path after Save As
+      const { filePath } = e.detail || {};
+      if (filePath && this.tabManager) {
+        this.tabManager.updateCurrentTabPath(filePath);
+        this.tabManager.markCurrentTabClean();
+      }
     });
 
     window.addEventListener('vomit:toggle-preview', () => {
@@ -297,6 +349,14 @@ class Editor {
         </div>
         <div class="shortcuts-body">
           <div class="shortcuts-section">
+            <h3>Tabs</h3>
+            <div class="shortcut-row"><kbd>Cmd+T</kbd> New tab</div>
+            <div class="shortcut-row"><kbd>Cmd+W</kbd> Close tab</div>
+            <div class="shortcut-row"><kbd>Cmd+Shift+]</kbd> Next tab</div>
+            <div class="shortcut-row"><kbd>Cmd+Shift+[</kbd> Previous tab</div>
+            <div class="shortcut-row"><kbd>Cmd+1-9</kbd> Go to tab</div>
+          </div>
+          <div class="shortcuts-section">
             <h3>File</h3>
             <div class="shortcut-row"><kbd>Cmd+N</kbd> New file</div>
             <div class="shortcut-row"><kbd>Cmd+O</kbd> Open file</div>
@@ -318,8 +378,8 @@ class Editor {
             <div class="shortcut-row"><kbd>Cmd+B</kbd> Bold</div>
             <div class="shortcut-row"><kbd>Cmd+I</kbd> Italic</div>
             <div class="shortcut-row"><kbd>Cmd+K</kbd> Insert link</div>
-            <div class="shortcut-row"><kbd>Cmd+T</kbd> Insert table</div>
-            <div class="shortcut-row"><kbd>Cmd+1/2/3</kbd> Headings</div>
+            <div class="shortcut-row"><kbd>Cmd+Shift+T</kbd> Insert table</div>
+            <div class="shortcut-row"><kbd>Cmd+Shift+1/2/3</kbd> Headings</div>
             <div class="shortcut-row"><kbd>Cmd+Enter</kbd> New slide</div>
           </div>
           <div class="shortcuts-section">

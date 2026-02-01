@@ -8,12 +8,27 @@ Press **Cmd+/** to open this help at any time.
 
 | Shortcut | Action |
 |----------|--------|
+| Cmd+T | New tab |
 | Cmd+N | New file |
 | Cmd+O | Open file |
 | Cmd+Alt+O | Open folder |
+| Cmd+W | Close tab |
 | Cmd+S | Save |
 | Cmd+Shift+S | Save as |
 | Cmd+E | Export to PDF |
+
+---
+
+## Tabs
+
+| Shortcut | Action |
+|----------|--------|
+| Cmd+T | New tab |
+| Cmd+W | Close tab |
+| Cmd+Shift+] | Next tab |
+| Cmd+Shift+[ | Previous tab |
+| Cmd+1-8 | Go to tab 1-8 |
+| Cmd+9 | Go to last tab |
 
 ---
 
@@ -41,10 +56,10 @@ Press **Cmd+/** to open this help at any time.
 | Cmd+I | Italic |
 | Cmd+` | Inline code |
 | Cmd+K | Insert link |
-| Cmd+T | Insert table |
-| Cmd+1 | Heading 1 |
-| Cmd+2 | Heading 2 |
-| Cmd+3 | Heading 3 |
+| Cmd+Shift+T | Insert table |
+| Cmd+Shift+1 | Heading 1 |
+| Cmd+Shift+2 | Heading 2 |
+| Cmd+Shift+3 | Heading 3 |
 | Cmd+' | Blockquote |
 | Cmd+- | Horizontal rule |
 | Cmd+Enter | Insert new slide |

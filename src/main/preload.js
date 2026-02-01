@@ -78,6 +78,27 @@ ipcRenderer.on('render-for-pdf', (event, content, basePath) => {
   window.dispatchEvent(new CustomEvent('vomit:render-for-pdf', { detail: { content, basePath } }));
 });
 
+// Tab management events
+ipcRenderer.on('new-tab', () => {
+  window.dispatchEvent(new CustomEvent('vomit:new-tab'));
+});
+
+ipcRenderer.on('close-tab', () => {
+  window.dispatchEvent(new CustomEvent('vomit:close-tab'));
+});
+
+ipcRenderer.on('next-tab', () => {
+  window.dispatchEvent(new CustomEvent('vomit:next-tab'));
+});
+
+ipcRenderer.on('prev-tab', () => {
+  window.dispatchEvent(new CustomEvent('vomit:prev-tab'));
+});
+
+ipcRenderer.on('go-to-tab', (event, tabNumber) => {
+  window.dispatchEvent(new CustomEvent('vomit:go-to-tab', { detail: tabNumber }));
+});
+
 // Expose only the send methods (no callbacks needed)
 contextBridge.exposeInMainWorld('vomit', {
   openExternal: (url) => ipcRenderer.invoke('open-external', url),
@@ -94,5 +115,7 @@ contextBridge.exposeInMainWorld('vomit', {
   startPresentationWithPresenter: () => ipcRenderer.send('start-presentation-with-presenter'),
   navigateSlide: (direction) => ipcRenderer.send('navigate-slide', direction),
   goToSlide: (index) => ipcRenderer.send('go-to-slide', index),
-  saveImage: (imageData, suggestedName) => ipcRenderer.invoke('save-image', imageData, suggestedName)
+  saveImage: (imageData, suggestedName) => ipcRenderer.invoke('save-image', imageData, suggestedName),
+  showUnsavedChangesDialog: (filename) => ipcRenderer.invoke('show-unsaved-dialog', filename),
+  requestSave: () => ipcRenderer.invoke('request-save')
 });

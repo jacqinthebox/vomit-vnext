@@ -32,14 +32,17 @@
         <div id="search-results"></div>
       </div>
       <div id="sidebar-resize" class="hidden"></div>
-      <div id="editor-container">
-      <div id="editor-pane">
-        <div id="editor"></div>
+      <div id="editor-wrapper">
+        <div id="tab-bar"></div>
+        <div id="editor-container">
+          <div id="editor-pane">
+            <div id="editor"></div>
+          </div>
+          <div id="preview-pane" tabindex="0">
+            <div id="preview"></div>
+          </div>
+        </div>
       </div>
-      <div id="preview-pane" tabindex="0">
-        <div id="preview"></div>
-      </div>
-    </div>
     </div>
 
     <div id="statusbar">
@@ -90,6 +93,7 @@
   <script src="js/codemirror-anyword-hint.min.js"></script>
   <script src="js/hints.js"></script>
   <script src="js/emoji.js"></script>
+  <script src="js/tabs.js"></script>
   <script src="js/editor.js"></script>
 </body>
 </html>

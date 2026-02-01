@@ -19,6 +19,7 @@ let presentationWindow = null;
 let presenterWindow = null;
 let currentFilePath = null;
 let currentContent = '';
+let editorWindows = []; // Track all editor windows
 
 function createMainWindow() {
   const iconPath = path.join(__dirname, '../icon.png');
@@ -89,6 +90,39 @@ function createMainWindow() {
   });
 }
 
+function createNewEditorWindow() {
+  const iconPath = path.join(__dirname, '../icon.png');
+
+  const newWindow = new BrowserWindow({
+    width: 1200,
+    height: 800,
+    minWidth: 600,
+    minHeight: 400,
+    title: 'Vomit',
+    icon: iconPath,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false
+    },
+    titleBarStyle: 'hiddenInset',
+    trafficLightPosition: { x: 12, y: 10 }
+  });
+
+  newWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
+
+  newWindow.webContents.on('did-finish-load', () => {
+    newWindow.webContents.send('set-theme', currentTheme);
+  });
+
+  newWindow.on('closed', () => {
+    editorWindows = editorWindows.filter(w => w !== newWindow);
+  });
+
+  editorWindows.push(newWindow);
+  return newWindow;
+}
+
 function createPresentationWindow() {
   presentationWindow = new BrowserWindow({
     width: 1280,
@@ -153,15 +187,30 @@ function createMenu() {
       label: 'File',
       submenu: [
         {
-          label: 'New',
+          label: 'New Tab',
+          accelerator: 'CmdOrCtrl+T',
+          click: () => {
+            if (mainWindow) {
+              mainWindow.webContents.send('new-tab');
+            }
+          }
+        },
+        {
+          label: 'New Window',
+          accelerator: 'CmdOrCtrl+Shift+N',
+          click: () => createNewEditorWindow()
+        },
+        {
+          label: 'New File',
           accelerator: 'CmdOrCtrl+N',
           click: () => newFile()
         },
         {
           label: 'New Presentation',
-          accelerator: 'CmdOrCtrl+Shift+N',
+          accelerator: 'CmdOrCtrl+Alt+N',
           click: () => newPresentation()
         },
+        { type: 'separator' },
         {
           label: 'Open File...',
           accelerator: 'CmdOrCtrl+O',
@@ -171,6 +220,16 @@ function createMenu() {
           label: 'Open Folder...',
           accelerator: 'CmdOrCtrl+Alt+O',
           click: () => openFolder()
+        },
+        { type: 'separator' },
+        {
+          label: 'Close Tab',
+          accelerator: 'CmdOrCtrl+W',
+          click: () => {
+            if (mainWindow) {
+              mainWindow.webContents.send('close-tab');
+            }
+          }
         },
         { type: 'separator' },
         {
@@ -188,9 +247,7 @@ function createMenu() {
           label: 'Export to PDF...',
           accelerator: 'CmdOrCtrl+E',
           click: () => exportToPDF()
-        },
-        { type: 'separator' },
-        { role: 'close' }
+        }
       ]
     },
     {
@@ -230,23 +287,23 @@ function createMenu() {
         },
         {
           label: 'Table',
-          accelerator: 'CmdOrCtrl+T',
+          accelerator: 'CmdOrCtrl+Shift+T',
           click: () => sendFormatCommand('table')
         },
         { type: 'separator' },
         {
           label: 'Heading 1',
-          accelerator: 'CmdOrCtrl+1',
+          accelerator: 'CmdOrCtrl+Shift+1',
           click: () => sendFormatCommand('h1')
         },
         {
           label: 'Heading 2',
-          accelerator: 'CmdOrCtrl+2',
+          accelerator: 'CmdOrCtrl+Shift+2',
           click: () => sendFormatCommand('h2')
         },
         {
           label: 'Heading 3',
-          accelerator: 'CmdOrCtrl+3',
+          accelerator: 'CmdOrCtrl+Shift+3',
           click: () => sendFormatCommand('h3')
         },
         { type: 'separator' },
@@ -347,6 +404,44 @@ function createMenu() {
           click: () => {
             if (mainWindow) {
               mainWindow.webContents.send('navigate-parent');
+            }
+          }
+        },
+        { type: 'separator' },
+        {
+          label: 'Next Tab',
+          accelerator: 'CmdOrCtrl+Shift+]',
+          click: () => {
+            if (mainWindow) {
+              mainWindow.webContents.send('next-tab');
+            }
+          }
+        },
+        {
+          label: 'Previous Tab',
+          accelerator: 'CmdOrCtrl+Shift+[',
+          click: () => {
+            if (mainWindow) {
+              mainWindow.webContents.send('prev-tab');
+            }
+          }
+        },
+        { type: 'separator' },
+        ...[1,2,3,4,5,6,7,8].map(n => ({
+          label: `Go to Tab ${n}`,
+          accelerator: `CmdOrCtrl+${n}`,
+          click: () => {
+            if (mainWindow) {
+              mainWindow.webContents.send('go-to-tab', n);
+            }
+          }
+        })),
+        {
+          label: 'Go to Last Tab',
+          accelerator: 'CmdOrCtrl+9',
+          click: () => {
+            if (mainWindow) {
+              mainWindow.webContents.send('go-to-tab', 9);
             }
           }
         },
@@ -975,6 +1070,32 @@ ipcMain.handle('save-image', async (event, imageData, suggestedName) => {
     console.error('Failed to save image:', err);
     return null;
   }
+});
+
+// Unsaved changes dialog for tabs
+ipcMain.handle('show-unsaved-dialog', async (event, filename) => {
+  const result = await dialog.showMessageBox(mainWindow, {
+    type: 'warning',
+    buttons: ['Save', "Don't Save", 'Cancel'],
+    defaultId: 0,
+    cancelId: 2,
+    title: 'Unsaved Changes',
+    message: `Do you want to save changes to ${filename || 'Untitled'}?`,
+    detail: 'Your changes will be lost if you don\'t save them.'
+  });
+
+  if (result.response === 0) return 'save';
+  if (result.response === 1) return 'discard';
+  return 'cancel';
+});
+
+// Request save from renderer (for tab close with save)
+ipcMain.handle('request-save', async () => {
+  return new Promise((resolve) => {
+    mainWindow.webContents.send('request-content');
+    // The save will happen, resolve after a short delay
+    setTimeout(resolve, 200);
+  });
 });
 
 // App lifecycle
