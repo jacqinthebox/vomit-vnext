@@ -314,6 +314,15 @@ function createMenu() {
           }
         },
         {
+          label: 'Find and Replace',
+          accelerator: 'CmdOrCtrl+Alt+F',
+          click: () => {
+            if (mainWindow) {
+              mainWindow.webContents.send('find-and-replace');
+            }
+          }
+        },
+        {
           label: 'Search in Files',
           accelerator: 'CmdOrCtrl+Shift+F',
           click: () => {

@@ -26,6 +26,7 @@ Press **Cmd+/** to open this help at any time.
 | Cmd+E | Toggle file explorer |
 | Cmd+L | Toggle line numbers |
 | Cmd+F | Find in file |
+| Cmd+Option+F | Find and replace |
 | Cmd+Shift+F | Search in files |
 | Cmd+Up | Go to parent folder |
 | Cmd+/ | Show keyboard shortcuts |

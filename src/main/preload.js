@@ -34,6 +34,10 @@ ipcRenderer.on('find-in-file', () => {
   window.dispatchEvent(new CustomEvent('vomit:find-in-file'));
 });
 
+ipcRenderer.on('find-and-replace', () => {
+  window.dispatchEvent(new CustomEvent('vomit:find-and-replace'));
+});
+
 ipcRenderer.on('toggle-line-numbers', () => {
   window.dispatchEvent(new CustomEvent('vomit:toggle-line-numbers'));
 });

@@ -203,6 +203,11 @@ class Editor {
       this.cm.execCommand('find');
     });
 
+    window.addEventListener('vomit:find-and-replace', () => {
+      // Trigger CodeMirror's built-in replace dialog
+      this.cm.execCommand('replace');
+    });
+
     window.addEventListener('vomit:open-folder', (e) => {
       this.openFolder(e.detail);
     });
@@ -304,6 +309,7 @@ class Editor {
             <div class="shortcut-row"><kbd>Cmd+E</kbd> Toggle explorer</div>
             <div class="shortcut-row"><kbd>Cmd+L</kbd> Toggle line numbers</div>
             <div class="shortcut-row"><kbd>Cmd+F</kbd> Find in file</div>
+            <div class="shortcut-row"><kbd>Cmd+Option+F</kbd> Find and replace</div>
             <div class="shortcut-row"><kbd>Cmd+Shift+F</kbd> Search in files</div>
             <div class="shortcut-row"><kbd>Cmd+/</kbd> Show shortcuts</div>
           </div>
