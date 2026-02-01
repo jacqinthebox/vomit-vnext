@@ -6,7 +6,15 @@
 # Or for dev: ln -s $(pwd)/bin/vomit ~/.local/bin/vomit
 
 APP_PATH="/Applications/Vomit.app"
-DEV_PATH="$(dirname "$0")/.."
+
+# Resolve symlinks to get the real script location
+SCRIPT_PATH="$0"
+while [ -L "$SCRIPT_PATH" ]; do
+  SCRIPT_DIR="$(cd -P "$(dirname "$SCRIPT_PATH")" && pwd)"
+  SCRIPT_PATH="$(readlink "$SCRIPT_PATH")"
+  [[ $SCRIPT_PATH != /* ]] && SCRIPT_PATH="$SCRIPT_DIR/$SCRIPT_PATH"
+done
+DEV_PATH="$(cd -P "$(dirname "$SCRIPT_PATH")/.." && pwd)"
 
 if [ -d "$APP_PATH" ]; then
   # Use installed app
