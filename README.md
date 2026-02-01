@@ -55,7 +55,14 @@ Then the app will open normally.
 To open files or folders from the terminal, create a symlink:
 
 ```bash
-sudo ln -s /Applications/Vomit.app/Contents/Resources/app/bin/vomit /usr/local/bin/vomit
+mkdir -p ~/.local/bin
+ln -s /Applications/Vomit.app/Contents/Resources/app/bin/vomit ~/.local/bin/vomit
+```
+
+Make sure `~/.local/bin` is in your PATH (add to `~/.zshrc` if needed):
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
 ```
 
 Then use:

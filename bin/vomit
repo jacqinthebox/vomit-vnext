@@ -2,8 +2,8 @@
 # Vomit CLI launcher
 # Usage: vomit [file|folder]
 #
-# Install: ln -s /Applications/Vomit.app/Contents/Resources/app/bin/vomit /usr/local/bin/vomit
-# Or for dev: ln -s $(pwd)/bin/vomit /usr/local/bin/vomit
+# Install: ln -s /Applications/Vomit.app/Contents/Resources/app/bin/vomit ~/.local/bin/vomit
+# Or for dev: ln -s $(pwd)/bin/vomit ~/.local/bin/vomit
 
 APP_PATH="/Applications/Vomit.app"
 DEV_PATH="$(dirname "$0")/.."
