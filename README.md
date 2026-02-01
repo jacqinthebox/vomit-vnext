@@ -50,6 +50,22 @@ xattr -cr /Applications/Vomit\ vNext.app
 
 Then the app will open normally.
 
+### CLI Launcher
+
+To open files or folders from the terminal, create a symlink:
+
+```bash
+sudo ln -s /Applications/Vomit.app/Contents/Resources/app/bin/vomit /usr/local/bin/vomit
+```
+
+Then use:
+
+```bash
+vomit .                  # Open current directory
+vomit ~/notes            # Open a folder
+vomit presentation.md    # Open a file
+```
+
 ### Option 2: Build from Source
 
 ```bash

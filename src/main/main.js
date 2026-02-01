@@ -982,10 +982,22 @@ app.whenReady().then(() => {
   createMenu();
   createMainWindow();
 
-  // Handle file open from command line or Finder
+  // Handle file/folder open from command line or Finder
   const args = process.argv.slice(2);
   if (args.length > 0 && fs.existsSync(args[0])) {
-    loadFile(args[0]);
+    const targetPath = path.resolve(args[0]);
+    const stats = fs.statSync(targetPath);
+    if (stats.isDirectory()) {
+      // Open folder
+      store.set('lastOpenedFolder', targetPath);
+      mainWindow.webContents.once('did-finish-load', () => {
+        mainWindow.webContents.send('open-folder', targetPath);
+        mainWindow.setTitle(`${path.basename(targetPath)} - Vomit`);
+      });
+    } else {
+      // Open file
+      loadFile(targetPath);
+    }
   } else {
     // Try to load last opened file
     const lastFile = store.get('lastOpenedFile');

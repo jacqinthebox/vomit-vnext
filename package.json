@@ -1,6 +1,6 @@
 {
   "name": "vomit-vnext",
-  "version": "1.4.11",
+  "version": "1.4.12",
   "description": "A keyboard-centric markdown editor and presentation app with IntelliSense, live preview, and presenter view",
   "main": "src/main/main.js",
   "scripts": {
@@ -56,6 +56,7 @@
     },
     "files": [
       "src/**/*",
+      "bin/**/*",
       "node_modules/**/*"
     ],
     "fileAssociations": [

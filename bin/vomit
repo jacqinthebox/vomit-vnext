@@ -1,0 +1,28 @@
+#!/bin/bash
+# Vomit CLI launcher
+# Usage: vomit [file|folder]
+#
+# Install: ln -s /Applications/Vomit.app/Contents/Resources/app/bin/vomit /usr/local/bin/vomit
+# Or for dev: ln -s $(pwd)/bin/vomit /usr/local/bin/vomit
+
+APP_PATH="/Applications/Vomit.app"
+DEV_PATH="$(dirname "$0")/.."
+
+if [ -d "$APP_PATH" ]; then
+  # Use installed app
+  if [ $# -eq 0 ]; then
+    open "$APP_PATH"
+  else
+    TARGET=$(cd "$(dirname "$1")" && pwd)/$(basename "$1")
+    open "$APP_PATH" --args "$TARGET"
+  fi
+else
+  # Use development version
+  cd "$DEV_PATH"
+  if [ $# -eq 0 ]; then
+    npm start
+  else
+    TARGET=$(cd "$(dirname "$1")" && pwd)/$(basename "$1")
+    npm start -- "$TARGET"
+  fi
+fi
