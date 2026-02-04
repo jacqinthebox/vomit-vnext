@@ -10,9 +10,28 @@ const store = new Store({
   defaults: {
     theme: 'default',
     lastOpenedFile: null,
-    autoSaveEnabled: true
+    autoSaveEnabled: true,
+    recentFiles: []
   }
 });
+
+const MAX_RECENT_FILES = 10;
+
+function addToRecentFiles(filePath) {
+  if (!filePath) return;
+
+  let recent = store.get('recentFiles') || [];
+  // Remove if already exists
+  recent = recent.filter(f => f !== filePath);
+  // Add to front
+  recent.unshift(filePath);
+  // Limit to max
+  recent = recent.slice(0, MAX_RECENT_FILES);
+  store.set('recentFiles', recent);
+
+  // Rebuild menu to update Recent Files
+  createMenu();
+}
 
 let mainWindow = null;
 let currentTheme = store.get('theme');
@@ -171,6 +190,38 @@ function createPresenterWindow() {
   return presenterWindow;
 }
 
+function buildRecentFilesMenu() {
+  const recentFiles = store.get('recentFiles') || [];
+
+  if (recentFiles.length === 0) {
+    return [{ label: 'No Recent Files', enabled: false }];
+  }
+
+  const items = recentFiles
+    .filter(f => fs.existsSync(f)) // Only show files that still exist
+    .map((filePath, index) => ({
+      label: `${index + 1}. ${path.basename(filePath)}`,
+      sublabel: filePath,
+      click: () => loadFile(filePath)
+    }));
+
+  if (items.length === 0) {
+    return [{ label: 'No Recent Files', enabled: false }];
+  }
+
+  // Add clear option
+  items.push({ type: 'separator' });
+  items.push({
+    label: 'Clear Recent Files',
+    click: () => {
+      store.set('recentFiles', []);
+      createMenu();
+    }
+  });
+
+  return items;
+}
+
 function createMenu() {
   const template = [
     {
@@ -224,6 +275,10 @@ function createMenu() {
           label: 'Open Folder...',
           accelerator: 'CmdOrCtrl+Alt+O',
           click: () => openFolder()
+        },
+        {
+          label: 'Open Recent',
+          submenu: buildRecentFilesMenu()
         },
         { type: 'separator' },
         {
@@ -350,6 +405,16 @@ function createMenu() {
     {
       label: 'View',
       submenu: [
+        {
+          label: 'Command Palette...',
+          accelerator: 'CmdOrCtrl+.',
+          click: () => {
+            if (mainWindow) {
+              mainWindow.webContents.send('show-command-palette');
+            }
+          }
+        },
+        { type: 'separator' },
         {
           label: 'Toggle Preview',
           accelerator: 'CmdOrCtrl+P',
@@ -501,6 +566,7 @@ function createMenu() {
         { label: 'Dark', click: () => setTheme('dark') },
         { label: 'Catppuccin', click: () => setTheme('catppuccin') },
         { label: 'Nord', click: () => setTheme('nord') },
+        { label: 'Tokyo Night', click: () => setTheme('tokyo-night') },
         { label: 'Solarized Dark', click: () => setTheme('solarized') }
       ]
     },
@@ -688,8 +754,9 @@ function loadFile(filePath) {
     currentFilePath = filePath;
     currentContent = content;
 
-    // Save as last opened file
+    // Save as last opened file and add to recent
     store.set('lastOpenedFile', filePath);
+    addToRecentFiles(filePath);
 
     // Start watching for external changes
     startFileWatcher(filePath);
@@ -958,6 +1025,21 @@ ipcMain.on('watch-file', (event, filePath) => {
 // Get auto-save state
 ipcMain.handle('get-auto-save-enabled', () => {
   return autoSaveEnabled;
+});
+
+// Get recent files
+ipcMain.handle('get-recent-files', () => {
+  const recentFiles = store.get('recentFiles') || [];
+  return recentFiles
+    .filter(f => fs.existsSync(f))
+    .map(f => ({ path: f, name: path.basename(f) }));
+});
+
+// Check if there's a last session to restore
+ipcMain.handle('has-last-session', () => {
+  const lastFolder = store.get('lastOpenedFolder');
+  const lastFile = store.get('lastOpenedFile');
+  return (lastFolder && fs.existsSync(lastFolder)) || (lastFile && fs.existsSync(lastFile));
 });
 
 // Reload file from disk (for external changes)
@@ -1241,9 +1323,20 @@ app.whenReady().then(() => {
       loadFile(targetPath);
     }
   } else {
-    // Try to load last opened file
+    // Try to restore last session (folder first, then file)
+    const lastFolder = store.get('lastOpenedFolder');
     const lastFile = store.get('lastOpenedFile');
-    if (lastFile && fs.existsSync(lastFile)) {
+
+    if (lastFolder && fs.existsSync(lastFolder)) {
+      mainWindow.webContents.once('did-finish-load', () => {
+        mainWindow.webContents.send('open-folder', lastFolder);
+        mainWindow.setTitle(`${path.basename(lastFolder)} - Vomit`);
+        // Also load last file if it's within the folder
+        if (lastFile && fs.existsSync(lastFile) && lastFile.startsWith(lastFolder)) {
+          loadFile(lastFile);
+        }
+      });
+    } else if (lastFile && fs.existsSync(lastFile)) {
       loadFile(lastFile);
     }
   }

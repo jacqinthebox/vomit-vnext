@@ -19,6 +19,7 @@ class Editor {
     this.currentFilePath = null;
     this.basePath = null;
     this.currentDirectory = null;
+    this.projectRoot = null; // Root folder when a project is opened
     this.isPreviewVisible = false;
     this.viewMode = 'editor';
     this.isFileTreeVisible = false;
@@ -40,10 +41,23 @@ class Editor {
     this.setupKeyboardNavigation();
     this.setupIPC();
 
-    // Initialize TabManager and create first tab
+    // Initialize TabManager
     this.tabManager = new TabManager(this);
-    this.tabManager.createTab(null, '');
-    // Start in editor-only mode (use Cmd+P to toggle preview)
+
+    // Check if there's a last session to restore - if not, create empty tab
+    this.initializeSession();
+  }
+
+  async initializeSession() {
+    // Wait a moment for main process to send session data
+    const hasSession = await window.vomit.hasLastSession();
+
+    // If no session will be restored, create an empty tab after a short delay
+    // (give main process time to send load-content if there is a session)
+    if (!hasSession) {
+      this.tabManager.createTab(null, '');
+    }
+    // If there's a session, the main process will send load-content which creates the tab
   }
 
   setupEditor() {
@@ -310,6 +324,11 @@ class Editor {
         await this.handleExternalFileChange(null);
       }
     });
+
+    // Command palette
+    window.addEventListener('vomit:show-command-palette', () => {
+      this.showCommandPalette();
+    });
   }
 
   async handleExternalFileChange(tab) {
@@ -528,10 +547,16 @@ class Editor {
 
   navigateToParent() {
     if (!this.currentDirectory) return;
+    // Don't navigate above project root
+    if (this.projectRoot && this.currentDirectory === this.projectRoot) return;
+
     const parts = this.currentDirectory.split('/');
     if (parts.length > 2) {
-      parts.pop();
-      this.currentDirectory = parts.join('/');
+      const newDir = parts.slice(0, -1).join('/');
+      // Extra check: don't go above project root
+      if (this.projectRoot && !newDir.startsWith(this.projectRoot)) return;
+
+      this.currentDirectory = newDir;
       this.loadFileTree().then(() => {
         // Focus first item after navigating up
         const firstItem = this.fileTree.querySelector('.file-item');
@@ -542,6 +567,7 @@ class Editor {
 
   openFolder(folderPath) {
     this.currentDirectory = folderPath;
+    this.projectRoot = folderPath; // Set as project root - can't navigate above this
     // Show file tree sidebar
     this.isFileTreeVisible = true;
     this.isOutlineVisible = false;
@@ -893,38 +919,33 @@ class Editor {
     });
     }
 
-    // Add parent directory item if not at root
-    const parentItem = document.createElement('div');
-    parentItem.className = 'file-item directory parent-dir';
-    parentItem.tabIndex = 0;
-    parentItem.innerHTML = '<span class="icon"></span><span class="name">..</span>';
+    // Add parent directory item if not at project root
+    const isAtProjectRoot = this.projectRoot && this.currentDirectory === this.projectRoot;
+    if (!isAtProjectRoot) {
+      const parentItem = document.createElement('div');
+      parentItem.className = 'file-item directory parent-dir';
+      parentItem.tabIndex = 0;
+      parentItem.innerHTML = '<span class="icon"></span><span class="name">..</span>';
 
-    const goUp = () => {
-      const parts = this.currentDirectory.split('/');
-      if (parts.length > 2) {
-        parts.pop();
-        this.currentDirectory = parts.join('/');
-        this.loadFileTree().then(() => {
-          const firstItem = this.fileTree.querySelector('.file-item');
-          if (firstItem) firstItem.focus();
-        });
-      }
-    };
-    parentItem.addEventListener('click', goUp);
-    parentItem.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-        e.preventDefault();
-        goUp();
-      } else if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        const next = parentItem.nextElementSibling;
-        if (next && next.classList.contains('file-item')) next.focus();
-      } else if (e.key === 'Escape') {
-        this.cm.focus();
-        this.focusedPane = 'editor';
-      }
-    });
-    this.fileTree.insertBefore(parentItem, this.fileTree.firstChild);
+      const goUp = () => {
+        this.navigateToParent();
+      };
+      parentItem.addEventListener('click', goUp);
+      parentItem.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+          e.preventDefault();
+          goUp();
+        } else if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          const next = parentItem.nextElementSibling;
+          if (next && next.classList.contains('file-item')) next.focus();
+        } else if (e.key === 'Escape') {
+          this.cm.focus();
+          this.focusedPane = 'editor';
+        }
+      });
+      this.fileTree.insertBefore(parentItem, this.fileTree.firstChild);
+    }
   }
 
   wrapSelection(before, after) {
@@ -1479,6 +1500,193 @@ class Editor {
     } else if (result.error) {
       alert(result.error);
     }
+  }
+
+  async showCommandPalette() {
+    // Remove existing palette if any
+    const existing = document.querySelector('.command-palette');
+    if (existing) {
+      existing.remove();
+      return;
+    }
+
+    // Define all commands
+    const commands = [
+      // File commands
+      { section: 'File', label: 'New Tab', shortcut: '⌘T', action: () => this.tabManager.createTab(null, '') },
+      { section: 'File', label: 'New Window', shortcut: '⌘⇧N', action: () => {} }, // Handled by main process
+      { section: 'File', label: 'Save', shortcut: '⌘S', action: () => window.vomit.saveContent(this.getValue()) },
+      { section: 'File', label: 'Close Tab', shortcut: '⌘W', action: () => this.tabManager.closeCurrentTab() },
+
+      // View commands
+      { section: 'View', label: 'Toggle Preview', shortcut: '⌘P', action: () => this.togglePreview() },
+      { section: 'View', label: 'Toggle Files', shortcut: '⌘E', action: () => this.toggleFileTree() },
+      { section: 'View', label: 'Toggle Outline', shortcut: '⌘⇧O', action: () => this.toggleOutline() },
+      { section: 'View', label: 'Toggle Line Numbers', shortcut: '⌘L', action: () => this.toggleLineNumbers() },
+      { section: 'View', label: 'Find in File', shortcut: '⌘F', action: () => this.cm.execCommand('find') },
+      { section: 'View', label: 'Find and Replace', shortcut: '⌘⌥F', action: () => this.cm.execCommand('replace') },
+      { section: 'View', label: 'Search in Files', shortcut: '⌘⇧F', action: () => this.toggleSearch() },
+
+      // Format commands
+      { section: 'Format', label: 'Bold', shortcut: '⌘B', action: () => this.wrapSelection('**', '**') },
+      { section: 'Format', label: 'Italic', shortcut: '⌘I', action: () => this.wrapSelection('*', '*') },
+      { section: 'Format', label: 'Code', shortcut: '⌘`', action: () => this.wrapSelection('`', '`') },
+      { section: 'Format', label: 'Link', shortcut: '⌘K', action: () => this.insertLink() },
+      { section: 'Format', label: 'Table', shortcut: '⌘⇧T', action: () => this.insertTable() },
+      { section: 'Format', label: 'Heading 1', shortcut: '⌘⇧1', action: () => this.insertAtLineStart('# ') },
+      { section: 'Format', label: 'Heading 2', shortcut: '⌘⇧2', action: () => this.insertAtLineStart('## ') },
+      { section: 'Format', label: 'Heading 3', shortcut: '⌘⇧3', action: () => this.insertAtLineStart('### ') },
+      { section: 'Format', label: 'Bullet List', action: () => this.insertAtLineStart('- ') },
+      { section: 'Format', label: 'Quote', shortcut: "⌘'", action: () => this.insertAtLineStart('> ') },
+      { section: 'Format', label: 'Horizontal Rule', shortcut: '⌘-', action: () => this.insertText('\n---\n') },
+      { section: 'Format', label: 'Insert Slide', shortcut: '⌘↵', action: () => this.insertSlide() },
+
+      // Navigation
+      { section: 'Navigation', label: 'Next Tab', shortcut: '⌘⇧]', action: () => this.tabManager.nextTab() },
+      { section: 'Navigation', label: 'Previous Tab', shortcut: '⌘⇧[', action: () => this.tabManager.prevTab() },
+      { section: 'Navigation', label: 'Go to Parent Folder', shortcut: '⌘↑', action: () => this.navigateToParent() },
+
+      // Presentation
+      { section: 'Presentation', label: 'Start Presentation', shortcut: '⌘⇧P', action: () => window.vomit.startPresentation() },
+      { section: 'Presentation', label: 'Start with Presenter View', shortcut: '⌘⌥P', action: () => window.vomit.startPresentationWithPresenter() },
+
+      // Help
+      { section: 'Help', label: 'Keyboard Shortcuts', shortcut: '⌘/', action: () => this.showShortcutsModal() },
+    ];
+
+    // Get recent files
+    let recentFiles = [];
+    if (window.vomit && window.vomit.getRecentFiles) {
+      recentFiles = await window.vomit.getRecentFiles();
+    }
+
+    // Add recent files as commands
+    recentFiles.forEach(file => {
+      commands.push({
+        section: 'Recent Files',
+        label: file.name,
+        sublabel: file.path,
+        action: () => window.vomit.openFile(file.path)
+      });
+    });
+
+    // Create palette UI
+    const palette = document.createElement('div');
+    palette.className = 'command-palette';
+
+    const content = document.createElement('div');
+    content.className = 'command-palette-content';
+
+    const input = document.createElement('input');
+    input.className = 'command-palette-input';
+    input.placeholder = 'Type a command or search...';
+
+    const results = document.createElement('div');
+    results.className = 'command-palette-results';
+
+    content.appendChild(input);
+    content.appendChild(results);
+    palette.appendChild(content);
+    document.body.appendChild(palette);
+
+    let selectedIndex = 0;
+    let filteredCommands = [...commands];
+
+    const renderResults = () => {
+      if (filteredCommands.length === 0) {
+        results.innerHTML = '<div class="command-palette-empty">No matching commands</div>';
+        return;
+      }
+
+      let html = '';
+      let currentSection = '';
+
+      filteredCommands.forEach((cmd, index) => {
+        if (cmd.section !== currentSection) {
+          currentSection = cmd.section;
+          html += `<div class="command-palette-section">${currentSection}</div>`;
+        }
+
+        const selected = index === selectedIndex ? 'selected' : '';
+        const shortcut = cmd.shortcut ? `<span class="shortcut">${cmd.shortcut}</span>` : '';
+        html += `<div class="command-palette-item ${selected}" data-index="${index}">
+          <span class="label">${cmd.label}</span>
+          ${shortcut}
+        </div>`;
+      });
+
+      results.innerHTML = html;
+
+      // Add click handlers
+      results.querySelectorAll('.command-palette-item').forEach(el => {
+        el.addEventListener('click', () => {
+          const idx = parseInt(el.dataset.index, 10);
+          executeCommand(idx);
+        });
+      });
+
+      // Scroll selected into view
+      const selected = results.querySelector('.selected');
+      if (selected) {
+        selected.scrollIntoView({ block: 'nearest' });
+      }
+    };
+
+    const filterCommands = (query) => {
+      if (!query.trim()) {
+        filteredCommands = [...commands];
+      } else {
+        const q = query.toLowerCase();
+        filteredCommands = commands.filter(cmd =>
+          cmd.label.toLowerCase().includes(q) ||
+          (cmd.section && cmd.section.toLowerCase().includes(q))
+        );
+      }
+      selectedIndex = 0;
+      renderResults();
+    };
+
+    const executeCommand = (index) => {
+      const cmd = filteredCommands[index];
+      if (cmd && cmd.action) {
+        palette.remove();
+        cmd.action();
+        this.cm.focus();
+      }
+    };
+
+    const close = () => {
+      palette.remove();
+      this.cm.focus();
+    };
+
+    // Event handlers
+    input.addEventListener('input', () => filterCommands(input.value));
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        selectedIndex = Math.min(selectedIndex + 1, filteredCommands.length - 1);
+        renderResults();
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        selectedIndex = Math.max(selectedIndex - 1, 0);
+        renderResults();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        executeCommand(selectedIndex);
+      } else if (e.key === 'Escape') {
+        close();
+      }
+    });
+
+    palette.addEventListener('click', (e) => {
+      if (e.target === palette) close();
+    });
+
+    // Initial render and focus
+    renderResults();
+    input.focus();
   }
 }
 

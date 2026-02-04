@@ -109,6 +109,11 @@ ipcRenderer.on('auto-save-changed', (event, enabled) => {
   window.dispatchEvent(new CustomEvent('vomit:auto-save-changed', { detail: enabled }));
 });
 
+// Command palette
+ipcRenderer.on('show-command-palette', () => {
+  window.dispatchEvent(new CustomEvent('vomit:show-command-palette'));
+});
+
 // Expose only the send methods (no callbacks needed)
 contextBridge.exposeInMainWorld('vomit', {
   watchFile: (filePath) => ipcRenderer.send('watch-file', filePath),
@@ -130,5 +135,7 @@ contextBridge.exposeInMainWorld('vomit', {
   showUnsavedChangesDialog: (filename) => ipcRenderer.invoke('show-unsaved-dialog', filename),
   requestSave: () => ipcRenderer.invoke('request-save'),
   reloadFile: (filePath) => ipcRenderer.invoke('reload-file', filePath),
-  getAutoSaveEnabled: () => ipcRenderer.invoke('get-auto-save-enabled')
+  getAutoSaveEnabled: () => ipcRenderer.invoke('get-auto-save-enabled'),
+  getRecentFiles: () => ipcRenderer.invoke('get-recent-files'),
+  hasLastSession: () => ipcRenderer.invoke('has-last-session')
 });

@@ -47,6 +47,42 @@
   --syntax-hr: #808080;
 }
 
+/* Dark Theme CodeMirror syntax */
+.theme-dark .CodeMirror .cm-keyword { color: #c586c0 !important; }     /* Purple - for if, then, etc */
+.theme-dark .CodeMirror .cm-def { color: #dcdcaa !important; }         /* Yellow - for variable definitions */
+.theme-dark .CodeMirror .cm-variable { color: #9cdcfe !important; }    /* Light blue - for variables */
+.theme-dark .CodeMirror .cm-variable-2 { color: #9cdcfe !important; }  /* Light blue */
+.theme-dark .CodeMirror .cm-variable-3 { color: #4ec9b0 !important; }  /* Teal */
+.theme-dark .CodeMirror .cm-property { color: #9cdcfe !important; }    /* Light blue */
+.theme-dark .CodeMirror .cm-operator { color: #d4d4d4 !important; }    /* White */
+.theme-dark .CodeMirror .cm-number { color: #b5cea8 !important; }      /* Light green */
+.theme-dark .CodeMirror .cm-string { color: #ce9178 !important; }      /* Orange - for strings */
+.theme-dark .CodeMirror .cm-string-2 { color: #ce9178 !important; }    /* Orange */
+.theme-dark .CodeMirror .cm-comment { color: #6a9955 !important; }     /* Green - for comments */
+.theme-dark .CodeMirror .cm-atom { color: #569cd6 !important; }        /* Blue */
+.theme-dark .CodeMirror .cm-builtin { color: #dcdcaa !important; }     /* Yellow - for builtins like echo */
+.theme-dark .CodeMirror .cm-tag { color: #569cd6 !important; }         /* Blue */
+.theme-dark .CodeMirror .cm-attribute { color: #9cdcfe !important; }   /* Light blue */
+.theme-dark .CodeMirror .cm-type { color: #4ec9b0 !important; }        /* Teal */
+.theme-dark .CodeMirror .cm-meta { color: #c586c0 !important; }        /* Purple */
+.theme-dark .CodeMirror .cm-qualifier { color: #4ec9b0 !important; }   /* Teal */
+
+/* Dark Theme highlight.js */
+.theme-dark .hljs {
+  color: #d4d4d4;
+  background: #2d2d2d;
+}
+.theme-dark .hljs-keyword { color: #c586c0; }
+.theme-dark .hljs-title { color: #dcdcaa; }
+.theme-dark .hljs-string { color: #ce9178; }
+.theme-dark .hljs-variable { color: #9cdcfe; }
+.theme-dark .hljs-comment { color: #6a9955; }
+.theme-dark .hljs-number { color: #b5cea8; }
+.theme-dark .hljs-built_in { color: #dcdcaa; }
+.theme-dark .hljs-attr { color: #9cdcfe; }
+.theme-dark .hljs-operator { color: #d4d4d4; }
+.theme-dark .hljs-punctuation { color: #d4d4d4; }
+
 /* Catppuccin Macchiato Theme */
 .theme-catppuccin {
   --bg-primary: #24273a;      /* Base */
@@ -103,6 +139,70 @@
   --syntax-hr: #d8dee9;
 }
 
+/* Nord Theme CodeMirror syntax */
+.theme-nord .CodeMirror .cm-keyword { color: #81a1c1 !important; }     /* Frost blue */
+.theme-nord .CodeMirror .cm-def { color: #88c0d0 !important; }         /* Frost cyan */
+.theme-nord .CodeMirror .cm-variable { color: #d8dee9 !important; }    /* Snow */
+.theme-nord .CodeMirror .cm-variable-2 { color: #ebcb8b !important; }  /* Yellow */
+.theme-nord .CodeMirror .cm-variable-3 { color: #ebcb8b !important; }  /* Yellow */
+.theme-nord .CodeMirror .cm-property { color: #88c0d0 !important; }    /* Frost cyan */
+.theme-nord .CodeMirror .cm-operator { color: #81a1c1 !important; }    /* Frost blue */
+.theme-nord .CodeMirror .cm-number { color: #b48ead !important; }      /* Purple */
+.theme-nord .CodeMirror .cm-string { color: #a3be8c !important; }      /* Green */
+.theme-nord .CodeMirror .cm-string-2 { color: #a3be8c !important; }    /* Green */
+.theme-nord .CodeMirror .cm-comment { color: #616e88 !important; }     /* Gray */
+.theme-nord .CodeMirror .cm-atom { color: #b48ead !important; }        /* Purple */
+.theme-nord .CodeMirror .cm-builtin { color: #88c0d0 !important; }     /* Frost cyan */
+.theme-nord .CodeMirror .cm-tag { color: #81a1c1 !important; }         /* Frost blue */
+.theme-nord .CodeMirror .cm-attribute { color: #8fbcbb !important; }   /* Frost teal */
+.theme-nord .CodeMirror .cm-type { color: #ebcb8b !important; }        /* Yellow */
+.theme-nord .CodeMirror .cm-meta { color: #5e81ac !important; }        /* Blue */
+.theme-nord .CodeMirror .cm-qualifier { color: #8fbcbb !important; }   /* Frost teal */
+
+/* Nord Theme highlight.js */
+.theme-nord .hljs {
+  color: #d8dee9;
+  background: #3b4252;
+}
+.theme-nord .hljs-keyword { color: #81a1c1; }
+.theme-nord .hljs-title { color: #88c0d0; }
+.theme-nord .hljs-string { color: #a3be8c; }
+.theme-nord .hljs-variable { color: #d8dee9; }
+.theme-nord .hljs-comment { color: #616e88; }
+.theme-nord .hljs-number { color: #b48ead; }
+.theme-nord .hljs-built_in { color: #88c0d0; }
+.theme-nord .hljs-attr { color: #8fbcbb; }
+.theme-nord .hljs-operator { color: #81a1c1; }
+.theme-nord .hljs-punctuation { color: #eceff4; }
+
+/* Tokyo Night Theme */
+.theme-tokyo-night {
+  --bg-primary: #1a1b26;      /* Background */
+  --bg-secondary: #16161e;    /* Background Dark */
+  --bg-tertiary: #24283b;     /* Background Highlight */
+  --text-primary: #c0caf5;    /* Foreground */
+  --text-secondary: #a9b1d6;  /* Foreground Alt */
+  --text-muted: #565f89;      /* Comment */
+  --accent-color: #7aa2f7;    /* Blue */
+  --accent-hover: #bb9af7;    /* Purple */
+  --border-color: #292e42;    /* Border */
+  --toolbar-bg: #16161e;
+  --editor-bg: #1a1b26;
+  --preview-bg: #16161e;
+  --code-bg: #24283b;
+  --scrollbar-track: #1a1b26;
+  --scrollbar-thumb: #292e42;
+  /* Syntax highlighting - Tokyo Night */
+  --syntax-header: #7aa2f7;   /* Blue */
+  --syntax-bold: #c0caf5;     /* Foreground */
+  --syntax-italic: #bb9af7;   /* Purple */
+  --syntax-link: #7dcfff;     /* Cyan */
+  --syntax-url: #e0af68;      /* Yellow */
+  --syntax-code: #9ece6a;     /* Green */
+  --syntax-quote: #565f89;    /* Comment */
+  --syntax-hr: #3b4261;       /* Dark3 */
+}
+
 /* Solarized Dark Theme */
 .theme-solarized {
   --bg-primary: #002b36;
@@ -130,6 +230,42 @@
   --syntax-quote: #6c71c4;
   --syntax-hr: #657b83;
 }
+
+/* Solarized Theme CodeMirror syntax */
+.theme-solarized .CodeMirror .cm-keyword { color: #859900 !important; }     /* Green */
+.theme-solarized .CodeMirror .cm-def { color: #268bd2 !important; }         /* Blue */
+.theme-solarized .CodeMirror .cm-variable { color: #b58900 !important; }    /* Yellow */
+.theme-solarized .CodeMirror .cm-variable-2 { color: #b58900 !important; }  /* Yellow */
+.theme-solarized .CodeMirror .cm-variable-3 { color: #cb4b16 !important; }  /* Orange */
+.theme-solarized .CodeMirror .cm-property { color: #268bd2 !important; }    /* Blue */
+.theme-solarized .CodeMirror .cm-operator { color: #93a1a1 !important; }    /* Base1 */
+.theme-solarized .CodeMirror .cm-number { color: #d33682 !important; }      /* Magenta */
+.theme-solarized .CodeMirror .cm-string { color: #2aa198 !important; }      /* Cyan */
+.theme-solarized .CodeMirror .cm-string-2 { color: #2aa198 !important; }    /* Cyan */
+.theme-solarized .CodeMirror .cm-comment { color: #586e75 !important; }     /* Base01 */
+.theme-solarized .CodeMirror .cm-atom { color: #d33682 !important; }        /* Magenta */
+.theme-solarized .CodeMirror .cm-builtin { color: #859900 !important; }     /* Green */
+.theme-solarized .CodeMirror .cm-tag { color: #268bd2 !important; }         /* Blue */
+.theme-solarized .CodeMirror .cm-attribute { color: #b58900 !important; }   /* Yellow */
+.theme-solarized .CodeMirror .cm-type { color: #b58900 !important; }        /* Yellow */
+.theme-solarized .CodeMirror .cm-meta { color: #cb4b16 !important; }        /* Orange */
+.theme-solarized .CodeMirror .cm-qualifier { color: #6c71c4 !important; }   /* Violet */
+
+/* Solarized Theme highlight.js */
+.theme-solarized .hljs {
+  color: #839496;
+  background: #073642;
+}
+.theme-solarized .hljs-keyword { color: #859900; }
+.theme-solarized .hljs-title { color: #268bd2; }
+.theme-solarized .hljs-string { color: #2aa198; }
+.theme-solarized .hljs-variable { color: #b58900; }
+.theme-solarized .hljs-comment { color: #586e75; }
+.theme-solarized .hljs-number { color: #d33682; }
+.theme-solarized .hljs-built_in { color: #859900; }
+.theme-solarized .hljs-attr { color: #b58900; }
+.theme-solarized .hljs-operator { color: #93a1a1; }
+.theme-solarized .hljs-punctuation { color: #93a1a1; }
 
 /* Presentation-specific theme overrides */
 .presentation .slide {
@@ -246,3 +382,39 @@
 .theme-catppuccin .CodeMirror .cm-tag { color: #8aadf4 !important; }         /* Blue */
 .theme-catppuccin .CodeMirror .cm-attribute { color: #eed49f !important; }   /* Yellow */
 .theme-catppuccin .CodeMirror .cm-type { color: #eed49f !important; }        /* Yellow */
+
+/* Tokyo Night CodeMirror syntax */
+.theme-tokyo-night .CodeMirror .cm-keyword { color: #9ece6a !important; }     /* Green - for echo, if, etc */
+.theme-tokyo-night .CodeMirror .cm-def { color: #e0af68 !important; }         /* Yellow - for variable definitions */
+.theme-tokyo-night .CodeMirror .cm-variable { color: #e0af68 !important; }    /* Yellow - for variables */
+.theme-tokyo-night .CodeMirror .cm-variable-2 { color: #e0af68 !important; }  /* Yellow - for variables */
+.theme-tokyo-night .CodeMirror .cm-variable-3 { color: #e0af68 !important; }  /* Yellow */
+.theme-tokyo-night .CodeMirror .cm-property { color: #7dcfff !important; }    /* Cyan */
+.theme-tokyo-night .CodeMirror .cm-operator { color: #89ddff !important; }    /* Cyan */
+.theme-tokyo-night .CodeMirror .cm-number { color: #ff9e64 !important; }      /* Orange */
+.theme-tokyo-night .CodeMirror .cm-string { color: #9ece6a !important; }      /* Green - for strings */
+.theme-tokyo-night .CodeMirror .cm-string-2 { color: #7dcfff !important; }    /* Cyan - for $() etc */
+.theme-tokyo-night .CodeMirror .cm-comment { color: #565f89 !important; }     /* Gray */
+.theme-tokyo-night .CodeMirror .cm-atom { color: #ff9e64 !important; }        /* Orange */
+.theme-tokyo-night .CodeMirror .cm-builtin { color: #9ece6a !important; }     /* Green - for builtins like echo */
+.theme-tokyo-night .CodeMirror .cm-tag { color: #7aa2f7 !important; }         /* Blue */
+.theme-tokyo-night .CodeMirror .cm-attribute { color: #e0af68 !important; }   /* Yellow */
+.theme-tokyo-night .CodeMirror .cm-type { color: #e0af68 !important; }        /* Yellow */
+.theme-tokyo-night .CodeMirror .cm-meta { color: #bb9af7 !important; }        /* Purple - for shebang */
+.theme-tokyo-night .CodeMirror .cm-qualifier { color: #7dcfff !important; }   /* Cyan */
+
+/* Tokyo Night highlight.js (for preview code blocks) */
+.theme-tokyo-night .hljs {
+  color: #c0caf5;
+  background: #24283b;
+}
+.theme-tokyo-night .hljs-keyword { color: #9ece6a; }
+.theme-tokyo-night .hljs-title { color: #7aa2f7; }
+.theme-tokyo-night .hljs-string { color: #9ece6a; }
+.theme-tokyo-night .hljs-variable { color: #e0af68; }
+.theme-tokyo-night .hljs-comment { color: #565f89; }
+.theme-tokyo-night .hljs-number { color: #ff9e64; }
+.theme-tokyo-night .hljs-built_in { color: #9ece6a; }
+.theme-tokyo-night .hljs-attr { color: #e0af68; }
+.theme-tokyo-night .hljs-operator { color: #89ddff; }
+.theme-tokyo-night .hljs-punctuation { color: #a9b1d6; }
