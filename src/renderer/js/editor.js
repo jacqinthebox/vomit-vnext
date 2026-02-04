@@ -25,6 +25,8 @@ class Editor {
     this.isOutlineVisible = false;
     this.isSearchVisible = false;
     this.isDirty = false;
+    this.isRestoringTab = false;
+    this.autoSaveEnabled = true; // Will be loaded from main process
     this.searchTimeout = null;
     this.autoSaveTimeout = null;
     this.pendingLineJump = null;
@@ -78,6 +80,10 @@ class Editor {
       this.updatePreview();
       this.updateStatus();
       this.updateOutline();
+
+      // Skip dirty marking if we're restoring a tab
+      if (this.isRestoringTab) return;
+
       this.isDirty = true;
       window.vomit.contentChanged(this.getValue());
 
@@ -288,6 +294,102 @@ class Editor {
         document.body.classList.add('split-view');
       }
     });
+
+    // Handle external file changes
+    window.addEventListener('vomit:file-changed-externally', async (e) => {
+      const changedPath = e.detail;
+      console.log('Editor: Received file-changed-externally for', changedPath);
+
+      // Check if this file is open in any tab
+      if (this.tabManager) {
+        const tab = this.tabManager.getTabByPath(changedPath);
+        if (tab) {
+          await this.handleExternalFileChange(tab);
+        }
+      } else if (this.currentFilePath === changedPath) {
+        await this.handleExternalFileChange(null);
+      }
+    });
+  }
+
+  async handleExternalFileChange(tab) {
+    const filePath = tab ? tab.filePath : this.currentFilePath;
+    const isDirty = tab ? tab.isDirty : this.isDirty;
+    const filename = filePath ? filePath.split('/').pop() : 'file';
+
+    if (isDirty) {
+      // Has local changes - ask user what to do
+      const result = await this.showExternalChangeDialog(filename);
+      if (result === 'reload') {
+        await this.reloadFileContent(filePath, tab);
+      }
+      // 'keep' - do nothing, keep local changes
+    } else {
+      // No local changes - auto-reload
+      await this.reloadFileContent(filePath, tab);
+    }
+  }
+
+  async showExternalChangeDialog(filename) {
+    return new Promise((resolve) => {
+      const modal = document.createElement('div');
+      modal.className = 'shortcuts-modal';
+      modal.innerHTML = `
+        <div class="shortcuts-content" style="max-width: 400px;">
+          <div class="shortcuts-header">
+            <h2>File Changed</h2>
+          </div>
+          <div style="padding: 16px;">
+            <p><strong>${filename}</strong> has been modified externally.</p>
+            <p style="margin-top: 8px;">You have unsaved changes. What would you like to do?</p>
+            <div style="display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end;">
+              <button class="dialog-btn" data-action="keep" style="padding: 8px 16px; cursor: pointer;">Keep My Changes</button>
+              <button class="dialog-btn dialog-btn-primary" data-action="reload" style="padding: 8px 16px; cursor: pointer; background: var(--accent-color); color: white; border: none; border-radius: 4px;">Reload File</button>
+            </div>
+          </div>
+        </div>
+      `;
+
+      document.body.appendChild(modal);
+
+      modal.querySelectorAll('.dialog-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          modal.remove();
+          resolve(btn.dataset.action);
+        });
+      });
+    });
+  }
+
+  async reloadFileContent(filePath, tab) {
+    const result = await window.vomit.reloadFile(filePath);
+    if (result.success) {
+      this.isRestoringTab = true;
+
+      if (tab && this.tabManager) {
+        // Update tab content
+        tab.content = result.content;
+        tab.isDirty = false;
+
+        // If this is the active tab, update the editor
+        if (this.tabManager.activeTabId === tab.id) {
+          this.cm.setValue(result.content);
+          this.isDirty = false;
+          this.updatePreview();
+          this.updateStatus();
+        }
+
+        this.tabManager.renderTabBar();
+      } else {
+        // No tabs, just update the editor
+        this.cm.setValue(result.content);
+        this.isDirty = false;
+        this.updatePreview();
+        this.updateStatus();
+      }
+
+      this.isRestoringTab = false;
+    }
   }
 
   toggleFileTree() {
@@ -505,39 +607,50 @@ class Editor {
     });
   }
 
-  setupAutoSave() {
+  async setupAutoSave() {
+    // Load initial auto-save state from main process
+    if (window.vomit && window.vomit.getAutoSaveEnabled) {
+      this.autoSaveEnabled = await window.vomit.getAutoSaveEnabled();
+    }
+
+    // Listen for auto-save toggle changes
+    window.addEventListener('vomit:auto-save-changed', (e) => {
+      this.autoSaveEnabled = e.detail;
+      console.log('Auto-save', this.autoSaveEnabled ? 'enabled' : 'disabled');
+    });
+
     // Save when window loses focus
     window.addEventListener('blur', () => {
-      if (this.isDirty && this.currentFilePath) {
+      if (this.autoSaveEnabled && this.isDirty && this.currentFilePath) {
         this.autoSave();
       }
     });
 
     // Save before closing/navigating away
     window.addEventListener('beforeunload', (e) => {
-      if (this.isDirty && this.currentFilePath) {
+      if (this.autoSaveEnabled && this.isDirty && this.currentFilePath) {
         this.autoSave();
       }
     });
   }
 
   scheduleAutoSave() {
-    // Only auto-save if file has been saved before (has a path)
-    if (!this.currentFilePath) return;
+    // Only auto-save if enabled and file has been saved before (has a path)
+    if (!this.autoSaveEnabled || !this.currentFilePath) return;
 
     // Clear existing timeout
     clearTimeout(this.autoSaveTimeout);
 
     // Schedule save for 2 seconds after last change
     this.autoSaveTimeout = setTimeout(() => {
-      if (this.isDirty) {
+      if (this.isDirty && this.autoSaveEnabled) {
         this.autoSave();
       }
     }, 2000);
   }
 
   autoSave() {
-    if (!this.isDirty || !this.currentFilePath) return;
+    if (!this.autoSaveEnabled || !this.isDirty || !this.currentFilePath) return;
 
     window.vomit.saveContent(this.getValue());
     this.isDirty = false;

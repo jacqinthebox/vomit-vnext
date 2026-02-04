@@ -9,17 +9,21 @@ app.setName('Vomit');
 const store = new Store({
   defaults: {
     theme: 'default',
-    lastOpenedFile: null
+    lastOpenedFile: null,
+    autoSaveEnabled: true
   }
 });
 
 let mainWindow = null;
 let currentTheme = store.get('theme');
+let autoSaveEnabled = store.get('autoSaveEnabled');
 let presentationWindow = null;
 let presenterWindow = null;
 let currentFilePath = null;
 let currentContent = '';
 let editorWindows = []; // Track all editor windows
+let fileWatcher = null; // Watch for external file changes
+let lastKnownMtime = null; // Track file modification time
 
 function createMainWindow() {
   const iconPath = path.join(__dirname, '../icon.png');
@@ -247,6 +251,19 @@ function createMenu() {
           label: 'Export to PDF...',
           accelerator: 'CmdOrCtrl+E',
           click: () => exportToPDF()
+        },
+        { type: 'separator' },
+        {
+          label: 'Auto Save',
+          type: 'checkbox',
+          checked: autoSaveEnabled,
+          click: (menuItem) => {
+            autoSaveEnabled = menuItem.checked;
+            store.set('autoSaveEnabled', autoSaveEnabled);
+            if (mainWindow) {
+              mainWindow.webContents.send('auto-save-changed', autoSaveEnabled);
+            }
+          }
         }
       ]
     },
@@ -612,6 +629,59 @@ async function openFolder() {
   }
 }
 
+let watchedFilePath = null;
+
+function stopFileWatcher() {
+  if (watchedFilePath) {
+    try {
+      fs.unwatchFile(watchedFilePath);
+      console.log('File watcher: Stopped watching', watchedFilePath);
+    } catch (err) {
+      // Ignore errors when unwatching
+    }
+    watchedFilePath = null;
+  }
+  lastKnownMtime = null;
+}
+
+function startFileWatcher(filePath) {
+  // Don't restart if already watching this file
+  if (watchedFilePath === filePath) {
+    return;
+  }
+
+  stopFileWatcher();
+
+  if (!filePath || !fs.existsSync(filePath)) {
+    console.log('File watcher: No file to watch');
+    return;
+  }
+
+  try {
+    // Get initial modification time
+    lastKnownMtime = fs.statSync(filePath).mtimeMs;
+    watchedFilePath = filePath;
+    console.log('File watcher: Started watching', filePath, 'mtime:', lastKnownMtime);
+
+    // Use fs.watchFile (polling) instead of fs.watch - more reliable on macOS
+    fs.watchFile(filePath, { interval: 1000 }, (curr, prev) => {
+      console.log('File watcher: Change detected', prev.mtimeMs, '->', curr.mtimeMs);
+
+      // File was modified externally
+      if (curr.mtimeMs !== lastKnownMtime && curr.mtimeMs !== prev.mtimeMs) {
+        console.log('File watcher: External change confirmed, sending notification');
+        lastKnownMtime = curr.mtimeMs;
+
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('file-changed-externally', filePath);
+        }
+      }
+    });
+  } catch (err) {
+    console.error('Failed to watch file:', err);
+  }
+}
+
 function loadFile(filePath) {
   try {
     const content = fs.readFileSync(filePath, 'utf-8');
@@ -620,6 +690,9 @@ function loadFile(filePath) {
 
     // Save as last opened file
     store.set('lastOpenedFile', filePath);
+
+    // Start watching for external changes
+    startFileWatcher(filePath);
 
     if (mainWindow) {
       const basePath = path.dirname(filePath);
@@ -658,8 +731,26 @@ function writeFile(content) {
   if (!currentFilePath) return;
 
   try {
+    // Check if file was modified externally before saving
+    if (fs.existsSync(currentFilePath) && lastKnownMtime) {
+      const currentMtime = fs.statSync(currentFilePath).mtimeMs;
+      if (currentMtime !== lastKnownMtime) {
+        // File changed externally - notify renderer instead of overwriting
+        console.log('writeFile: File changed externally, notifying renderer');
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('file-changed-externally', currentFilePath);
+        }
+        return; // Don't overwrite
+      }
+    }
+
     fs.writeFileSync(currentFilePath, content, 'utf-8');
     currentContent = content;
+
+    // Update mtime to avoid detecting our own save as external change
+    lastKnownMtime = fs.statSync(currentFilePath).mtimeMs;
+    console.log('writeFile: Saved, new mtime:', lastKnownMtime);
+
     if (mainWindow) {
       mainWindow.setTitle(`${path.basename(currentFilePath)} - Vomit`);
     }
@@ -855,6 +946,36 @@ ipcMain.on('content-changed', (event, content) => {
   }
   if (presenterWindow) {
     presenterWindow.webContents.send('update-content', content);
+  }
+});
+
+// Update file watcher when active file changes (e.g., tab switch)
+ipcMain.on('watch-file', (event, filePath) => {
+  console.log('Main: Received watch-file request for', filePath);
+  startFileWatcher(filePath);
+});
+
+// Get auto-save state
+ipcMain.handle('get-auto-save-enabled', () => {
+  return autoSaveEnabled;
+});
+
+// Reload file from disk (for external changes)
+ipcMain.handle('reload-file', async (event, filePath) => {
+  const pathToReload = filePath || currentFilePath;
+  if (!pathToReload || !fs.existsSync(pathToReload)) {
+    return { success: false, error: 'File not found' };
+  }
+
+  try {
+    const content = fs.readFileSync(pathToReload, 'utf-8');
+    lastKnownMtime = fs.statSync(pathToReload).mtimeMs;
+    if (pathToReload === currentFilePath) {
+      currentContent = content;
+    }
+    return { success: true, content };
+  } catch (err) {
+    return { success: false, error: err.message };
   }
 });
 

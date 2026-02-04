@@ -99,8 +99,19 @@ ipcRenderer.on('go-to-tab', (event, tabNumber) => {
   window.dispatchEvent(new CustomEvent('vomit:go-to-tab', { detail: tabNumber }));
 });
 
+// File watching events
+ipcRenderer.on('file-changed-externally', (event, filePath) => {
+  window.dispatchEvent(new CustomEvent('vomit:file-changed-externally', { detail: filePath }));
+});
+
+// Auto-save toggle
+ipcRenderer.on('auto-save-changed', (event, enabled) => {
+  window.dispatchEvent(new CustomEvent('vomit:auto-save-changed', { detail: enabled }));
+});
+
 // Expose only the send methods (no callbacks needed)
 contextBridge.exposeInMainWorld('vomit', {
+  watchFile: (filePath) => ipcRenderer.send('watch-file', filePath),
   openExternal: (url) => ipcRenderer.invoke('open-external', url),
   getDirectoryContents: (dirPath) => ipcRenderer.invoke('get-directory-contents', dirPath),
   getCurrentDirectory: () => ipcRenderer.invoke('get-current-directory'),
@@ -117,5 +128,7 @@ contextBridge.exposeInMainWorld('vomit', {
   goToSlide: (index) => ipcRenderer.send('go-to-slide', index),
   saveImage: (imageData, suggestedName) => ipcRenderer.invoke('save-image', imageData, suggestedName),
   showUnsavedChangesDialog: (filename) => ipcRenderer.invoke('show-unsaved-dialog', filename),
-  requestSave: () => ipcRenderer.invoke('request-save')
+  requestSave: () => ipcRenderer.invoke('request-save'),
+  reloadFile: (filePath) => ipcRenderer.invoke('reload-file', filePath),
+  getAutoSaveEnabled: () => ipcRenderer.invoke('get-auto-save-enabled')
 });

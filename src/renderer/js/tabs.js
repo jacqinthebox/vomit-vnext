@@ -60,6 +60,9 @@ class TabManager {
   restoreTabState(tab) {
     const cm = this.editor.cm;
 
+    // Prevent change handler from marking tab dirty during restore
+    this.editor.isRestoringTab = true;
+
     // Set content (this clears history)
     cm.setValue(tab.content);
 
@@ -86,6 +89,9 @@ class TabManager {
     this.editor.currentFilePath = tab.filePath;
     this.editor.basePath = tab.filePath ? tab.filePath.substring(0, tab.filePath.lastIndexOf('/')) : null;
     this.editor.isDirty = tab.isDirty;
+
+    // Re-enable change handler
+    this.editor.isRestoringTab = false;
 
     // Update preview and status
     this.editor.updatePreview();
@@ -114,6 +120,11 @@ class TabManager {
 
     // Update window title
     this.updateWindowTitle();
+
+    // Notify main process to watch this file
+    if (tab.filePath && window.vomit && window.vomit.watchFile) {
+      window.vomit.watchFile(tab.filePath);
+    }
   }
 
   getTabByPath(filePath) {
