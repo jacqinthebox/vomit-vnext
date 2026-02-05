@@ -137,5 +137,10 @@ contextBridge.exposeInMainWorld('vomit', {
   reloadFile: (filePath) => ipcRenderer.invoke('reload-file', filePath),
   getAutoSaveEnabled: () => ipcRenderer.invoke('get-auto-save-enabled'),
   getRecentFiles: () => ipcRenderer.invoke('get-recent-files'),
-  hasLastSession: () => ipcRenderer.invoke('has-last-session')
+  hasLastSession: () => ipcRenderer.invoke('has-last-session'),
+  newFile: () => ipcRenderer.send('new-file'),
+  newPresentation: () => ipcRenderer.send('new-presentation'),
+  openFileDialog: () => ipcRenderer.send('open-file-dialog'),
+  openFolderDialog: () => ipcRenderer.send('open-folder-dialog'),
+  saveAs: () => ipcRenderer.send('save-as')
 });

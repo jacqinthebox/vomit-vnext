@@ -296,6 +296,7 @@ class Editor {
         case 'h2': this.insertAtLineStart('## '); break;
         case 'h3': this.insertAtLineStart('### '); break;
         case 'bullet': this.insertAtLineStart('- '); break;
+        case 'numbered': this.insertAtLineStart('1. '); break;
         case 'quote': this.insertAtLineStart('> '); break;
         case 'hr': this.insertText('\n---\n'); break;
         case 'slide': this.insertSlide(); break;
@@ -486,8 +487,10 @@ class Editor {
           </div>
           <div class="shortcuts-section">
             <h3>View</h3>
+            <div class="shortcut-row"><kbd>Cmd+.</kbd> Command palette</div>
             <div class="shortcut-row"><kbd>Cmd+P</kbd> Toggle preview</div>
             <div class="shortcut-row"><kbd>Cmd+E</kbd> Toggle explorer</div>
+            <div class="shortcut-row"><kbd>Cmd+Shift+O</kbd> Toggle outline</div>
             <div class="shortcut-row"><kbd>Cmd+L</kbd> Toggle line numbers</div>
             <div class="shortcut-row"><kbd>Cmd+F</kbd> Find in file</div>
             <div class="shortcut-row"><kbd>Cmd+Option+F</kbd> Find and replace</div>
@@ -498,9 +501,14 @@ class Editor {
             <h3>Format</h3>
             <div class="shortcut-row"><kbd>Cmd+B</kbd> Bold</div>
             <div class="shortcut-row"><kbd>Cmd+I</kbd> Italic</div>
+            <div class="shortcut-row"><kbd>Cmd+`</kbd> Code</div>
             <div class="shortcut-row"><kbd>Cmd+K</kbd> Insert link</div>
             <div class="shortcut-row"><kbd>Cmd+Shift+T</kbd> Insert table</div>
             <div class="shortcut-row"><kbd>Cmd+Shift+1/2/3</kbd> Headings</div>
+            <div class="shortcut-row"><kbd>Cmd+Shift+8</kbd> Bullet list</div>
+            <div class="shortcut-row"><kbd>Cmd+Shift+9</kbd> Numbered list</div>
+            <div class="shortcut-row"><kbd>Cmd+'</kbd> Quote</div>
+            <div class="shortcut-row"><kbd>Cmd+-</kbd> Horizontal rule</div>
             <div class="shortcut-row"><kbd>Cmd+Enter</kbd> New slide</div>
           </div>
           <div class="shortcuts-section">
@@ -1515,7 +1523,12 @@ class Editor {
       // File commands
       { section: 'File', label: 'New Tab', shortcut: '⌘T', action: () => this.tabManager.createTab(null, '') },
       { section: 'File', label: 'New Window', shortcut: '⌘⇧N', action: () => {} }, // Handled by main process
+      { section: 'File', label: 'New File', shortcut: '⌘N', action: () => window.vomit.newFile() },
+      { section: 'File', label: 'New Presentation', shortcut: '⌘⌥N', action: () => window.vomit.newPresentation() },
+      { section: 'File', label: 'Open File', shortcut: '⌘O', action: () => window.vomit.openFileDialog() },
+      { section: 'File', label: 'Open Folder', shortcut: '⌘⌥O', action: () => window.vomit.openFolderDialog() },
       { section: 'File', label: 'Save', shortcut: '⌘S', action: () => window.vomit.saveContent(this.getValue()) },
+      { section: 'File', label: 'Save As', shortcut: '⌘⇧S', action: () => window.vomit.saveAs() },
       { section: 'File', label: 'Close Tab', shortcut: '⌘W', action: () => this.tabManager.closeCurrentTab() },
 
       // View commands
@@ -1536,7 +1549,8 @@ class Editor {
       { section: 'Format', label: 'Heading 1', shortcut: '⌘⇧1', action: () => this.insertAtLineStart('# ') },
       { section: 'Format', label: 'Heading 2', shortcut: '⌘⇧2', action: () => this.insertAtLineStart('## ') },
       { section: 'Format', label: 'Heading 3', shortcut: '⌘⇧3', action: () => this.insertAtLineStart('### ') },
-      { section: 'Format', label: 'Bullet List', action: () => this.insertAtLineStart('- ') },
+      { section: 'Format', label: 'Bullet List', shortcut: '⌘⇧8', action: () => this.insertAtLineStart('- ') },
+      { section: 'Format', label: 'Numbered List', shortcut: '⌘⇧9', action: () => this.insertAtLineStart('1. ') },
       { section: 'Format', label: 'Quote', shortcut: "⌘'", action: () => this.insertAtLineStart('> ') },
       { section: 'Format', label: 'Horizontal Rule', shortcut: '⌘-', action: () => this.insertText('\n---\n') },
       { section: 'Format', label: 'Insert Slide', shortcut: '⌘↵', action: () => this.insertSlide() },

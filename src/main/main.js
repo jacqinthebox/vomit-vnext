@@ -381,8 +381,13 @@ function createMenu() {
         { type: 'separator' },
         {
           label: 'Bullet List',
-          accelerator: 'CmdOrCtrl+L',
+          accelerator: 'CmdOrCtrl+Shift+8',
           click: () => sendFormatCommand('bullet')
+        },
+        {
+          label: 'Numbered List',
+          accelerator: 'CmdOrCtrl+Shift+9',
+          click: () => sendFormatCommand('numbered')
         },
         {
           label: 'Quote',
@@ -1041,6 +1046,13 @@ ipcMain.handle('has-last-session', () => {
   const lastFile = store.get('lastOpenedFile');
   return (lastFolder && fs.existsSync(lastFolder)) || (lastFile && fs.existsSync(lastFile));
 });
+
+// Command palette IPC handlers
+ipcMain.on('new-file', () => newFile());
+ipcMain.on('new-presentation', () => newPresentation());
+ipcMain.on('open-file-dialog', () => openFile());
+ipcMain.on('open-folder-dialog', () => openFolder());
+ipcMain.on('save-as', () => saveFileAs());
 
 // Reload file from disk (for external changes)
 ipcMain.handle('reload-file', async (event, filePath) => {
