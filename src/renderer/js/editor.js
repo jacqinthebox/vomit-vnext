@@ -501,7 +501,7 @@ class Editor {
             <h3>Format</h3>
             <div class="shortcut-row"><kbd>Cmd+B</kbd> Bold</div>
             <div class="shortcut-row"><kbd>Cmd+I</kbd> Italic</div>
-            <div class="shortcut-row"><kbd>Cmd+`</kbd> Code</div>
+            <div class="shortcut-row"><kbd>Cmd+\`</kbd> Code</div>
             <div class="shortcut-row"><kbd>Cmd+K</kbd> Insert link</div>
             <div class="shortcut-row"><kbd>Cmd+Shift+T</kbd> Insert table</div>
             <div class="shortcut-row"><kbd>Cmd+Shift+1/2/3</kbd> Headings</div>
