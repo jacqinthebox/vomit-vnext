@@ -1,21 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
-  <!-- Purple rounded square background with padding -->
-  <rect x="82" y="82" width="860" height="860" rx="160" ry="160" fill="#8b5cf6"/>
+  <!-- Purple rounded square - 850px (~83% of canvas) -->
+  <rect x="87" y="87" width="850" height="850" rx="155" ry="155" fill="#8b5cf6"/>
 
-  <!-- Simplified vomit face in white - centered -->
+  <!-- Vomit face in white -->
   <g fill="white">
     <!-- Face circle -->
-    <circle cx="512" cy="512" r="235" fill="none" stroke="white" stroke-width="38"/>
+    <circle cx="512" cy="512" r="232" fill="none" stroke="white" stroke-width="35"/>
 
     <!-- Left eye (X shaped - sick) -->
-    <line x1="400" y1="435" x2="468" y2="503" stroke="white" stroke-width="34" stroke-linecap="round"/>
-    <line x1="468" y1="435" x2="400" y2="503" stroke="white" stroke-width="34" stroke-linecap="round"/>
+    <line x1="396" y1="438" x2="466" y2="508" stroke="white" stroke-width="31" stroke-linecap="round"/>
+    <line x1="466" y1="438" x2="396" y2="508" stroke="white" stroke-width="31" stroke-linecap="round"/>
 
     <!-- Right eye (X shaped - sick) -->
-    <line x1="556" y1="435" x2="624" y2="503" stroke="white" stroke-width="34" stroke-linecap="round"/>
-    <line x1="624" y1="435" x2="556" y2="503" stroke="white" stroke-width="34" stroke-linecap="round"/>
+    <line x1="558" y1="438" x2="628" y2="508" stroke="white" stroke-width="31" stroke-linecap="round"/>
+    <line x1="628" y1="438" x2="558" y2="508" stroke="white" stroke-width="31" stroke-linecap="round"/>
 
     <!-- Open mouth -->
-    <ellipse cx="512" cy="610" rx="76" ry="59" fill="white"/>
+    <ellipse cx="512" cy="608" rx="72" ry="56" fill="white"/>
   </g>
 </svg>
