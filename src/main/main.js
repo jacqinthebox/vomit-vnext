@@ -49,6 +49,144 @@ let fileWatcher = null; // Watch for external file changes
 let lastKnownMtime = null; // Track file modification time
 let claudeProcess = null; // Track running Claude CLI process
 
+// Cache for available AI tools
+let availableAITools = {
+  claude: null,
+  ollama: null,
+  ollamaModels: []
+};
+
+// Find executable path (works on both Apple Silicon and Intel Macs)
+function findExecutable(name) {
+  const { execSync } = require('child_process');
+  try {
+    const result = execSync(`which ${name}`, { encoding: 'utf-8' }).trim();
+    return result || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+// Get list of installed Ollama models
+function getOllamaModels(ollamaPath) {
+  if (!ollamaPath) return [];
+  const { execSync } = require('child_process');
+  try {
+    const result = execSync(`"${ollamaPath}" list`, { encoding: 'utf-8' });
+    const lines = result.trim().split('\n');
+    // Skip header line, parse model names
+    const models = [];
+    for (let i = 1; i < lines.length; i++) {
+      const parts = lines[i].split(/\s+/);
+      if (parts[0]) {
+        models.push(parts[0]); // Model name is first column
+      }
+    }
+    return models;
+  } catch (e) {
+    console.log('Failed to get Ollama models:', e.message);
+    return [];
+  }
+}
+
+// Detect available AI tools
+function detectAITools() {
+  availableAITools.claude = findExecutable('claude');
+  availableAITools.ollama = findExecutable('ollama');
+  availableAITools.ollamaModels = getOllamaModels(availableAITools.ollama);
+
+  console.log('Available AI tools:', {
+    claude: availableAITools.claude ? 'found' : 'not found',
+    ollama: availableAITools.ollama ? 'found' : 'not found',
+    ollamaModels: availableAITools.ollamaModels
+  });
+
+  return availableAITools;
+}
+
+// Build AI submenu dynamically based on available tools
+function buildAISubmenu() {
+  const submenu = [
+    {
+      label: 'Toggle AI Terminal',
+      accelerator: 'Ctrl+`',
+      click: () => {
+        if (mainWindow) {
+          mainWindow.webContents.send('toggle-terminal');
+        }
+      }
+    },
+    { type: 'separator' },
+    {
+      label: 'Refresh Available Models',
+      click: () => {
+        detectAITools();
+        createMenu();
+      }
+    },
+    { type: 'separator' }
+  ];
+
+  const hasAnything = availableAITools.claude || availableAITools.ollamaModels.length > 0;
+
+  if (!hasAnything) {
+    submenu.push({
+      label: 'No AI tools found',
+      enabled: false
+    });
+    submenu.push({
+      label: 'Install Claude CLI or Ollama',
+      enabled: false
+    });
+    return submenu;
+  }
+
+  // Add Claude if available
+  if (availableAITools.claude) {
+    submenu.push({
+      label: 'Claude',
+      type: 'radio',
+      checked: store.get('aiProvider') === 'claude',
+      click: () => setAIProvider('claude')
+    });
+  } else {
+    submenu.push({
+      label: 'Claude (not installed)',
+      enabled: false
+    });
+  }
+
+  submenu.push({ type: 'separator' });
+
+  // Add Ollama models if available
+  if (availableAITools.ollamaModels.length > 0) {
+    for (const model of availableAITools.ollamaModels) {
+      submenu.push({
+        label: `Ollama: ${model}`,
+        type: 'radio',
+        checked: store.get('aiProvider') === 'ollama' && store.get('ollamaModel') === model,
+        click: () => setAIProvider('ollama', model)
+      });
+    }
+  } else if (availableAITools.ollama) {
+    submenu.push({
+      label: 'Ollama (no models installed)',
+      enabled: false
+    });
+    submenu.push({
+      label: 'Run: ollama pull llama3.2',
+      enabled: false
+    });
+  } else {
+    submenu.push({
+      label: 'Ollama (not installed)',
+      enabled: false
+    });
+  }
+
+  return submenu;
+}
+
 function createMainWindow() {
   const iconPath = path.join(__dirname, '../icon.png');
 
@@ -583,67 +721,7 @@ function createMenu() {
     },
     {
       label: 'AI',
-      submenu: [
-        {
-          label: 'Toggle AI Terminal',
-          accelerator: 'Ctrl+`',
-          click: () => {
-            if (mainWindow) {
-              mainWindow.webContents.send('toggle-terminal');
-            }
-          }
-        },
-        { type: 'separator' },
-        {
-          label: 'Claude',
-          type: 'radio',
-          checked: store.get('aiProvider') === 'claude',
-          click: () => setAIProvider('claude')
-        },
-        { type: 'separator' },
-        {
-          label: 'Ollama: llama3.3:70b',
-          type: 'radio',
-          checked: store.get('aiProvider') === 'ollama' && store.get('ollamaModel') === 'llama3.3:70b',
-          click: () => setAIProvider('ollama', 'llama3.3:70b')
-        },
-        {
-          label: 'Ollama: llama3.2',
-          type: 'radio',
-          checked: store.get('aiProvider') === 'ollama' && store.get('ollamaModel') === 'llama3.2',
-          click: () => setAIProvider('ollama', 'llama3.2')
-        },
-        {
-          label: 'Ollama: llama3.1',
-          type: 'radio',
-          checked: store.get('aiProvider') === 'ollama' && store.get('ollamaModel') === 'llama3.1',
-          click: () => setAIProvider('ollama', 'llama3.1')
-        },
-        {
-          label: 'Ollama: qwen2.5:32b',
-          type: 'radio',
-          checked: store.get('aiProvider') === 'ollama' && store.get('ollamaModel') === 'qwen2.5:32b',
-          click: () => setAIProvider('ollama', 'qwen2.5:32b')
-        },
-        {
-          label: 'Ollama: qwen2.5:14b',
-          type: 'radio',
-          checked: store.get('aiProvider') === 'ollama' && store.get('ollamaModel') === 'qwen2.5:14b',
-          click: () => setAIProvider('ollama', 'qwen2.5:14b')
-        },
-        {
-          label: 'Ollama: qwen2.5:7b',
-          type: 'radio',
-          checked: store.get('aiProvider') === 'ollama' && store.get('ollamaModel') === 'qwen2.5:7b',
-          click: () => setAIProvider('ollama', 'qwen2.5:7b')
-        },
-        {
-          label: 'Ollama: phi3',
-          type: 'radio',
-          checked: store.get('aiProvider') === 'ollama' && store.get('ollamaModel') === 'phi3',
-          click: () => setAIProvider('ollama', 'phi3')
-        }
-      ]
+      submenu: buildAISubmenu()
     },
     {
       label: 'Window',
@@ -1414,11 +1492,29 @@ ipcMain.handle('claude-execute', async (event, command, cwd) => {
     let execPath, args;
 
     if (aiProvider === 'ollama') {
-      execPath = '/opt/homebrew/bin/ollama';
+      execPath = availableAITools.ollama;
+      if (!execPath) {
+        mainWindow.webContents.send('claude-error', 'Ollama is not installed. Install it from https://ollama.ai\n');
+        mainWindow.webContents.send('claude-done', 1);
+        resolve(1);
+        return;
+      }
+      if (availableAITools.ollamaModels.length === 0) {
+        mainWindow.webContents.send('claude-error', `No Ollama models found. Run: ollama pull ${ollamaModel}\n`);
+        mainWindow.webContents.send('claude-done', 1);
+        resolve(1);
+        return;
+      }
       args = ['run', ollamaModel, command];
       console.log('Spawning Ollama with model:', ollamaModel);
     } else {
-      execPath = '/opt/homebrew/bin/claude';
+      execPath = availableAITools.claude;
+      if (!execPath) {
+        mainWindow.webContents.send('claude-error', 'Claude CLI is not installed. Install it from https://claude.ai/code\n');
+        mainWindow.webContents.send('claude-done', 1);
+        resolve(1);
+        return;
+      }
       args = ['-p', command];
       console.log('Spawning Claude CLI');
     }
@@ -1506,6 +1602,7 @@ ipcMain.handle('create-directory', async (event, dirPath) => {
 
 // App lifecycle
 app.whenReady().then(() => {
+  detectAITools(); // Detect available AI tools before creating menu
   createMenu();
   createMainWindow();
 
