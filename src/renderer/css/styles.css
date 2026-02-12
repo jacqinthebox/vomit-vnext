@@ -1200,3 +1200,185 @@ li.CodeMirror-hint-active {
   text-align: center;
   color: var(--text-muted);
 }
+
+/* Claude Terminal Panel */
+#terminal-pane {
+  position: fixed;
+  bottom: 24px; /* above status bar */
+  left: 0;
+  right: 0;
+  height: 300px;
+  background: var(--bg-primary);
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  z-index: 100;
+}
+
+#terminal-pane.hidden {
+  display: none;
+}
+
+#terminal-resize {
+  height: 4px;
+  background: transparent;
+  cursor: ns-resize;
+  position: absolute;
+  top: -2px;
+  left: 0;
+  right: 0;
+}
+
+#terminal-resize:hover {
+  background: var(--accent-color);
+}
+
+#terminal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.terminal-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.terminal-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.terminal-actions button {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px 8px;
+  font-size: 12px;
+  border-radius: 4px;
+}
+
+.terminal-actions button:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+#terminal-close {
+  font-size: 16px;
+  line-height: 1;
+}
+
+#terminal-output {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  font-family: 'SF Mono', 'Monaco', 'Menlo', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.terminal-line {
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+}
+
+.terminal-output-stream {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: inherit;
+  margin: 4px 0;
+  padding: 0;
+}
+
+.terminal-line {
+  margin-bottom: 4px;
+}
+
+.terminal-line.input {
+  color: var(--accent-color);
+}
+
+.terminal-line.output {
+  color: var(--text-primary);
+}
+
+.terminal-line.error {
+  color: #ef4444;
+}
+
+.terminal-line.system {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Syntax-highlighted code blocks in terminal */
+.terminal-code {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 12px;
+  margin: 8px 0;
+  overflow-x: auto;
+}
+
+.terminal-code code {
+  font-family: 'SF Mono', Menlo, Monaco, monospace;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.terminal-code code.hljs {
+  background: transparent;
+  padding: 0;
+}
+
+/* Inline code in terminal */
+.terminal-inline-code {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-family: 'SF Mono', Menlo, Monaco, monospace;
+  font-size: 0.9em;
+}
+
+#terminal-input-container {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-top: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  flex-shrink: 0;
+}
+
+.terminal-prompt {
+  color: var(--accent-color);
+  margin-right: 8px;
+  font-family: 'SF Mono', 'Monaco', 'Menlo', monospace;
+}
+
+#terminal-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-family: 'SF Mono', 'Monaco', 'Menlo', monospace;
+  font-size: 13px;
+  outline: none;
+}
+
+#terminal-input::placeholder {
+  color: var(--text-muted);
+}
+
+/* Adjust main container when terminal is visible */
+body:has(#terminal-pane:not(.hidden)) #main-container {
+  height: calc(100vh - 324px); /* 300px terminal + 24px status bar */
+}

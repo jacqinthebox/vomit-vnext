@@ -1,6 +1,8 @@
 const { app, BrowserWindow, Menu, dialog, ipcMain, globalShortcut, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { spawn } = require('child_process');
+const pty = require('node-pty');
 const Store = require('electron-store');
 
 // Set app name for About dialog
@@ -11,7 +13,9 @@ const store = new Store({
     theme: 'default',
     lastOpenedFile: null,
     autoSaveEnabled: true,
-    recentFiles: []
+    recentFiles: [],
+    aiProvider: 'claude',  // 'claude' or 'ollama'
+    ollamaModel: 'llama3.2' // default Ollama model
   }
 });
 
@@ -43,6 +47,7 @@ let currentContent = '';
 let editorWindows = []; // Track all editor windows
 let fileWatcher = null; // Watch for external file changes
 let lastKnownMtime = null; // Track file modification time
+let claudeProcess = null; // Track running Claude CLI process
 
 function createMainWindow() {
   const iconPath = path.join(__dirname, '../icon.png');
@@ -485,6 +490,7 @@ function createMenu() {
             }
           }
         },
+        { type: 'separator' },
         {
           label: 'Go to Parent Folder',
           accelerator: 'CmdOrCtrl+Up',
@@ -573,6 +579,70 @@ function createMenu() {
         { label: 'Nord', click: () => setTheme('nord') },
         { label: 'Tokyo Night', click: () => setTheme('tokyo-night') },
         { label: 'Solarized Dark', click: () => setTheme('solarized') }
+      ]
+    },
+    {
+      label: 'AI',
+      submenu: [
+        {
+          label: 'Toggle AI Terminal',
+          accelerator: 'Ctrl+`',
+          click: () => {
+            if (mainWindow) {
+              mainWindow.webContents.send('toggle-terminal');
+            }
+          }
+        },
+        { type: 'separator' },
+        {
+          label: 'Claude',
+          type: 'radio',
+          checked: store.get('aiProvider') === 'claude',
+          click: () => setAIProvider('claude')
+        },
+        { type: 'separator' },
+        {
+          label: 'Ollama: llama3.3:70b',
+          type: 'radio',
+          checked: store.get('aiProvider') === 'ollama' && store.get('ollamaModel') === 'llama3.3:70b',
+          click: () => setAIProvider('ollama', 'llama3.3:70b')
+        },
+        {
+          label: 'Ollama: llama3.2',
+          type: 'radio',
+          checked: store.get('aiProvider') === 'ollama' && store.get('ollamaModel') === 'llama3.2',
+          click: () => setAIProvider('ollama', 'llama3.2')
+        },
+        {
+          label: 'Ollama: llama3.1',
+          type: 'radio',
+          checked: store.get('aiProvider') === 'ollama' && store.get('ollamaModel') === 'llama3.1',
+          click: () => setAIProvider('ollama', 'llama3.1')
+        },
+        {
+          label: 'Ollama: qwen2.5:32b',
+          type: 'radio',
+          checked: store.get('aiProvider') === 'ollama' && store.get('ollamaModel') === 'qwen2.5:32b',
+          click: () => setAIProvider('ollama', 'qwen2.5:32b')
+        },
+        {
+          label: 'Ollama: qwen2.5:14b',
+          type: 'radio',
+          checked: store.get('aiProvider') === 'ollama' && store.get('ollamaModel') === 'qwen2.5:14b',
+          click: () => setAIProvider('ollama', 'qwen2.5:14b')
+        },
+        {
+          label: 'Ollama: qwen2.5:7b',
+          type: 'radio',
+          checked: store.get('aiProvider') === 'ollama' && store.get('ollamaModel') === 'qwen2.5:7b',
+          click: () => setAIProvider('ollama', 'qwen2.5:7b')
+        },
+        {
+          label: 'Ollama: phi3',
+          type: 'radio',
+          checked: store.get('aiProvider') === 'ollama' && store.get('ollamaModel') === 'phi3',
+          click: () => setAIProvider('ollama', 'phi3')
+        }
       ]
     },
     {
@@ -995,6 +1065,20 @@ function setTheme(theme) {
   }
 }
 
+function setAIProvider(provider, model) {
+  store.set('aiProvider', provider);
+  if (model) {
+    store.set('ollamaModel', model);
+  }
+  // Rebuild menu to update radio button state
+  createMenu();
+
+  // Notify renderer of the change
+  if (mainWindow) {
+    mainWindow.webContents.send('ai-provider-changed', { provider, model: model || store.get('ollamaModel') });
+  }
+}
+
 function showHelp() {
   shell.openExternal('https://github.com/jacqinthebox/vomit-vnext/blob/main/README.md');
 }
@@ -1311,6 +1395,113 @@ ipcMain.handle('request-save', async () => {
     // The save will happen, resolve after a short delay
     setTimeout(resolve, 200);
   });
+});
+
+// AI CLI execution using node-pty for proper TTY support (Claude or Ollama)
+ipcMain.handle('claude-execute', async (event, command, cwd) => {
+  const aiProvider = store.get('aiProvider');
+  const ollamaModel = store.get('ollamaModel');
+
+  console.log('AI execute called with:', { command, cwd, aiProvider, ollamaModel });
+
+  return new Promise((resolve, reject) => {
+    // Kill any existing process
+    if (claudeProcess) {
+      claudeProcess.kill();
+      claudeProcess = null;
+    }
+
+    let execPath, args;
+
+    if (aiProvider === 'ollama') {
+      execPath = '/opt/homebrew/bin/ollama';
+      args = ['run', ollamaModel, command];
+      console.log('Spawning Ollama with model:', ollamaModel);
+    } else {
+      execPath = '/opt/homebrew/bin/claude';
+      args = ['-p', command];
+      console.log('Spawning Claude CLI');
+    }
+
+    // Spawn AI CLI with PTY for proper terminal emulation
+    claudeProcess = pty.spawn(execPath, args, {
+      name: 'xterm-color',
+      cols: 120,
+      rows: 30,
+      cwd: cwd,
+      env: { ...process.env }
+    });
+
+    console.log('AI pty process spawned, pid:', claudeProcess.pid);
+
+    claudeProcess.onData((data) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        // Clean ANSI escape codes and spinner characters but preserve newlines and spaces
+        let cleanData = data
+          .replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '')  // ANSI escape codes
+          .replace(/\x1b\[\?[0-9;]*[a-zA-Z]/g, '') // Extended ANSI codes
+          .replace(/[\u2800-\u28FF]/g, '')          // Braille spinner characters
+          .replace(/\[K/g, '')                      // Erase line
+          .replace(/\[1G/g, '')                     // Move cursor
+          .replace(/\[2K/g, '')                     // Clear line
+          .replace(/\r\n/g, '\n')                   // Normalize line endings
+          .replace(/\r/g, '');                      // Remove remaining carriage returns
+
+        // Send if there's any content (including just newlines for formatting)
+        if (cleanData.length > 0) {
+          mainWindow.webContents.send('claude-output', cleanData);
+        }
+      }
+    });
+
+    claudeProcess.onExit(({ exitCode }) => {
+      console.log('AI process exited with code:', exitCode);
+      claudeProcess = null;
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('claude-done', exitCode);
+      }
+      resolve(exitCode);
+    });
+  });
+});
+
+ipcMain.on('claude-stop', () => {
+  if (claudeProcess) {
+    claudeProcess.kill(); // node-pty kill() method
+    claudeProcess = null;
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('claude-done', -1);
+    }
+  }
+});
+
+ipcMain.handle('get-ai-provider', () => {
+  return {
+    provider: store.get('aiProvider'),
+    model: store.get('ollamaModel')
+  };
+});
+
+// File operations for pseudonymization
+ipcMain.handle('read-file', async (event, filePath) => {
+  return fs.readFileSync(filePath, 'utf-8');
+});
+
+ipcMain.handle('write-file', async (event, filePath, content) => {
+  // Ensure directory exists
+  const dir = path.dirname(filePath);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  fs.writeFileSync(filePath, content, 'utf-8');
+  return true;
+});
+
+ipcMain.handle('create-directory', async (event, dirPath) => {
+  if (!fs.existsSync(dirPath)) {
+    fs.mkdirSync(dirPath, { recursive: true });
+  }
+  return true;
 });
 
 // App lifecycle

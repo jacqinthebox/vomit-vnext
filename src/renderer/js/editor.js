@@ -16,6 +16,15 @@ class Editor {
     this.searchResults = document.getElementById('search-results');
     this.sidebarResize = document.getElementById('sidebar-resize');
 
+    // Terminal elements
+    this.terminalPane = document.getElementById('terminal-pane');
+    this.terminalOutput = document.getElementById('terminal-output');
+    this.terminalInput = document.getElementById('terminal-input');
+    this.terminalClear = document.getElementById('terminal-clear');
+    this.terminalStop = document.getElementById('terminal-stop');
+    this.terminalClose = document.getElementById('terminal-close');
+    this.terminalResize = document.getElementById('terminal-resize');
+
     this.currentFilePath = null;
     this.basePath = null;
     this.currentDirectory = null;
@@ -34,11 +43,20 @@ class Editor {
     this.selectedSearchIndex = -1;
     this.focusedPane = 'editor'; // 'editor' or 'sidebar'
 
+    // Terminal state
+    this.isTerminalVisible = false;
+    this.isClaudeRunning = false;
+    this.terminalHistory = [];
+    this.terminalHistoryIndex = -1;
+    this.pseudoCollecting = false;
+    this.pseudoOutput = '';
+
     this.setupEditor();
     this.setupAutoSave();
     this.setupSidebarResize();
     this.setupSearch();
     this.setupKeyboardNavigation();
+    this.setupTerminal();
     this.setupIPC();
 
     // Initialize TabManager
@@ -329,6 +347,37 @@ class Editor {
     // Command palette
     window.addEventListener('vomit:show-command-palette', () => {
       this.showCommandPalette();
+    });
+
+    // Terminal events
+    window.addEventListener('vomit:toggle-terminal', () => {
+      this.toggleTerminal();
+    });
+
+    window.addEventListener('vomit:claude-output', (e) => {
+      // Collect output during pseudonymization
+      if (this.pseudoCollecting) {
+        this.pseudoOutput += e.detail;
+      } else {
+        this.appendTerminalOutput(e.detail, 'output');
+      }
+    });
+
+    window.addEventListener('vomit:claude-error', (e) => {
+      this.appendTerminalOutput(e.detail, 'error');
+    });
+
+    window.addEventListener('vomit:claude-done', (e) => {
+      this.isClaudeRunning = false;
+      this.terminalStop.classList.add('hidden');
+      this.markOutputComplete();
+      if (e.detail === -1) {
+        this.appendTerminalOutput('Stopped.', 'system');
+      }
+    });
+
+    window.addEventListener('vomit:ai-provider-changed', (e) => {
+      this.updateTerminalTitle(e.detail);
     });
   }
 
@@ -1701,6 +1750,487 @@ class Editor {
     // Initial render and focus
     renderResults();
     input.focus();
+  }
+
+  // Terminal methods
+  setupTerminal() {
+    if (!this.terminalInput) return;
+
+    // Handle input submission
+    this.terminalInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        const command = this.terminalInput.value.trim();
+        if (command) {
+          this.executeClaudeCommand(command);
+          this.terminalHistory.push(command);
+          this.terminalHistoryIndex = this.terminalHistory.length;
+          this.terminalInput.value = '';
+        }
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (this.terminalHistoryIndex > 0) {
+          this.terminalHistoryIndex--;
+          this.terminalInput.value = this.terminalHistory[this.terminalHistoryIndex] || '';
+        }
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (this.terminalHistoryIndex < this.terminalHistory.length - 1) {
+          this.terminalHistoryIndex++;
+          this.terminalInput.value = this.terminalHistory[this.terminalHistoryIndex] || '';
+        } else {
+          this.terminalHistoryIndex = this.terminalHistory.length;
+          this.terminalInput.value = '';
+        }
+      } else if (e.key === 'c' && e.ctrlKey) {
+        // Ctrl+C to stop running process
+        e.preventDefault();
+        if (this.isClaudeRunning) {
+          this.stopAI();
+        }
+      } else if (e.key === 'Escape') {
+        if (this.isClaudeRunning) {
+          this.stopAI();
+        } else {
+          this.toggleTerminal();
+        }
+      } else if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        this.clearTerminal();
+      }
+    });
+
+    // Clear button
+    this.terminalClear.addEventListener('click', () => {
+      this.clearTerminal();
+    });
+
+    // Stop button
+    this.terminalStop.addEventListener('click', () => {
+      window.vomit.claudeStop();
+    });
+
+    // Close button
+    this.terminalClose.addEventListener('click', () => {
+      this.toggleTerminal();
+    });
+
+    // Terminal resize
+    this.setupTerminalResize();
+
+    // Initialize terminal title based on AI provider
+    this.initTerminalTitle();
+
+    // Global Ctrl+C handler for terminal
+    this.terminalPane.addEventListener('keydown', (e) => {
+      if (e.key === 'c' && e.ctrlKey && this.isClaudeRunning) {
+        e.preventDefault();
+        this.stopAI();
+      }
+    });
+
+    // Also listen on document level when terminal is visible
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'c' && e.ctrlKey && this.isTerminalVisible && this.isClaudeRunning) {
+        e.preventDefault();
+        this.stopAI();
+      }
+    });
+  }
+
+  setupTerminalResize() {
+    if (!this.terminalResize) return;
+
+    let isResizing = false;
+    let startY = 0;
+    let startHeight = 0;
+
+    this.terminalResize.addEventListener('mousedown', (e) => {
+      isResizing = true;
+      startY = e.clientY;
+      startHeight = this.terminalPane.offsetHeight;
+      document.body.style.cursor = 'ns-resize';
+      document.body.style.userSelect = 'none';
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isResizing) return;
+      const delta = startY - e.clientY;
+      const newHeight = Math.max(100, Math.min(600, startHeight + delta));
+      this.terminalPane.style.height = `${newHeight}px`;
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (isResizing) {
+        isResizing = false;
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      }
+    });
+  }
+
+  toggleTerminal() {
+    this.isTerminalVisible = !this.isTerminalVisible;
+    this.terminalPane.classList.toggle('hidden', !this.isTerminalVisible);
+
+    if (this.isTerminalVisible) {
+      this.terminalInput.focus();
+    } else {
+      this.cm.focus();
+    }
+  }
+
+  async executeClaudeCommand(command) {
+    // Get working directory - prefer project root, fall back to current file's directory
+    const cwd = this.projectRoot || this.currentDirectory;
+
+    if (!cwd) {
+      this.appendTerminalOutput('Error: No project folder open. Open a folder first with Cmd+Alt+O.', 'error');
+      return;
+    }
+
+    // Check for /pseudo command
+    if (command === '/pseudo' || command === '/pseudo doc') {
+      await this.pseudonymizeCurrentDoc(cwd);
+      return;
+    }
+    if (command === '/pseudo all') {
+      await this.runPseudonymization(cwd);
+      return;
+    }
+
+    let finalCommand = command;
+
+    // Check for /doc prefix to include document context
+    if (command.startsWith('/doc ')) {
+      const docContent = this.getValue();
+      const userPrompt = command.substring(5); // Remove '/doc '
+      finalCommand = `Here is the document I'm working on:\n\n---\n${docContent}\n---\n\nUser request: ${userPrompt}`;
+      this.appendTerminalOutput(`❯ ${userPrompt} (with document context)`, 'input');
+    } else {
+      this.appendTerminalOutput(`❯ ${command}`, 'input');
+    }
+
+    this.isClaudeRunning = true;
+    this.terminalStop.classList.remove('hidden');
+
+    try {
+      await window.vomit.claudeExecute(finalCommand, cwd);
+    } catch (err) {
+      this.appendTerminalOutput(`Error: ${err.message}`, 'error');
+      this.isClaudeRunning = false;
+      this.terminalStop.classList.add('hidden');
+    }
+  }
+
+  async pseudonymizeCurrentDoc(cwd) {
+    this.appendTerminalOutput('❯ /pseudo', 'input');
+    this.appendTerminalOutput('Pseudonymizing current document...', 'system');
+
+    const docContent = this.getValue();
+    if (!docContent.trim()) {
+      this.appendTerminalOutput('Error: Document is empty.', 'error');
+      return;
+    }
+
+    const pseudoPrompt = `You are a pseudonymization tool. Replace ALL sensitive data in this document with realistic fake data:
+
+- Email addresses → fake@example.com format
+- IP addresses → 10.0.0.x or 192.168.x.x ranges
+- Server names/hostnames → server-001, app-server-prod, etc.
+- FQDNs → *.example.com or *.internal.local
+- URLs → https://example.com/...
+- API keys/secrets → FAKE_API_KEY_XXXXX
+- Passwords → FAKE_PASSWORD_XXXXX
+- AWS/Azure/GCP resource IDs → fake resource IDs
+- Database connection strings → fake connection strings
+- Usernames → user001, admin001, etc.
+
+Keep the document structure and syntax valid. Output ONLY the pseudonymized content, no explanations.
+
+Document:
+\`\`\`
+${docContent}
+\`\`\``;
+
+    this.isClaudeRunning = true;
+    this.terminalStop.classList.remove('hidden');
+
+    try {
+      await window.vomit.claudeExecute(pseudoPrompt, cwd);
+    } catch (err) {
+      this.appendTerminalOutput(`Error: ${err.message}`, 'error');
+      this.isClaudeRunning = false;
+      this.terminalStop.classList.add('hidden');
+    }
+  }
+
+  async runPseudonymization(cwd) {
+    this.appendTerminalOutput('❯ /pseudo', 'input');
+    this.appendTerminalOutput('Starting batch pseudonymization...', 'system');
+
+    // File extensions to process
+    const targetExtensions = ['.tf', '.yaml', '.yml', '.json', '.md', '.env', '.sh', '.ps1', '.py', '.js', '.ts'];
+
+    try {
+      // Get all files recursively
+      const files = await this.getFilesRecursively(cwd, targetExtensions);
+
+      if (files.length === 0) {
+        this.appendTerminalOutput('No files found to pseudonymize.', 'system');
+        return;
+      }
+
+      this.appendTerminalOutput(`Found ${files.length} files to process.`, 'system');
+
+      // Create output directory
+      const outputDir = `${cwd}/pseudonymized`;
+      await window.vomit.createDirectory(outputDir);
+
+      const pseudoPrompt = `You are a pseudonymization tool. Replace ALL sensitive data in this file with realistic fake data:
+
+- Email addresses → fake@example.com format
+- IP addresses → 10.0.0.x or 192.168.x.x ranges
+- Server names/hostnames → server-001, app-server-prod, etc.
+- FQDNs → *.example.com or *.internal.local
+- URLs → https://example.com/...
+- API keys/secrets → FAKE_API_KEY_XXXXX
+- Passwords → FAKE_PASSWORD_XXXXX
+- AWS/Azure/GCP resource IDs → fake resource IDs
+- Database connection strings → fake connection strings
+- Usernames → user001, admin001, etc.
+
+Keep the file structure and syntax valid. Output ONLY the pseudonymized file content, no explanations.
+
+File content:
+`;
+
+      let processed = 0;
+      for (const file of files) {
+        this.appendTerminalOutput(`Processing: ${file.relativePath}`, 'system');
+
+        try {
+          const content = await window.vomit.readFile(file.path);
+          const fullPrompt = pseudoPrompt + '\n```\n' + content + '\n```';
+
+          // Collect the AI response
+          this.pseudoOutput = '';
+          this.pseudoCollecting = true;
+
+          await window.vomit.claudeExecute(fullPrompt, cwd);
+
+          // Wait for completion
+          await this.waitForAIComplete();
+
+          // Save pseudonymized content
+          const outputPath = `${outputDir}/${file.relativePath}`;
+          await window.vomit.writeFile(outputPath, this.pseudoOutput);
+
+          processed++;
+          this.appendTerminalOutput(`✓ Saved: pseudonymized/${file.relativePath}`, 'output');
+          this.markOutputComplete();
+        } catch (err) {
+          this.appendTerminalOutput(`✗ Error processing ${file.relativePath}: ${err.message}`, 'error');
+        }
+      }
+
+      this.appendTerminalOutput(`\nDone! Processed ${processed}/${files.length} files.`, 'system');
+      this.appendTerminalOutput(`Output saved to: ${outputDir}`, 'system');
+
+    } catch (err) {
+      this.appendTerminalOutput(`Error: ${err.message}`, 'error');
+    }
+  }
+
+  async getFilesRecursively(dir, extensions) {
+    const files = [];
+
+    const scan = async (currentDir, relativePath = '') => {
+      const items = await window.vomit.getDirectoryContents(currentDir);
+
+      for (const item of items) {
+        if (item.name.startsWith('.')) continue; // Skip hidden
+        if (item.name === 'pseudonymized') continue; // Skip output dir
+        if (item.name === 'node_modules') continue; // Skip node_modules
+
+        const itemRelativePath = relativePath ? `${relativePath}/${item.name}` : item.name;
+
+        if (item.isDirectory) {
+          await scan(item.path, itemRelativePath);
+        } else {
+          const ext = '.' + item.name.split('.').pop().toLowerCase();
+          if (extensions.includes(ext)) {
+            files.push({ path: item.path, relativePath: itemRelativePath });
+          }
+        }
+      }
+    };
+
+    await scan(dir);
+    return files;
+  }
+
+  waitForAIComplete() {
+    return new Promise((resolve) => {
+      const checkComplete = () => {
+        if (!this.isClaudeRunning) {
+          this.pseudoCollecting = false;
+          resolve();
+        } else {
+          setTimeout(checkComplete, 100);
+        }
+      };
+      checkComplete();
+    });
+  }
+
+  appendTerminalOutput(text, type = 'output') {
+    // For streaming output, append to a single div element (not pre, to allow nested code blocks)
+    if (type === 'output') {
+      let outputDiv = this.terminalOutput.querySelector('.terminal-output-stream:not(.complete)');
+      if (!outputDiv) {
+        outputDiv = document.createElement('div');
+        outputDiv.className = 'terminal-line terminal-output-stream output';
+        this.terminalOutput.appendChild(outputDiv);
+      }
+      outputDiv.textContent += text;
+      this.terminalOutput.scrollTop = this.terminalOutput.scrollHeight;
+      return;
+    }
+
+    const line = document.createElement('div');
+    line.className = `terminal-line ${type}`;
+    line.textContent = text;
+    this.terminalOutput.appendChild(line);
+    this.terminalOutput.scrollTop = this.terminalOutput.scrollHeight;
+  }
+
+  markOutputComplete() {
+    const outputStream = this.terminalOutput.querySelector('.terminal-output-stream:not(.complete)');
+    if (outputStream) {
+      outputStream.classList.add('complete');
+
+      // Apply syntax highlighting to code blocks
+      this.highlightCodeBlocks(outputStream);
+    }
+  }
+
+  highlightCodeBlocks(element) {
+    const text = element.textContent;
+
+    // Check if there's any markdown to process
+    const hasCodeBlocks = /```[\s\S]*?```/.test(text);
+    const hasInlineCode = /`[^`]+`/.test(text);
+
+    if (!hasCodeBlocks && !hasInlineCode) {
+      return;
+    }
+
+    // First, handle fenced code blocks (```language\n...```)
+    // Then handle inline code (`...`)
+    let html = '';
+    let remaining = text;
+
+    // Process fenced code blocks first
+    const codeBlockRegex = /```(\w*)\n?([\s\S]*?)```/g;
+    let lastIndex = 0;
+    let match;
+
+    while ((match = codeBlockRegex.exec(text)) !== null) {
+      // Add text before the code block (with inline code processed)
+      const textBefore = text.slice(lastIndex, match.index);
+      html += this.processInlineCode(textBefore);
+
+      // Add highlighted code block
+      const language = match[1] || '';
+      const code = match[2];
+
+      if (window.hljs && language) {
+        try {
+          const highlighted = window.hljs.highlight(code, { language: language, ignoreIllegals: true });
+          html += `<pre class="terminal-code"><code class="hljs language-${language}">${highlighted.value}</code></pre>`;
+        } catch (e) {
+          // Fallback to auto-detection
+          try {
+            const highlighted = window.hljs.highlightAuto(code);
+            html += `<pre class="terminal-code"><code class="hljs">${highlighted.value}</code></pre>`;
+          } catch (e2) {
+            html += `<pre class="terminal-code"><code>${this.escapeHtml(code)}</code></pre>`;
+          }
+        }
+      } else if (window.hljs) {
+        try {
+          const highlighted = window.hljs.highlightAuto(code);
+          html += `<pre class="terminal-code"><code class="hljs">${highlighted.value}</code></pre>`;
+        } catch (e) {
+          html += `<pre class="terminal-code"><code>${this.escapeHtml(code)}</code></pre>`;
+        }
+      } else {
+        html += `<pre class="terminal-code"><code>${this.escapeHtml(code)}</code></pre>`;
+      }
+
+      lastIndex = match.index + match[0].length;
+    }
+
+    // Add remaining text after last code block (with inline code processed)
+    html += this.processInlineCode(text.slice(lastIndex));
+
+    // Replace content with formatted HTML
+    element.innerHTML = html;
+  }
+
+  processInlineCode(text) {
+    // Replace inline code `...` with styled <code> elements
+    // But first escape HTML, then process backticks
+    const parts = text.split(/(`[^`]+`)/g);
+    let result = '';
+
+    for (const part of parts) {
+      if (part.startsWith('`') && part.endsWith('`') && part.length > 2) {
+        // This is inline code
+        const code = part.slice(1, -1);
+        result += `<code class="terminal-inline-code">${this.escapeHtml(code)}</code>`;
+      } else {
+        // Regular text
+        result += this.escapeHtml(part);
+      }
+    }
+
+    return result;
+  }
+
+  escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  clearTerminal() {
+    this.terminalOutput.innerHTML = '';
+  }
+
+  stopAI() {
+    window.vomit.claudeStop();
+    this.pseudoCollecting = false;
+    this.appendTerminalOutput('^C', 'system');
+  }
+
+  updateTerminalTitle(aiInfo) {
+    const titleEl = this.terminalPane.querySelector('.terminal-title');
+    if (titleEl) {
+      if (aiInfo.provider === 'ollama') {
+        titleEl.textContent = `Ollama: ${aiInfo.model}`;
+      } else {
+        titleEl.textContent = 'Claude Terminal';
+      }
+    }
+  }
+
+  async initTerminalTitle() {
+    if (window.vomit && window.vomit.getAIProvider) {
+      const aiInfo = await window.vomit.getAIProvider();
+      this.updateTerminalTitle(aiInfo);
+    }
   }
 }
 

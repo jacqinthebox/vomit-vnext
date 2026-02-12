@@ -114,6 +114,27 @@ ipcRenderer.on('show-command-palette', () => {
   window.dispatchEvent(new CustomEvent('vomit:show-command-palette'));
 });
 
+// Claude Terminal events
+ipcRenderer.on('toggle-terminal', () => {
+  window.dispatchEvent(new CustomEvent('vomit:toggle-terminal'));
+});
+
+ipcRenderer.on('claude-output', (event, data) => {
+  window.dispatchEvent(new CustomEvent('vomit:claude-output', { detail: data }));
+});
+
+ipcRenderer.on('claude-error', (event, data) => {
+  window.dispatchEvent(new CustomEvent('vomit:claude-error', { detail: data }));
+});
+
+ipcRenderer.on('claude-done', (event, code) => {
+  window.dispatchEvent(new CustomEvent('vomit:claude-done', { detail: code }));
+});
+
+ipcRenderer.on('ai-provider-changed', (event, data) => {
+  window.dispatchEvent(new CustomEvent('vomit:ai-provider-changed', { detail: data }));
+});
+
 // Expose only the send methods (no callbacks needed)
 contextBridge.exposeInMainWorld('vomit', {
   watchFile: (filePath) => ipcRenderer.send('watch-file', filePath),
@@ -142,5 +163,13 @@ contextBridge.exposeInMainWorld('vomit', {
   newPresentation: () => ipcRenderer.send('new-presentation'),
   openFileDialog: () => ipcRenderer.send('open-file-dialog'),
   openFolderDialog: () => ipcRenderer.send('open-folder-dialog'),
-  saveAs: () => ipcRenderer.send('save-as')
+  saveAs: () => ipcRenderer.send('save-as'),
+  // AI CLI methods
+  claudeExecute: (command, cwd) => ipcRenderer.invoke('claude-execute', command, cwd),
+  claudeStop: () => ipcRenderer.send('claude-stop'),
+  getAIProvider: () => ipcRenderer.invoke('get-ai-provider'),
+  // File operations for pseudonymization
+  readFile: (filePath) => ipcRenderer.invoke('read-file', filePath),
+  writeFile: (filePath, content) => ipcRenderer.invoke('write-file', filePath, content),
+  createDirectory: (dirPath) => ipcRenderer.invoke('create-directory', dirPath)
 });

@@ -45,6 +45,23 @@
       </div>
     </div>
 
+    <div id="terminal-pane" class="hidden">
+      <div id="terminal-resize"></div>
+      <div id="terminal-header">
+        <span class="terminal-title">Claude Terminal</span>
+        <div class="terminal-actions">
+          <button id="terminal-clear" title="Clear (Cmd+K)">Clear</button>
+          <button id="terminal-stop" title="Stop" class="hidden">Stop</button>
+          <button id="terminal-close" title="Close">&times;</button>
+        </div>
+      </div>
+      <div id="terminal-output"></div>
+      <div id="terminal-input-container">
+        <span class="terminal-prompt">❯</span>
+        <input type="text" id="terminal-input" placeholder="Ask AI... (use /doc to include document)" autocomplete="off">
+      </div>
+    </div>
+
     <div id="statusbar">
       <span id="status-file">Untitled</span>
       <span id="status-slides">0 slides</span>
