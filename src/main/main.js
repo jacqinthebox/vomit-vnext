@@ -60,7 +60,7 @@ let availableAITools = {
 function findExecutable(name) {
   const { execSync } = require('child_process');
   try {
-    const result = execSync(`which ${name}`, { encoding: 'utf-8' }).trim();
+    const result = execSync(`which ${name}`, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }).trim();
     return result || null;
   } catch (e) {
     return null;
@@ -72,7 +72,7 @@ function getOllamaModels(ollamaPath) {
   if (!ollamaPath) return [];
   const { execSync } = require('child_process');
   try {
-    const result = execSync(`"${ollamaPath}" list`, { encoding: 'utf-8' });
+    const result = execSync(`"${ollamaPath}" list`, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'], timeout: 5000 });
     const lines = result.trim().split('\n');
     // Skip header line, parse model names
     const models = [];
@@ -84,7 +84,6 @@ function getOllamaModels(ollamaPath) {
     }
     return models;
   } catch (e) {
-    console.log('Failed to get Ollama models:', e.message);
     return [];
   }
 }
@@ -113,22 +112,6 @@ function buildAISubmenu() {
       click: () => {
         if (mainWindow) {
           mainWindow.webContents.send('toggle-terminal');
-        }
-      }
-    },
-    { type: 'separator' },
-    {
-      label: 'Refresh Available Models',
-      click: () => {
-        try {
-          detectAITools();
-          createMenu();
-          if (mainWindow && !mainWindow.isDestroyed()) {
-            mainWindow.webContents.send('claude-output', 'Models refreshed.\n');
-            mainWindow.webContents.send('claude-done', 0);
-          }
-        } catch (e) {
-          console.error('Failed to refresh models:', e);
         }
       }
     },
