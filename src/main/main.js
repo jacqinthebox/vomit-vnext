@@ -120,8 +120,16 @@ function buildAISubmenu() {
     {
       label: 'Refresh Available Models',
       click: () => {
-        detectAITools();
-        createMenu();
+        try {
+          detectAITools();
+          createMenu();
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('claude-output', 'Models refreshed.\n');
+            mainWindow.webContents.send('claude-done', 0);
+          }
+        } catch (e) {
+          console.error('Failed to refresh models:', e);
+        }
       }
     },
     { type: 'separator' }
