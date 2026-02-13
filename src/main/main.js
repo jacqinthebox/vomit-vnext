@@ -91,10 +91,12 @@ function detectAITools() {
   availableAITools.ollama = findExecutable('ollama');
   availableAITools.ollamaModels = getOllamaModels(availableAITools.ollama);
 
-  console.log('Ollama:', {
-    installed: availableAITools.ollama ? 'yes' : 'no',
-    models: availableAITools.ollamaModels
-  });
+  try {
+    console.log('Ollama:', {
+      installed: availableAITools.ollama ? 'yes' : 'no',
+      models: availableAITools.ollamaModels
+    });
+  } catch (e) {}
 
   return availableAITools;
 }
@@ -1143,7 +1145,7 @@ ipcMain.on('content-changed', (event, content) => {
 
 // Update file watcher when active file changes (e.g., tab switch)
 ipcMain.on('watch-file', (event, filePath) => {
-  console.log('Main: Received watch-file request for', filePath);
+  try { console.log('Main: Received watch-file request for', filePath); } catch (e) {}
   startFileWatcher(filePath);
 });
 
@@ -1437,7 +1439,7 @@ ipcMain.handle('request-save', async () => {
 ipcMain.handle('claude-execute', async (event, command, cwd) => {
   const ollamaModel = store.get('ollamaModel');
 
-  console.log('Ollama execute called with:', { command, cwd, ollamaModel });
+  try { console.log('Ollama execute called with:', { command, cwd, ollamaModel }); } catch (e) {}
 
   return new Promise((resolve, reject) => {
     // Kill any existing process
@@ -1461,7 +1463,6 @@ ipcMain.handle('claude-execute', async (event, command, cwd) => {
     }
 
     const args = ['run', ollamaModel, command];
-    console.log('Spawning Ollama with model:', ollamaModel);
 
     // Spawn Ollama with PTY for proper terminal emulation
     ollamaProcess = pty.spawn(execPath, args, {
@@ -1471,8 +1472,6 @@ ipcMain.handle('claude-execute', async (event, command, cwd) => {
       cwd: cwd,
       env: { ...process.env }
     });
-
-    console.log('AI pty process spawned, pid:', ollamaProcess.pid);
 
     ollamaProcess.onData((data) => {
       if (mainWindow && !mainWindow.isDestroyed()) {
@@ -1495,7 +1494,6 @@ ipcMain.handle('claude-execute', async (event, command, cwd) => {
     });
 
     ollamaProcess.onExit(({ exitCode }) => {
-      console.log('AI process exited with code:', exitCode);
       ollamaProcess = null;
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send('claude-done', exitCode);
