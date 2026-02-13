@@ -54,11 +54,35 @@ let availableAITools = {
   ollamaModels: []
 };
 
-// Find executable path (works on both Apple Silicon and Intel Macs)
+// Find executable path (works on macOS, Linux, and Windows)
 function findExecutable(name) {
+  const isWindows = process.platform === 'win32';
+  const exe = isWindows ? `${name}.exe` : name;
+
+  // Check common locations directly (packaged apps have limited PATH)
+  const commonPaths = isWindows ? [
+    `${process.env.LOCALAPPDATA}\\Programs\\Ollama\\${exe}`,
+    `${process.env.PROGRAMFILES}\\Ollama\\${exe}`,
+    `C:\\Program Files\\Ollama\\${exe}`,
+    `${process.env.USERPROFILE}\\AppData\\Local\\Programs\\Ollama\\${exe}`
+  ] : [
+    `/opt/homebrew/bin/${name}`,  // Apple Silicon homebrew
+    `/usr/local/bin/${name}`,      // Intel homebrew / Linux
+    `/usr/bin/${name}`,            // System
+    `${process.env.HOME}/.local/bin/${name}` // User local
+  ];
+
+  for (const p of commonPaths) {
+    if (fs.existsSync(p)) {
+      return p;
+    }
+  }
+
+  // Fallback to which/where
   const { execSync } = require('child_process');
   try {
-    const result = execSync(`which ${name}`, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }).trim();
+    const cmd = isWindows ? `where ${name}` : `which ${name}`;
+    const result = execSync(cmd, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }).trim().split('\n')[0];
     return result || null;
   } catch (e) {
     return null;
