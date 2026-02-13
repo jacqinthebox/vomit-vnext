@@ -354,6 +354,10 @@ class Editor {
       this.toggleTerminal();
     });
 
+    window.addEventListener('vomit:show-terminal', () => {
+      this.showTerminal();
+    });
+
     window.addEventListener('vomit:claude-output', (e) => {
       // Collect output during pseudonymization
       if (this.pseudoCollecting) {
@@ -1877,6 +1881,14 @@ class Editor {
       this.terminalInput.focus();
     } else {
       this.cm.focus();
+    }
+  }
+
+  showTerminal() {
+    if (!this.isTerminalVisible) {
+      this.isTerminalVisible = true;
+      this.terminalPane.classList.remove('hidden');
+      this.terminalInput.focus();
     }
   }
 

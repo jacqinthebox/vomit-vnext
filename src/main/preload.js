@@ -114,9 +114,13 @@ ipcRenderer.on('show-command-palette', () => {
   window.dispatchEvent(new CustomEvent('vomit:show-command-palette'));
 });
 
-// Claude Terminal events
+// AI Terminal events
 ipcRenderer.on('toggle-terminal', () => {
   window.dispatchEvent(new CustomEvent('vomit:toggle-terminal'));
+});
+
+ipcRenderer.on('show-terminal', () => {
+  window.dispatchEvent(new CustomEvent('vomit:show-terminal'));
 });
 
 ipcRenderer.on('claude-output', (event, data) => {

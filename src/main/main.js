@@ -14,7 +14,6 @@ const store = new Store({
     lastOpenedFile: null,
     autoSaveEnabled: true,
     recentFiles: [],
-    aiProvider: 'claude',  // 'claude' or 'ollama'
     ollamaModel: 'llama3.2' // default Ollama model
   }
 });
@@ -47,11 +46,10 @@ let currentContent = '';
 let editorWindows = []; // Track all editor windows
 let fileWatcher = null; // Watch for external file changes
 let lastKnownMtime = null; // Track file modification time
-let claudeProcess = null; // Track running Claude CLI process
+let ollamaProcess = null; // Track running Ollama process
 
-// Cache for available AI tools
+// Cache for available Ollama
 let availableAITools = {
-  claude: null,
   ollama: null,
   ollamaModels: []
 };
@@ -88,22 +86,20 @@ function getOllamaModels(ollamaPath) {
   }
 }
 
-// Detect available AI tools
+// Detect available Ollama installation and models
 function detectAITools() {
-  availableAITools.claude = findExecutable('claude');
   availableAITools.ollama = findExecutable('ollama');
   availableAITools.ollamaModels = getOllamaModels(availableAITools.ollama);
 
-  console.log('Available AI tools:', {
-    claude: availableAITools.claude ? 'found' : 'not found',
-    ollama: availableAITools.ollama ? 'found' : 'not found',
-    ollamaModels: availableAITools.ollamaModels
+  console.log('Ollama:', {
+    installed: availableAITools.ollama ? 'yes' : 'no',
+    models: availableAITools.ollamaModels
   });
 
   return availableAITools;
 }
 
-// Build AI submenu dynamically based on available tools
+// Build AI submenu dynamically based on available Ollama models
 function buildAISubmenu() {
   const submenu = [
     {
@@ -118,50 +114,19 @@ function buildAISubmenu() {
     { type: 'separator' }
   ];
 
-  const hasAnything = availableAITools.claude || availableAITools.ollamaModels.length > 0;
-
-  if (!hasAnything) {
-    submenu.push({
-      label: 'No AI tools found',
-      enabled: false
-    });
-    submenu.push({
-      label: 'Install Claude CLI or Ollama',
-      enabled: false
-    });
-    return submenu;
-  }
-
-  // Add Claude if available
-  if (availableAITools.claude) {
-    submenu.push({
-      label: 'Claude',
-      type: 'radio',
-      checked: store.get('aiProvider') === 'claude',
-      click: () => setAIProvider('claude')
-    });
-  } else {
-    submenu.push({
-      label: 'Claude (not installed)',
-      enabled: false
-    });
-  }
-
-  submenu.push({ type: 'separator' });
-
   // Add Ollama models if available
   if (availableAITools.ollamaModels.length > 0) {
     for (const model of availableAITools.ollamaModels) {
       submenu.push({
-        label: `Ollama: ${model}`,
+        label: model,
         type: 'radio',
-        checked: store.get('aiProvider') === 'ollama' && store.get('ollamaModel') === model,
-        click: () => setAIProvider('ollama', model)
+        checked: store.get('ollamaModel') === model,
+        click: () => setOllamaModel(model)
       });
     }
   } else if (availableAITools.ollama) {
     submenu.push({
-      label: 'Ollama (no models installed)',
+      label: 'No models installed',
       enabled: false
     });
     submenu.push({
@@ -170,12 +135,28 @@ function buildAISubmenu() {
     });
   } else {
     submenu.push({
-      label: 'Ollama (not installed)',
+      label: 'Ollama not installed',
+      enabled: false
+    });
+    submenu.push({
+      label: 'Install from https://ollama.ai',
       enabled: false
     });
   }
 
   return submenu;
+}
+
+// Set Ollama model and show terminal
+function setOllamaModel(model) {
+  store.set('ollamaModel', model);
+  createMenu();
+
+  // Notify renderer and show terminal
+  if (mainWindow) {
+    mainWindow.webContents.send('ai-provider-changed', { provider: 'ollama', model });
+    mainWindow.webContents.send('show-terminal');
+  }
 }
 
 function createMainWindow() {
@@ -1134,20 +1115,6 @@ function setTheme(theme) {
   }
 }
 
-function setAIProvider(provider, model) {
-  store.set('aiProvider', provider);
-  if (model) {
-    store.set('ollamaModel', model);
-  }
-  // Rebuild menu to update radio button state
-  createMenu();
-
-  // Notify renderer of the change
-  if (mainWindow) {
-    mainWindow.webContents.send('ai-provider-changed', { provider, model: model || store.get('ollamaModel') });
-  }
-}
-
 function showHelp() {
   shell.openExternal('https://github.com/jacqinthebox/vomit-vnext/blob/main/README.md');
 }
@@ -1466,52 +1433,38 @@ ipcMain.handle('request-save', async () => {
   });
 });
 
-// AI CLI execution using node-pty for proper TTY support (Claude or Ollama)
+// Ollama execution using node-pty for proper TTY support
 ipcMain.handle('claude-execute', async (event, command, cwd) => {
-  const aiProvider = store.get('aiProvider');
   const ollamaModel = store.get('ollamaModel');
 
-  console.log('AI execute called with:', { command, cwd, aiProvider, ollamaModel });
+  console.log('Ollama execute called with:', { command, cwd, ollamaModel });
 
   return new Promise((resolve, reject) => {
     // Kill any existing process
-    if (claudeProcess) {
-      claudeProcess.kill();
-      claudeProcess = null;
+    if (ollamaProcess) {
+      ollamaProcess.kill();
+      ollamaProcess = null;
     }
 
-    let execPath, args;
-
-    if (aiProvider === 'ollama') {
-      execPath = availableAITools.ollama;
-      if (!execPath) {
-        mainWindow.webContents.send('claude-error', 'Ollama is not installed. Install it from https://ollama.ai\n');
-        mainWindow.webContents.send('claude-done', 1);
-        resolve(1);
-        return;
-      }
-      if (availableAITools.ollamaModels.length === 0) {
-        mainWindow.webContents.send('claude-error', `No Ollama models found. Run: ollama pull ${ollamaModel}\n`);
-        mainWindow.webContents.send('claude-done', 1);
-        resolve(1);
-        return;
-      }
-      args = ['run', ollamaModel, command];
-      console.log('Spawning Ollama with model:', ollamaModel);
-    } else {
-      execPath = availableAITools.claude;
-      if (!execPath) {
-        mainWindow.webContents.send('claude-error', 'Claude CLI is not installed. Install it from https://claude.ai/code\n');
-        mainWindow.webContents.send('claude-done', 1);
-        resolve(1);
-        return;
-      }
-      args = ['-p', command];
-      console.log('Spawning Claude CLI');
+    const execPath = availableAITools.ollama;
+    if (!execPath) {
+      mainWindow.webContents.send('claude-error', 'Ollama is not installed. Install it from https://ollama.ai\n');
+      mainWindow.webContents.send('claude-done', 1);
+      resolve(1);
+      return;
+    }
+    if (availableAITools.ollamaModels.length === 0) {
+      mainWindow.webContents.send('claude-error', `No Ollama models found. Run: ollama pull ${ollamaModel}\n`);
+      mainWindow.webContents.send('claude-done', 1);
+      resolve(1);
+      return;
     }
 
-    // Spawn AI CLI with PTY for proper terminal emulation
-    claudeProcess = pty.spawn(execPath, args, {
+    const args = ['run', ollamaModel, command];
+    console.log('Spawning Ollama with model:', ollamaModel);
+
+    // Spawn Ollama with PTY for proper terminal emulation
+    ollamaProcess = pty.spawn(execPath, args, {
       name: 'xterm-color',
       cols: 120,
       rows: 30,
@@ -1519,9 +1472,9 @@ ipcMain.handle('claude-execute', async (event, command, cwd) => {
       env: { ...process.env }
     });
 
-    console.log('AI pty process spawned, pid:', claudeProcess.pid);
+    console.log('AI pty process spawned, pid:', ollamaProcess.pid);
 
-    claudeProcess.onData((data) => {
+    ollamaProcess.onData((data) => {
       if (mainWindow && !mainWindow.isDestroyed()) {
         // Clean ANSI escape codes and spinner characters but preserve newlines and spaces
         let cleanData = data
@@ -1541,9 +1494,9 @@ ipcMain.handle('claude-execute', async (event, command, cwd) => {
       }
     });
 
-    claudeProcess.onExit(({ exitCode }) => {
+    ollamaProcess.onExit(({ exitCode }) => {
       console.log('AI process exited with code:', exitCode);
-      claudeProcess = null;
+      ollamaProcess = null;
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send('claude-done', exitCode);
       }
@@ -1553,9 +1506,9 @@ ipcMain.handle('claude-execute', async (event, command, cwd) => {
 });
 
 ipcMain.on('claude-stop', () => {
-  if (claudeProcess) {
-    claudeProcess.kill(); // node-pty kill() method
-    claudeProcess = null;
+  if (ollamaProcess) {
+    ollamaProcess.kill(); // node-pty kill() method
+    ollamaProcess = null;
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('claude-done', -1);
     }
