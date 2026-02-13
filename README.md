@@ -35,6 +35,7 @@ A keyboard-centric markdown editor and presentation app with IntelliSense, live 
 - **Image Support** - Paste images directly, resize with simple syntax
 - **Themes** - Default, Dark, Catppuccin, Nord, Solarized Dark
 - **Keyboard Shortcuts** - Full keyboard control for everything
+- **Ollama AI** - Built-in AI assistant with local Ollama models
 
 ## Installation
 
@@ -161,6 +162,23 @@ Renders as: :smile: :rocket: :fire: :heart: :thumbsup: :vomit:
 
 Over 200 shortcodes are supported including smileys, gestures, objects, animals, food, and more.
 
+### Ollama AI Integration
+
+Vomit includes a built-in AI terminal powered by [Ollama](https://ollama.ai). Open a project folder, press `Ctrl+\`` to open the AI terminal, and chat with your local LLM.
+
+**Setup:**
+1. Install Ollama from https://ollama.ai
+2. Pull a model: `ollama pull llama3.2`
+3. Open a folder in Vomit (Cmd+Alt+O)
+4. Press `Ctrl+\`` or select a model from the AI menu
+
+**Special commands:**
+- `/doc <prompt>` - Include the current document in your prompt
+- `/pseudo` - Pseudonymize the current document (emails, IPs, secrets)
+- `/pseudo all` - Pseudonymize all files in the project folder
+
+The AI menu shows all your installed Ollama models - just click one to switch.
+
 ## Keyboard Shortcuts
 
 Press **Cmd+/** to view all shortcuts in the app. See [SHORTCUTS.md](SHORTCUTS.md) for the complete reference.
@@ -187,6 +205,7 @@ Press **Cmd+/** to view all shortcuts in the app. See [SHORTCUTS.md](SHORTCUTS.m
 | **Present** | Cmd+Shift+P | Start presentation |
 | | Cmd+Alt+P | With presenter view |
 | | L | Laser pointer |
+| **AI** | Ctrl+` | Toggle AI terminal |
 
 ## Tech Stack
 

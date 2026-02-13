@@ -586,6 +586,12 @@ class Editor {
             <div class="shortcut-row"><kbd>L</kbd> Laser pointer</div>
             <div class="shortcut-row"><kbd>Escape</kbd> End presentation</div>
           </div>
+          <div class="shortcuts-section">
+            <h3>AI Terminal</h3>
+            <div class="shortcut-row"><kbd>Ctrl+\`</kbd> Toggle AI terminal</div>
+            <div class="shortcut-row"><kbd>Ctrl+C</kbd> Stop AI response</div>
+            <div class="shortcut-row"><kbd>Cmd+K</kbd> Clear terminal</div>
+          </div>
         </div>
       </div>
     `;
@@ -629,6 +635,14 @@ class Editor {
   openFolder(folderPath) {
     this.currentDirectory = folderPath;
     this.projectRoot = folderPath; // Set as project root - can't navigate above this
+
+    // Update sidebar header with folder name
+    const folderName = folderPath.split('/').pop().toUpperCase();
+    const sidebarFolderName = document.getElementById('sidebar-folder-name');
+    if (sidebarFolderName) {
+      sidebarFolderName.textContent = folderName;
+    }
+
     // Show file tree sidebar
     this.isFileTreeVisible = true;
     this.isOutlineVisible = false;
