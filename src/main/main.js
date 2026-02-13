@@ -91,13 +91,6 @@ function detectAITools() {
   availableAITools.ollama = findExecutable('ollama');
   availableAITools.ollamaModels = getOllamaModels(availableAITools.ollama);
 
-  try {
-    console.log('Ollama:', {
-      installed: availableAITools.ollama ? 'yes' : 'no',
-      models: availableAITools.ollamaModels
-    });
-  } catch (e) {}
-
   return availableAITools;
 }
 
@@ -828,7 +821,6 @@ function stopFileWatcher() {
   if (watchedFilePath) {
     try {
       fs.unwatchFile(watchedFilePath);
-      console.log('File watcher: Stopped watching', watchedFilePath);
     } catch (err) {
       // Ignore errors when unwatching
     }
@@ -846,7 +838,6 @@ function startFileWatcher(filePath) {
   stopFileWatcher();
 
   if (!filePath || !fs.existsSync(filePath)) {
-    console.log('File watcher: No file to watch');
     return;
   }
 
@@ -854,15 +845,11 @@ function startFileWatcher(filePath) {
     // Get initial modification time
     lastKnownMtime = fs.statSync(filePath).mtimeMs;
     watchedFilePath = filePath;
-    console.log('File watcher: Started watching', filePath, 'mtime:', lastKnownMtime);
 
     // Use fs.watchFile (polling) instead of fs.watch - more reliable on macOS
     fs.watchFile(filePath, { interval: 1000 }, (curr, prev) => {
-      console.log('File watcher: Change detected', prev.mtimeMs, '->', curr.mtimeMs);
-
       // File was modified externally
       if (curr.mtimeMs !== lastKnownMtime && curr.mtimeMs !== prev.mtimeMs) {
-        console.log('File watcher: External change confirmed, sending notification');
         lastKnownMtime = curr.mtimeMs;
 
         if (mainWindow && !mainWindow.isDestroyed()) {
@@ -871,7 +858,7 @@ function startFileWatcher(filePath) {
       }
     });
   } catch (err) {
-    console.error('Failed to watch file:', err);
+    // Ignore file watch errors
   }
 }
 
@@ -930,7 +917,6 @@ function writeFile(content) {
       const currentMtime = fs.statSync(currentFilePath).mtimeMs;
       if (currentMtime !== lastKnownMtime) {
         // File changed externally - notify renderer instead of overwriting
-        console.log('writeFile: File changed externally, notifying renderer');
         if (mainWindow && !mainWindow.isDestroyed()) {
           mainWindow.webContents.send('file-changed-externally', currentFilePath);
         }
@@ -943,7 +929,6 @@ function writeFile(content) {
 
     // Update mtime to avoid detecting our own save as external change
     lastKnownMtime = fs.statSync(currentFilePath).mtimeMs;
-    console.log('writeFile: Saved, new mtime:', lastKnownMtime);
 
     if (mainWindow) {
       mainWindow.setTitle(`${path.basename(currentFilePath)} - Vomit`);
@@ -1145,7 +1130,6 @@ ipcMain.on('content-changed', (event, content) => {
 
 // Update file watcher when active file changes (e.g., tab switch)
 ipcMain.on('watch-file', (event, filePath) => {
-  try { console.log('Main: Received watch-file request for', filePath); } catch (e) {}
   startFileWatcher(filePath);
 });
 
@@ -1439,7 +1423,6 @@ ipcMain.handle('request-save', async () => {
 ipcMain.handle('claude-execute', async (event, command, cwd) => {
   const ollamaModel = store.get('ollamaModel');
 
-  try { console.log('Ollama execute called with:', { command, cwd, ollamaModel }); } catch (e) {}
 
   return new Promise((resolve, reject) => {
     // Kill any existing process
