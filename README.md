@@ -2,9 +2,9 @@
 
 *[Claude Code](https://claude.com/claude-code) crushes React. This app is fully vibe-coded.*
 
-A keyboard-centric markdown editor and presentation app with IntelliSense, live preview, presenter view, and speaker notes.
+An opinionated, keyboard-centric markdown editor for presentations and notes with **local AI support** (privacy first). Your data never leaves your machine.
 
-<img src="screenshot.png" alt="Vomit Screenshot" width="600"> 
+<img src="screenshot.png" alt="Vomit Screenshot" width="600">
 
 
 ## Why Vomit?
@@ -17,14 +17,20 @@ A keyboard-centric markdown editor and presentation app with IntelliSense, live 
 | Timer | ✅ | ❌ | ✅ | ✅ |
 | Next slide preview | ✅ | ❌ | ✅ | ✅ |
 | Standalone app | ✅ | ✅ | ❌ | ✅ |
-| PlantUML diagrams | ❌ | Plugin | ✅  | ✅ |
+| PlantUML diagrams | ❌ | Plugin | ✅ | ✅ |
 | LaTeX math | ❌ | Plugin | ✅ | ✅ |
 | Code syntax highlighting | ❌ | ✅ | ✅ | ✅ |
+| **Local AI (privacy first)** | ❌ | Plugin | ❌ | ✅ |
+| **RAG over your docs** | ❌ | Plugin | ❌ | ✅ |
+| **Pseudonymization** | ❌ | ❌ | ❌ | ✅ |
 
 ## Features
 
 - **Markdown Editor** - Live preview, syntax highlighting, outline sidebar
 - **Presenter View** - Current slide, next slide preview, speaker notes, timer
+- **Local AI (Privacy First)** - Built-in AI terminal powered by Ollama - your data stays on your machine
+- **RAG Search** - Index your documents and ask AI questions with context from your files
+- **Pseudonymization** - Anonymize sensitive data (names, emails, IPs) with AI, reversible with `/depseudo`
 - **LaTeX Math** - Render formulas with KaTeX (`$inline$` and `$$display$$`)
 - **PlantUML Diagrams** - Render sequence diagrams, flowcharts, and more
 - **Emoji Shortcodes** - Use `:smile:` syntax like GitHub/Slack
@@ -35,7 +41,6 @@ A keyboard-centric markdown editor and presentation app with IntelliSense, live 
 - **Image Support** - Paste images directly, resize with simple syntax
 - **Themes** - Default, Dark, Catppuccin, Nord, Solarized Dark
 - **Keyboard Shortcuts** - Full keyboard control for everything
-- **Ollama AI** - Built-in AI assistant with local Ollama models
 
 ## Installation
 
@@ -162,20 +167,39 @@ Renders as: :smile: :rocket: :fire: :heart: :thumbsup: :vomit:
 
 Over 200 shortcodes are supported including smileys, gestures, objects, animals, food, and more.
 
-### Ollama AI Integration
+### Ollama AI Integration (Privacy First)
 
-Vomit includes a built-in AI terminal powered by [Ollama](https://ollama.ai). Open a project folder, press `Ctrl+\`` to open the AI terminal, and chat with your local LLM.
+Vomit includes a built-in AI terminal powered by [Ollama](https://ollama.ai). All AI processing happens locally - your data never leaves your machine.
 
 **Setup:**
 1. Install Ollama from https://ollama.ai
-2. Pull a model: `ollama pull llama3.2`
+2. Pull a model: `ollama pull qwen2.5:14b` (recommended for best results)
 3. Open a folder in Vomit (Cmd+Alt+O)
-4. Press `Ctrl+\`` or select a model from the AI menu
+4. Press `Cmd+J` or select a model from the AI menu
 
 **Special commands:**
 - `/doc <prompt>` - Include the current document in your prompt
-- `/pseudo` - Pseudonymize the current document (emails, IPs, secrets)
-- `/pseudo all` - Pseudonymize all files in the project folder
+- `/pseudo` - Pseudonymize the current document (names, emails, IPs, secrets)
+- `/depseudo` - Restore original data from pseudonymized file using the mapping
+- `/index` - Index all documents in the folder for RAG search
+- `/index subfolder` - Index only a specific subfolder
+- `/rag <query>` - Search indexed documents and ask AI with context
+
+**RAG (Retrieval Augmented Generation):**
+
+RAG allows the AI to answer questions using all your project documents as context. First index your folder with `/index`, then use `/rag <question>` to query with relevant context automatically retrieved.
+
+```bash
+# First, pull the embedding model
+ollama pull nomic-embed-text
+
+# In Vomit AI terminal
+/index                              # Index entire project
+/index src/docs                     # Index only a subfolder
+/rag how does authentication work?  # Search and ask with context
+```
+
+The index is stored in `~/.config/vomit/rag/` to keep your project clean.
 
 The AI menu shows all your installed Ollama models - just click one to switch.
 
@@ -205,7 +229,7 @@ Press **Cmd+/** to view all shortcuts in the app. See [SHORTCUTS.md](SHORTCUTS.m
 | **Present** | Cmd+Shift+P | Start presentation |
 | | Cmd+Alt+P | With presenter view |
 | | L | Laser pointer |
-| **AI** | Ctrl+` | Toggle AI terminal |
+| **AI** | Cmd+J | Toggle AI terminal |
 
 ## Tech Stack
 
@@ -215,6 +239,8 @@ Press **Cmd+/** to view all shortcuts in the app. See [SHORTCUTS.md](SHORTCUTS.m
 - Highlight.js (code block highlighting)
 - KaTeX (LaTeX math rendering)
 - PlantUML (diagram rendering)
+- Ollama (local AI inference)
+- better-sqlite3 (RAG vector storage)
 
 ## License
 

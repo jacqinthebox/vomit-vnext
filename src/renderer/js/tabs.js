@@ -197,6 +197,23 @@ class TabManager {
     }
   }
 
+  closeAllTabs(force = false) {
+    // Close all tabs without prompting (used when switching projects)
+    if (force) {
+      this.tabs.clear();
+      this.tabOrder = [];
+      this.activeTabId = null;
+      this.createTab();
+      return;
+    }
+
+    // Otherwise close each tab normally (will prompt for unsaved)
+    const tabIds = [...this.tabOrder];
+    for (const tabId of tabIds) {
+      this.closeTab(tabId);
+    }
+  }
+
   nextTab() {
     if (this.tabOrder.length <= 1) return;
 

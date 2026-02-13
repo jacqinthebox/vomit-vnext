@@ -54,6 +54,10 @@ ipcRenderer.on('open-folder', (event, folderPath) => {
   window.dispatchEvent(new CustomEvent('vomit:open-folder', { detail: folderPath }));
 });
 
+ipcRenderer.on('refresh-file-tree', () => {
+  window.dispatchEvent(new CustomEvent('vomit:refresh-file-tree'));
+});
+
 ipcRenderer.on('format-command', (event, command) => {
   window.dispatchEvent(new CustomEvent('vomit:format-command', { detail: command }));
 });
@@ -135,6 +139,10 @@ ipcRenderer.on('claude-done', (event, code) => {
   window.dispatchEvent(new CustomEvent('vomit:claude-done', { detail: code }));
 });
 
+ipcRenderer.on('rag-progress', (event, progress) => {
+  window.dispatchEvent(new CustomEvent('vomit:rag-progress', { detail: progress }));
+});
+
 ipcRenderer.on('ai-provider-changed', (event, data) => {
   window.dispatchEvent(new CustomEvent('vomit:ai-provider-changed', { detail: data }));
 });
@@ -175,5 +183,8 @@ contextBridge.exposeInMainWorld('vomit', {
   // File operations for pseudonymization
   readFile: (filePath) => ipcRenderer.invoke('read-file', filePath),
   writeFile: (filePath, content) => ipcRenderer.invoke('write-file', filePath, content),
-  createDirectory: (dirPath) => ipcRenderer.invoke('create-directory', dirPath)
+  createDirectory: (dirPath) => ipcRenderer.invoke('create-directory', dirPath),
+  // RAG methods
+  ragIndex: (projectRoot, targetPath) => ipcRenderer.invoke('rag-index', projectRoot, targetPath),
+  ragSearch: (query, folderPath) => ipcRenderer.invoke('rag-search', query, folderPath)
 });

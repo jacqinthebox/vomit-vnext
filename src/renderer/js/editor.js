@@ -302,6 +302,10 @@ class Editor {
       this.openFolder(e.detail);
     });
 
+    window.addEventListener('vomit:refresh-file-tree', () => {
+      this.loadFileTree();
+    });
+
     window.addEventListener('vomit:format-command', (e) => {
       const command = e.detail;
       switch (command) {
@@ -361,7 +365,9 @@ class Editor {
     window.addEventListener('vomit:claude-output', (e) => {
       // Collect output during pseudonymization
       if (this.pseudoCollecting) {
-        this.pseudoOutput += e.detail;
+        // Strip ANSI escape codes for clean output
+        const cleanOutput = e.detail.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '');
+        this.pseudoOutput += cleanOutput;
       } else {
         this.appendTerminalOutput(e.detail, 'output');
       }
@@ -382,6 +388,17 @@ class Editor {
 
     window.addEventListener('vomit:ai-provider-changed', (e) => {
       this.updateTerminalTitle(e.detail);
+    });
+
+    window.addEventListener('vomit:rag-progress', (e) => {
+      const progress = e.detail;
+      if (progress.status === 'indexing') {
+        this.appendTerminalOutput(`Indexing: ${progress.file} (${progress.current}/${progress.total})`, 'system');
+      } else if (progress.status === 'done') {
+        this.appendTerminalOutput(`✓ Indexed ${progress.total} files successfully!`, 'output');
+      } else if (progress.status === 'error') {
+        this.appendTerminalOutput(`✗ Error: ${progress.error}`, 'error');
+      }
     });
   }
 
@@ -633,6 +650,11 @@ class Editor {
   }
 
   openFolder(folderPath) {
+    // Close all existing tabs when switching to a new project
+    if (this.tabManager && this.projectRoot && this.projectRoot !== folderPath) {
+      this.tabManager.closeAllTabs(true);
+    }
+
     this.currentDirectory = folderPath;
     this.projectRoot = folderPath; // Set as project root - can't navigate above this
 
@@ -1571,6 +1593,28 @@ class Editor {
   async deleteItem(itemPath) {
     const result = await window.vomit.deleteItem(itemPath);
     if (result.success) {
+      // Close tab if the deleted file was open
+      if (this.tabManager) {
+        const tab = this.tabManager.getTabByPath(itemPath);
+        if (tab) {
+          // Force close without prompting for save (file is already deleted)
+          this.tabManager.tabs.delete(tab.id);
+          this.tabManager.tabOrder = this.tabManager.tabOrder.filter(id => id !== tab.id);
+
+          // If it was the active tab, switch to another
+          if (tab.id === this.tabManager.activeTabId) {
+            if (this.tabManager.tabOrder.length === 0) {
+              this.tabManager.activeTabId = null;
+              this.tabManager.createTab();
+            } else {
+              this.tabManager.activeTabId = null;
+              this.tabManager.switchToTab(this.tabManager.tabOrder[0]);
+            }
+          } else {
+            this.tabManager.renderTabBar();
+          }
+        }
+      }
       this.loadFileTree();
     } else if (result.error) {
       alert(result.error);
@@ -1916,13 +1960,36 @@ class Editor {
     }
 
     // Check for /pseudo command
-    if (command === '/pseudo' || command === '/pseudo doc') {
+    if (command.trim() === '/pseudo' || command.trim() === '/pseudo doc') {
       await this.pseudonymizeCurrentDoc(cwd);
       return;
     }
-    if (command === '/pseudo all') {
+    if (command.trim() === '/pseudo all') {
       await this.runPseudonymization(cwd);
       return;
+    }
+
+    // Check for /depseudo command - restore original from backup
+    if (command === '/depseudo') {
+      await this.depseudonymizeCurrentDoc();
+      return;
+    }
+
+    // Check for /index command - index folder for RAG
+    if (command === '/index' || command.startsWith('/index ')) {
+      const subpath = command.substring(6).trim();
+      const targetPath = subpath ? `${cwd}/${subpath}` : cwd;
+      await this.indexFolderForRAG(cwd, targetPath, subpath || null);
+      return;
+    }
+
+    // Check for /rag command - search with RAG context
+    if (command.startsWith('/rag ')) {
+      const query = command.substring(5).trim();
+      if (query) {
+        await this.searchWithRAG(query, cwd);
+        return;
+      }
     }
 
     let finalCommand = command;
@@ -1959,22 +2026,46 @@ class Editor {
       return;
     }
 
-    const pseudoPrompt = `You are a pseudonymization tool. Replace ALL sensitive data in this document with realistic fake data:
+    // Determine output file paths
+    const currentFile = this.currentFilePath;
+    let outputPath;
+    let mappingPath;
+    if (currentFile) {
+      const dir = currentFile.substring(0, currentFile.lastIndexOf('/'));
+      const filename = currentFile.split('/').pop();
+      const ext = filename.lastIndexOf('.') > 0 ? filename.substring(filename.lastIndexOf('.')) : '';
+      const basename = filename.lastIndexOf('.') > 0 ? filename.substring(0, filename.lastIndexOf('.')) : filename;
+      outputPath = `${dir}/${basename}-pseudo${ext}`;
+      mappingPath = `${dir}/${basename}-pseudo.map.json`;
+    } else {
+      outputPath = `${cwd}/untitled-pseudo.md`;
+      mappingPath = `${cwd}/untitled-pseudo.map.json`;
+    }
 
-- Email addresses → fake@example.com format
-- IP addresses → 10.0.0.x or 192.168.x.x ranges
-- Server names/hostnames → server-001, app-server-prod, etc.
-- FQDNs → *.example.com or *.internal.local
-- URLs → https://example.com/...
-- API keys/secrets → FAKE_API_KEY_XXXXX
-- Passwords → FAKE_PASSWORD_XXXXX
-- AWS/Azure/GCP resource IDs → fake resource IDs
-- Database connection strings → fake connection strings
-- Usernames → user001, admin001, etc.
+    const pseudoPrompt = `Analyze this file and identify ALL sensitive/personal data that should be anonymized for GDPR compliance.
 
-Keep the document structure and syntax valid. Output ONLY the pseudonymized content, no explanations.
+Look for:
+- Names (people, authors)
+- Company/organization names
+- Phone numbers
+- Email addresses
+- IP addresses
+- Server/hostnames
+- API keys, tokens, passwords
+- Database names
+- Cloud resource IDs
+- Paths with usernames
 
-Document:
+For each item found, provide a fictional replacement.
+
+OUTPUT: Return ONLY a JSON object mapping original values to fake replacements. No other text.
+
+Example output:
+{"Annie de Waard": "Sarah Miller", "jan@company.nl": "user@example.com", "192.168.1.1": "10.0.0.1"}
+
+If no sensitive data found, return: {}
+
+File to analyze:
 \`\`\`
 ${docContent}
 \`\`\``;
@@ -1982,12 +2073,158 @@ ${docContent}
     this.isClaudeRunning = true;
     this.terminalStop.classList.remove('hidden');
 
+    // Collect the AI output
+    this.pseudoOutput = '';
+    this.pseudoCollecting = true;
+    this.pseudoOutputPath = outputPath;
+
     try {
       await window.vomit.claudeExecute(pseudoPrompt, cwd);
+      // Wait for completion and save
+      await this.waitForAIComplete();
+
+      if (this.pseudoOutput.trim()) {
+        const output = this.pseudoOutput.trim();
+        let mapping = null;
+
+        // Parse JSON mapping from AI output
+        try {
+          const jsonMatch = output.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            mapping = JSON.parse(jsonMatch[0]);
+          }
+        } catch (e) {
+          this.appendTerminalOutput('Warning: Could not parse mapping JSON', 'error');
+        }
+
+        if (mapping && Object.keys(mapping).length > 0) {
+          // Apply mapping to original content programmatically
+          let content = docContent;
+          for (const [original, replacement] of Object.entries(mapping)) {
+            // Escape special regex characters in the original string
+            const escaped = original.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            content = content.replace(new RegExp(escaped, 'g'), replacement);
+          }
+
+          // Save the pseudonymized content
+          await window.vomit.writeFile(outputPath, content);
+          this.appendTerminalOutput(`✓ Saved: ${outputPath.split('/').pop()}`, 'output');
+
+          // Save the mapping
+          await window.vomit.writeFile(mappingPath, JSON.stringify(mapping, null, 2));
+          this.appendTerminalOutput(`✓ Mapping saved: ${mappingPath.split('/').pop()}`, 'output');
+
+          // Refresh file tree
+          this.loadFileTree();
+        } else {
+          this.appendTerminalOutput('No sensitive data found to anonymize.', 'system');
+        }
+      }
+      this.markOutputComplete();
     } catch (err) {
       this.appendTerminalOutput(`Error: ${err.message}`, 'error');
       this.isClaudeRunning = false;
       this.terminalStop.classList.add('hidden');
+    }
+  }
+
+  async depseudonymizeCurrentDoc() {
+    this.appendTerminalOutput('❯ /depseudo', 'input');
+
+    const currentFile = this.currentFilePath;
+    if (!currentFile) {
+      this.appendTerminalOutput('Error: No file open. Open a file first.', 'error');
+      return;
+    }
+
+    // Determine mapping file path and original file path
+    const dir = currentFile.substring(0, currentFile.lastIndexOf('/'));
+    const filename = currentFile.split('/').pop();
+    const ext = filename.lastIndexOf('.') > 0 ? filename.substring(filename.lastIndexOf('.')) : '';
+    const basename = filename.lastIndexOf('.') > 0 ? filename.substring(0, filename.lastIndexOf('.')) : filename;
+
+    let mappingPath;
+    let originalPath;
+
+    if (basename.endsWith('-pseudo')) {
+      // Current file is a pseudo file - find original
+      const originalBasename = basename.replace(/-pseudo$/, '');
+      mappingPath = `${dir}/${basename}.map.json`;
+      originalPath = `${dir}/${originalBasename}${ext}`;
+    } else {
+      this.appendTerminalOutput('Error: This doesn\'t appear to be a pseudonymized file.', 'error');
+      this.appendTerminalOutput('Open a *-pseudo.md file to run /depseudo.', 'system');
+      return;
+    }
+
+    try {
+      // Read the mapping file
+      const mappingContent = await window.vomit.readFile(mappingPath);
+
+      if (!mappingContent) {
+        this.appendTerminalOutput(`Error: No mapping found at ${mappingPath.split('/').pop()}`, 'error');
+        this.appendTerminalOutput('Run /pseudo first to create a mapping.', 'system');
+        return;
+      }
+
+      const mapping = JSON.parse(mappingContent);
+      const reverseMapping = {};
+
+      // Reverse the mapping: fake → original
+      for (const [original, fake] of Object.entries(mapping)) {
+        reverseMapping[fake] = original;
+      }
+
+      // Get current content (from pseudo file) and apply reverse mapping
+      let content = this.cm.getValue();
+      let replacements = 0;
+
+      // Sort by length (longest first) to avoid partial replacements
+      const fakeValues = Object.keys(reverseMapping).sort((a, b) => b.length - a.length);
+
+      for (const fake of fakeValues) {
+        const original = reverseMapping[fake];
+        const regex = new RegExp(fake.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+        const matches = content.match(regex);
+        if (matches) {
+          replacements += matches.length;
+          content = content.replace(regex, original);
+        }
+      }
+
+      // Write to the ORIGINAL file
+      await window.vomit.writeFile(originalPath, content);
+      this.appendTerminalOutput(`✓ Restored ${replacements} values.`, 'output');
+      this.appendTerminalOutput(`✓ Updated: ${originalPath.split('/').pop()}`, 'output');
+
+      // Refresh file tree
+      this.loadFileTree();
+
+      // Check if original file is already open in a tab
+      if (this.tabManager) {
+        const existingTab = this.tabManager.getTabByPath(originalPath);
+        if (existingTab) {
+          // Update the tab's content directly
+          existingTab.content = content;
+          existingTab.isDirty = false;
+          // If it's the active tab, update the editor
+          if (existingTab.id === this.tabManager.activeTabId) {
+            this.cm.setValue(content);
+            this.isDirty = false;
+            this.updatePreview();
+            this.updateStatus();
+          }
+          this.tabManager.switchToTab(existingTab.id);
+        } else {
+          // Open the original file in a new tab
+          window.vomit.openFile(originalPath);
+        }
+      } else {
+        window.vomit.openFile(originalPath);
+      }
+    } catch (err) {
+      this.appendTerminalOutput(`Error: ${err.message}`, 'error');
+      this.appendTerminalOutput('Make sure the .map.json file exists and is valid JSON.', 'system');
     }
   }
 
@@ -2013,9 +2250,12 @@ ${docContent}
       const outputDir = `${cwd}/pseudonymized`;
       await window.vomit.createDirectory(outputDir);
 
-      const pseudoPrompt = `You are a pseudonymization tool. Replace ALL sensitive data in this file with realistic fake data:
+      const pseudoPrompt = `You are a pseudonymization tool. Replace ALL sensitive and identifying data in this file with realistic fake data:
 
+- Person names → John Doe, Jane Smith, etc.
+- Company/organization names → Acme Corp, Example Inc, etc.
 - Email addresses → fake@example.com format
+- Phone numbers → +1-555-XXX-XXXX format
 - IP addresses → 10.0.0.x or 192.168.x.x ranges
 - Server names/hostnames → server-001, app-server-prod, etc.
 - FQDNs → *.example.com or *.internal.local
@@ -2025,8 +2265,11 @@ ${docContent}
 - AWS/Azure/GCP resource IDs → fake resource IDs
 - Database connection strings → fake connection strings
 - Usernames → user001, admin001, etc.
+- Dates of birth → randomize the year
+- National ID numbers (SSN, BSN, etc.) → FAKE_ID_XXXXX
+- Addresses → 123 Example Street, Anytown
 
-Keep the file structure and syntax valid. Output ONLY the pseudonymized file content, no explanations.
+Keep the file structure and syntax valid. Output ONLY the pseudonymized file content, no explanations or code fences.
 
 File content:
 `;
@@ -2063,6 +2306,74 @@ File content:
       this.appendTerminalOutput(`\nDone! Processed ${processed}/${files.length} files.`, 'system');
       this.appendTerminalOutput(`Output saved to: ${outputDir}`, 'system');
 
+    } catch (err) {
+      this.appendTerminalOutput(`Error: ${err.message}`, 'error');
+    }
+  }
+
+  async indexFolderForRAG(projectRoot, targetPath, subpath) {
+    const displayPath = subpath ? `/index ${subpath}` : '/index';
+    this.appendTerminalOutput(`❯ ${displayPath}`, 'input');
+    this.appendTerminalOutput(`Indexing ${subpath || 'folder'} for RAG...`, 'system');
+    this.appendTerminalOutput('This requires the nomic-embed-text model. Run: ollama pull nomic-embed-text', 'system');
+
+    try {
+      const result = await window.vomit.ragIndex(projectRoot, targetPath);
+      if (result.success) {
+        this.appendTerminalOutput(`✓ Index complete! ${result.indexed} chunks from ${result.files} files.`, 'output');
+        this.appendTerminalOutput('Use /rag <query> to search with context.', 'system');
+      } else {
+        this.appendTerminalOutput(`✗ Indexing failed: ${result.error}`, 'error');
+      }
+    } catch (err) {
+      this.appendTerminalOutput(`Error: ${err.message}`, 'error');
+    }
+  }
+
+  async searchWithRAG(query, cwd) {
+    this.appendTerminalOutput(`❯ /rag ${query}`, 'input');
+
+    try {
+      // Search the index for relevant context
+      const results = await window.vomit.ragSearch(query, cwd);
+
+      if (!results.success) {
+        if (results.error === 'not_indexed') {
+          this.appendTerminalOutput('No index found. Run /index first to index your folder.', 'error');
+        } else {
+          this.appendTerminalOutput(`Search failed: ${results.error}`, 'error');
+        }
+        return;
+      }
+
+      if (results.chunks.length === 0) {
+        this.appendTerminalOutput('No relevant context found. Try a different query.', 'system');
+        return;
+      }
+
+      // Build context from search results
+      this.appendTerminalOutput(`Found ${results.chunks.length} relevant chunks. Querying AI...`, 'system');
+
+      const contextParts = results.chunks.map((chunk, i) =>
+        `[Source: ${chunk.file}]\n${chunk.content}`
+      );
+      const context = contextParts.join('\n\n---\n\n');
+
+      const ragPrompt = `You are a helpful assistant. Answer the user's question based on the following context from their project files.
+
+Context from project:
+---
+${context}
+---
+
+User question: ${query}
+
+Provide a helpful, accurate answer based on the context above. If the context doesn't contain relevant information, say so.`;
+
+      this.isClaudeRunning = true;
+      this.terminalStop.classList.remove('hidden');
+
+      await window.vomit.claudeExecute(ragPrompt, cwd);
     } catch (err) {
       this.appendTerminalOutput(`Error: ${err.message}`, 'error');
     }

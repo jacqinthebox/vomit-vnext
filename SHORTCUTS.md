@@ -113,6 +113,25 @@ Press **Cmd+/** to open this help at any time.
 
 ---
 
+## AI Terminal
+
+| Shortcut | Action |
+|----------|--------|
+| Cmd+J | Toggle AI terminal |
+
+### AI Commands
+
+| Command | Action |
+|---------|--------|
+| `/doc <prompt>` | Include current document in prompt |
+| `/pseudo` | Pseudonymize current document |
+| `/depseudo` | Restore original data from mapping |
+| `/index` | Index folder for RAG |
+| `/index <subfolder>` | Index specific subfolder |
+| `/rag <query>` | Search docs and ask AI |
+
+---
+
 ## Tips
 
 - **Paste images** directly with Cmd+V - they're saved to an `images/` folder
@@ -120,3 +139,4 @@ Press **Cmd+/** to open this help at any time.
 - **Speaker notes** go after `???` on a slide
 - **Slide separator** is `---` on its own line
 - **Frontmatter** supports `theme:` and `font-size:` settings
+- **Privacy first** - All AI runs locally via Ollama, your data never leaves your machine

@@ -43,6 +43,7 @@ let presentationWindow = null;
 let presenterWindow = null;
 let currentFilePath = null;
 let currentContent = '';
+let currentProjectRoot = null; // Track current project folder
 let editorWindows = []; // Track all editor windows
 let fileWatcher = null; // Watch for external file changes
 let lastKnownMtime = null; // Track file modification time
@@ -110,6 +111,203 @@ function getOllamaModels(ollamaPath) {
   }
 }
 
+// ============== RAG (Retrieval Augmented Generation) with SQLite ==============
+const Database = require('better-sqlite3');
+
+// Split text into chunks with overlap
+function chunkText(text, chunkSize = 500, overlap = 50) {
+  const words = text.split(/\s+/);
+  const chunks = [];
+
+  for (let i = 0; i < words.length; i += chunkSize - overlap) {
+    const chunk = words.slice(i, i + chunkSize).join(' ');
+    if (chunk.trim()) {
+      chunks.push(chunk);
+    }
+  }
+
+  return chunks;
+}
+
+// Get embedding from Ollama
+async function getEmbedding(text) {
+  const { execSync } = require('child_process');
+  try {
+    const payload = JSON.stringify({ model: 'nomic-embed-text', prompt: text });
+    const result = execSync(
+      `curl -s http://localhost:11434/api/embeddings -d '${payload.replace(/'/g, "'\\''")}'`,
+      { encoding: 'utf-8', timeout: 30000 }
+    );
+    const json = JSON.parse(result);
+    return json.embedding || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+// Cosine similarity between two vectors
+function cosineSimilarity(a, b) {
+  if (!a || !b || a.length !== b.length) return 0;
+  let dotProduct = 0;
+  let normA = 0;
+  let normB = 0;
+  for (let i = 0; i < a.length; i++) {
+    dotProduct += a[i] * b[i];
+    normA += a[i] * a[i];
+    normB += b[i] * b[i];
+  }
+  return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+}
+
+// Get or create SQLite database for a folder
+function getRAGDatabase(folderPath) {
+  const crypto = require('crypto');
+  const os = require('os');
+
+  // Store in ~/.config/vomit/rag/ using hash of project path
+  const configDir = path.join(os.homedir(), '.config', 'vomit', 'rag');
+  if (!fs.existsSync(configDir)) {
+    fs.mkdirSync(configDir, { recursive: true });
+  }
+
+  // Create a short hash of the folder path for the db filename
+  const pathHash = crypto.createHash('md5').update(folderPath).digest('hex').substring(0, 12);
+  const folderName = path.basename(folderPath);
+  const dbPath = path.join(configDir, `${folderName}-${pathHash}.db`);
+
+  const db = new Database(dbPath);
+
+  // Create tables if they don't exist
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS chunks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      file_path TEXT NOT NULL,
+      chunk_index INTEGER NOT NULL,
+      content TEXT NOT NULL,
+      embedding BLOB NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE INDEX IF NOT EXISTS idx_file_path ON chunks(file_path);
+  `);
+
+  return db;
+}
+
+// Index all documents in a folder
+async function indexFolder(projectRoot, targetPath, progressCallback) {
+  const extensions = ['.md', '.txt', '.js', '.ts', '.py', '.json', '.yaml', '.yml', '.tf', '.sh'];
+  // Always store database in project root
+  const db = getRAGDatabase(projectRoot);
+
+  // If indexing a subfolder, only clear chunks from that subfolder
+  const isSubfolder = targetPath !== projectRoot;
+  if (isSubfolder) {
+    const subfolderPrefix = path.relative(projectRoot, targetPath);
+    db.prepare('DELETE FROM chunks WHERE file_path LIKE ?').run(`${subfolderPrefix}%`);
+  } else {
+    // Clear entire index when indexing full project
+    db.exec('DELETE FROM chunks');
+  }
+
+  // Recursively find all files
+  const findFiles = (dir) => {
+    const files = [];
+    try {
+      const items = fs.readdirSync(dir);
+      for (const item of items) {
+        if (item.startsWith('.') || item === 'node_modules' || item === 'pseudonymized') continue;
+        const fullPath = path.join(dir, item);
+        const stat = fs.statSync(fullPath);
+        if (stat.isDirectory()) {
+          files.push(...findFiles(fullPath));
+        } else {
+          const ext = path.extname(item).toLowerCase();
+          if (extensions.includes(ext)) {
+            files.push(fullPath);
+          }
+        }
+      }
+    } catch (e) {}
+    return files;
+  };
+
+  const files = findFiles(targetPath);
+  let processed = 0;
+  let chunksIndexed = 0;
+
+  const insertStmt = db.prepare(
+    'INSERT INTO chunks (file_path, chunk_index, content, embedding) VALUES (?, ?, ?, ?)'
+  );
+
+  for (const file of files) {
+    try {
+      const content = fs.readFileSync(file, 'utf-8');
+      const relativePath = path.relative(projectRoot, file);
+      const chunks = chunkText(content);
+
+      for (let i = 0; i < chunks.length; i++) {
+        const chunk = chunks[i];
+        const embedding = await getEmbedding(chunk);
+
+        if (embedding) {
+          // Store embedding as JSON blob
+          insertStmt.run(relativePath, i, chunk, JSON.stringify(embedding));
+          chunksIndexed++;
+        }
+      }
+
+      processed++;
+      if (progressCallback) {
+        progressCallback({ status: 'indexing', current: processed, total: files.length, file: relativePath });
+      }
+    } catch (e) {
+      // Skip files that can't be read
+    }
+  }
+
+  db.close();
+  return { chunksIndexed, filesProcessed: processed };
+}
+
+// Search for similar chunks
+async function searchIndex(query, folderPath, topK = 5) {
+  const crypto = require('crypto');
+  const os = require('os');
+
+  // Check if db exists in ~/.config/vomit/rag/
+  const configDir = path.join(os.homedir(), '.config', 'vomit', 'rag');
+  const pathHash = crypto.createHash('md5').update(folderPath).digest('hex').substring(0, 12);
+  const folderName = path.basename(folderPath);
+  const dbPath = path.join(configDir, `${folderName}-${pathHash}.db`);
+
+  if (!fs.existsSync(dbPath)) {
+    return { error: 'not_indexed' };
+  }
+
+  const queryEmbedding = await getEmbedding(query);
+  if (!queryEmbedding) {
+    return { error: 'Failed to embed query.' };
+  }
+
+  const db = getRAGDatabase(folderPath);
+  const rows = db.prepare('SELECT file_path, chunk_index, content, embedding FROM chunks').all();
+
+  // Calculate similarities
+  const similarities = rows.map(row => ({
+    similarity: cosineSimilarity(queryEmbedding, JSON.parse(row.embedding)),
+    chunk: row.content,
+    metadata: { file: row.file_path, chunkIndex: row.chunk_index }
+  }));
+
+  db.close();
+
+  // Sort by similarity and take top K
+  similarities.sort((a, b) => b.similarity - a.similarity);
+  return similarities.slice(0, topK);
+}
+
+// ============== End RAG ==============
+
 // Detect available Ollama installation and models
 function detectAITools() {
   availableAITools.ollama = findExecutable('ollama');
@@ -123,7 +321,7 @@ function buildAISubmenu() {
   const submenu = [
     {
       label: 'Toggle AI Terminal',
-      accelerator: 'Ctrl+`',
+      accelerator: 'CmdOrCtrl+J',
       click: () => {
         if (mainWindow) {
           mainWindow.webContents.send('toggle-terminal');
@@ -483,7 +681,7 @@ function createMenu() {
         },
         {
           label: 'Code',
-          accelerator: 'CmdOrCtrl+`',
+          accelerator: 'CmdOrCtrl+J',
           click: () => sendFormatCommand('code')
         },
         {
@@ -828,11 +1026,12 @@ async function openFile() {
 async function openFolder() {
   const result = await dialog.showOpenDialog(mainWindow, {
     title: 'Open Folder',
-    properties: ['openDirectory']
+    properties: ['openDirectory', 'createDirectory']
   });
 
   if (!result.canceled && result.filePaths.length > 0) {
     const folderPath = result.filePaths[0];
+    currentProjectRoot = folderPath;
     store.set('lastOpenedFolder', folderPath);
     mainWindow.webContents.send('open-folder', folderPath);
     mainWindow.setTitle(`${path.basename(folderPath)} - Vomit`);
@@ -918,17 +1117,29 @@ async function saveFile() {
 }
 
 async function saveFileAs() {
+  // Default to project root if available, otherwise use current file's directory
+  let defaultPath = 'untitled.md';
+  if (currentFilePath) {
+    defaultPath = currentFilePath;
+  } else if (currentProjectRoot) {
+    defaultPath = path.join(currentProjectRoot, 'untitled.md');
+  }
+
   const result = await dialog.showSaveDialog(mainWindow, {
     title: 'Save Markdown File',
     filters: [
       { name: 'Markdown Files', extensions: ['md'] }
     ],
-    defaultPath: currentFilePath || 'untitled.md'
+    defaultPath
   });
 
   if (!result.canceled && result.filePath) {
     currentFilePath = result.filePath;
     mainWindow.webContents.send('request-content');
+    // Refresh file tree after save completes
+    setTimeout(() => {
+      mainWindow.webContents.send('refresh-file-tree');
+    }, 100);
   }
 }
 
@@ -1443,10 +1654,58 @@ ipcMain.handle('request-save', async () => {
   });
 });
 
+// RAG: Index folder
+ipcMain.handle('rag-index', async (event, projectRoot, targetPath) => {
+  if (!availableAITools.ollama) {
+    return { error: 'Ollama not installed' };
+  }
+
+  // Check if nomic-embed-text is available
+  if (!availableAITools.ollamaModels.some(m => m.includes('nomic-embed-text'))) {
+    return { error: 'nomic-embed-text model not found. Run: ollama pull nomic-embed-text' };
+  }
+
+  // Send progress updates to renderer
+  const progressCallback = (progress) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('rag-progress', progress);
+    }
+  };
+
+  try {
+    const result = await indexFolder(projectRoot, targetPath, progressCallback);
+    return { success: true, indexed: result.chunksIndexed, files: result.filesProcessed };
+  } catch (e) {
+    return { error: e.message };
+  }
+});
+
+// RAG: Search
+ipcMain.handle('rag-search', async (event, query, folderPath) => {
+  if (!availableAITools.ollama) {
+    return { success: false, error: 'Ollama not installed' };
+  }
+
+  try {
+    const results = await searchIndex(query, folderPath, 5);
+    if (results.error) {
+      return { success: false, error: results.error };
+    }
+    // Format chunks for renderer
+    const chunks = results.map(r => ({
+      file: r.metadata.file,
+      content: r.chunk,
+      similarity: r.similarity
+    }));
+    return { success: true, chunks };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
+
 // Ollama execution using node-pty for proper TTY support
 ipcMain.handle('claude-execute', async (event, command, cwd) => {
   const ollamaModel = store.get('ollamaModel');
-
 
   return new Promise((resolve, reject) => {
     // Kill any existing process
@@ -1463,7 +1722,13 @@ ipcMain.handle('claude-execute', async (event, command, cwd) => {
       return;
     }
     if (availableAITools.ollamaModels.length === 0) {
-      mainWindow.webContents.send('claude-error', `No Ollama models found. Run: ollama pull ${ollamaModel}\n`);
+      mainWindow.webContents.send('claude-error', `No Ollama models found. Run: ollama pull llama3.2\n`);
+      mainWindow.webContents.send('claude-done', 1);
+      resolve(1);
+      return;
+    }
+    if (!ollamaModel) {
+      mainWindow.webContents.send('claude-error', 'No AI model selected. Select one from the AI menu.\n');
       mainWindow.webContents.send('claude-done', 1);
       resolve(1);
       return;
@@ -1562,6 +1827,7 @@ app.whenReady().then(() => {
     const stats = fs.statSync(targetPath);
     if (stats.isDirectory()) {
       // Open folder
+      currentProjectRoot = targetPath;
       store.set('lastOpenedFolder', targetPath);
       mainWindow.webContents.once('did-finish-load', () => {
         mainWindow.webContents.send('open-folder', targetPath);
@@ -1577,6 +1843,7 @@ app.whenReady().then(() => {
     const lastFile = store.get('lastOpenedFile');
 
     if (lastFolder && fs.existsSync(lastFolder)) {
+      currentProjectRoot = lastFolder;
       mainWindow.webContents.once('did-finish-load', () => {
         mainWindow.webContents.send('open-folder', lastFolder);
         mainWindow.setTitle(`${path.basename(lastFolder)} - Vomit`);
