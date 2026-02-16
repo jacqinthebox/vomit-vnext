@@ -25,3 +25,7 @@ npm-debug.log*
 # Electron builder cache
 .cache/
 Vomit-stable.app/
+
+# Build artifacts
+Vomit.app/
+dist/
