@@ -147,9 +147,14 @@ ipcRenderer.on('ai-provider-changed', (event, data) => {
   window.dispatchEvent(new CustomEvent('vomit:ai-provider-changed', { detail: data }));
 });
 
+ipcRenderer.on('file-saved-as', (event, filePath) => {
+  window.dispatchEvent(new CustomEvent('vomit:file-saved-as', { detail: filePath }));
+});
+
 // Expose only the send methods (no callbacks needed)
 contextBridge.exposeInMainWorld('vomit', {
   watchFile: (filePath) => ipcRenderer.send('watch-file', filePath),
+  setCurrentFile: (filePath) => ipcRenderer.send('set-current-file', filePath),
   openExternal: (url) => ipcRenderer.invoke('open-external', url),
   getDirectoryContents: (dirPath) => ipcRenderer.invoke('get-directory-contents', dirPath),
   getCurrentDirectory: () => ipcRenderer.invoke('get-current-directory'),

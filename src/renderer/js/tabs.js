@@ -121,6 +121,11 @@ class TabManager {
     // Update window title
     this.updateWindowTitle();
 
+    // Notify main process of current file (for save dialog)
+    if (window.vomit && window.vomit.setCurrentFile) {
+      window.vomit.setCurrentFile(tab.filePath || null);
+    }
+
     // Notify main process to watch this file
     if (tab.filePath && window.vomit && window.vomit.watchFile) {
       window.vomit.watchFile(tab.filePath);
@@ -197,13 +202,16 @@ class TabManager {
     }
   }
 
-  closeAllTabs(force = false) {
+  closeAllTabs(force = false, createNew = true) {
     // Close all tabs without prompting (used when switching projects)
     if (force) {
       this.tabs.clear();
       this.tabOrder = [];
       this.activeTabId = null;
-      this.createTab();
+      this.renderTabBar();
+      if (createNew) {
+        this.createTab();
+      }
       return;
     }
 

@@ -251,6 +251,15 @@ class Editor {
       }
     });
 
+    window.addEventListener('vomit:file-saved-as', (e) => {
+      const filePath = e.detail;
+      this.currentFilePath = filePath;
+      this.basePath = filePath ? filePath.substring(0, filePath.lastIndexOf('/')) : null;
+      if (this.tabManager) {
+        this.tabManager.updateCurrentTabPath(filePath);
+      }
+    });
+
     window.addEventListener('vomit:file-saved', (e) => {
       // Update tab path after Save As
       const { filePath } = e.detail || {};
@@ -650,9 +659,16 @@ class Editor {
   }
 
   openFolder(folderPath) {
-    // Close all existing tabs when switching to a new project
-    if (this.tabManager && this.projectRoot && this.projectRoot !== folderPath) {
-      this.tabManager.closeAllTabs(true);
+    // Close all existing tabs when opening/switching projects (don't auto-create untitled)
+    if (this.tabManager) {
+      // If switching projects OR first time opening a folder with only an empty untitled tab
+      const hasOnlyEmptyUntitled = this.tabManager.tabs.size === 1 &&
+        !this.tabManager.tabs.values().next().value.filePath &&
+        !this.tabManager.tabs.values().next().value.content.trim();
+
+      if ((this.projectRoot && this.projectRoot !== folderPath) || hasOnlyEmptyUntitled) {
+        this.tabManager.closeAllTabs(true, false);
+      }
     }
 
     this.currentDirectory = folderPath;

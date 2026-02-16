@@ -1156,6 +1156,8 @@ async function saveFileAs() {
 
   if (!result.canceled && result.filePath) {
     currentFilePath = result.filePath;
+    // Notify renderer of new file path so tab can update
+    mainWindow.webContents.send('file-saved-as', result.filePath);
     mainWindow.webContents.send('request-content');
     // Refresh file tree after save completes
     setTimeout(() => {
@@ -1387,6 +1389,17 @@ ipcMain.on('content-changed', (event, content) => {
 // Update file watcher when active file changes (e.g., tab switch)
 ipcMain.on('watch-file', (event, filePath) => {
   startFileWatcher(filePath);
+});
+
+// Sync current file path when switching tabs
+ipcMain.on('set-current-file', (event, filePath) => {
+  currentFilePath = filePath;
+  if (filePath) {
+    currentContent = '';
+    try {
+      currentContent = fs.readFileSync(filePath, 'utf-8');
+    } catch (e) {}
+  }
 });
 
 // Get auto-save state
