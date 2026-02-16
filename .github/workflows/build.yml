@@ -42,6 +42,7 @@ jobs:
           name: vomit-windows
           path: |
             dist/*.exe
+            dist/*.msi
           retention-days: 30
 
       - name: Upload to Release
@@ -50,6 +51,7 @@ jobs:
         with:
           files: |
             dist/*.exe
+            dist/*.msi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

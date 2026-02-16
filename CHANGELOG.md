@@ -2,6 +2,16 @@
 
 All notable changes to Vomit will be documented in this file.
 
+## [1.5.5] - 2026-02-16
+
+### Security
+- Updated Electron from 28.0.0 to 40.4.1 (fixes ASAR integrity bypass)
+- Updated electron-builder from 24.9.1 to 26.7.0 (fixes tar path traversal)
+- Fixed lodash prototype pollution vulnerability
+
+### Added
+- MSI installer for Windows (alongside NSIS .exe)
+
 ## [1.5.4] - 2026-02-16
 
 ### Added

@@ -1,6 +1,6 @@
 {
   "name": "vomit-vnext",
-  "version": "1.5.4",
+  "version": "1.5.5",
   "description": "A keyboard-centric markdown editor and presentation app with IntelliSense, live preview, and presenter view",
   "main": "src/main/main.js",
   "scripts": {
@@ -23,8 +23,8 @@
   },
   "license": "MIT",
   "devDependencies": {
-    "electron": "^28.0.0",
-    "electron-builder": "^24.9.1"
+    "electron": "^40.4.1",
+    "electron-builder": "^26.7.0"
   },
   "dependencies": {
     "better-sqlite3": "^12.6.2",
@@ -44,7 +44,7 @@
       "icon": "build/icon.icns"
     },
     "win": {
-      "target": "nsis",
+      "target": ["nsis", "msi"],
       "icon": "build/icon.png"
     },
     "linux": {
