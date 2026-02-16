@@ -36,11 +36,11 @@ src/
 
 ## Key Features
 
-### AI Terminal (Ollama)
+### AI Terminal (Ollama) — macOS/Linux Only
 - Toggle with `Cmd+J`
 - Commands: `/doc`, `/pseudo`, `/depseudo`, `/index`, `/rag`
 - Models detected from local Ollama installation
-- Cross-platform executable detection (macOS + Windows)
+- **Not available on Windows** due to node-pty dependencies
 
 ### RAG (Retrieval Augmented Generation)
 - `/index` - Index all documents using nomic-embed-text embeddings
@@ -71,7 +71,7 @@ npm run build        # Build DMG for distribution
    - `README.md` - Features, comparison table, usage instructions
    - `SHORTCUTS.md` - If any keyboard shortcuts changed
 
-3. **Ollama detection** - Uses direct path checks (`/opt/homebrew/bin/ollama`, `/usr/local/bin/ollama`, Windows paths) because packaged Electron apps have restricted PATH.
+3. **Ollama detection** - Uses direct path checks (`/opt/homebrew/bin/ollama`, `/usr/local/bin/ollama`) because packaged Electron apps have restricted PATH. AI features are disabled on Windows.
 
 4. **No console.log in main.js** - Causes EPIPE errors in Electron. Remove debug logs before committing.
 
@@ -86,3 +86,4 @@ npm run build        # Build DMG for distribution
 - Added subfolder indexing support
 - Terminal auto-shows when selecting a model from AI menu
 - Folder name shown in sidebar header
+- **Windows build now excludes AI features** (node-pty not supported)

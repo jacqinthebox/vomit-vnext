@@ -2,8 +2,16 @@ const { app, BrowserWindow, Menu, dialog, ipcMain, globalShortcut, shell } = req
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
-const pty = require('node-pty');
 const Store = require('electron-store');
+
+// Platform detection
+const isWindows = process.platform === 'win32';
+
+// Only load node-pty on non-Windows platforms (AI features not supported on Windows)
+let pty = null;
+if (!isWindows) {
+  pty = require('node-pty');
+}
 
 // Set app name for About dialog
 app.setName('Vomit');
@@ -55,18 +63,13 @@ let availableAITools = {
   ollamaModels: []
 };
 
-// Find executable path (works on macOS, Linux, and Windows)
+// Find executable path (works on macOS and Linux only - AI not supported on Windows)
 function findExecutable(name) {
-  const isWindows = process.platform === 'win32';
-  const exe = isWindows ? `${name}.exe` : name;
+  if (isWindows) return null; // AI features not available on Windows
+  const exe = name;
 
   // Check common locations directly (packaged apps have limited PATH)
-  const commonPaths = isWindows ? [
-    `${process.env.LOCALAPPDATA}\\Programs\\Ollama\\${exe}`,
-    `${process.env.PROGRAMFILES}\\Ollama\\${exe}`,
-    `C:\\Program Files\\Ollama\\${exe}`,
-    `${process.env.USERPROFILE}\\AppData\\Local\\Programs\\Ollama\\${exe}`
-  ] : [
+  const commonPaths = [
     `/opt/homebrew/bin/${name}`,  // Apple Silicon homebrew
     `/usr/local/bin/${name}`,      // Intel homebrew / Linux
     `/usr/bin/${name}`,            // System
@@ -79,11 +82,10 @@ function findExecutable(name) {
     }
   }
 
-  // Fallback to which/where
+  // Fallback to which
   const { execSync } = require('child_process');
   try {
-    const cmd = isWindows ? `where ${name}` : `which ${name}`;
-    const result = execSync(cmd, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }).trim().split('\n')[0];
+    const result = execSync(`which ${name}`, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }).trim().split('\n')[0];
     return result || null;
   } catch (e) {
     return null;
@@ -310,6 +312,11 @@ async function searchIndex(query, folderPath, topK = 5) {
 
 // Detect available Ollama installation and models
 function detectAITools() {
+  // Skip AI detection on Windows - not supported
+  if (isWindows) {
+    return availableAITools;
+  }
+
   availableAITools.ollama = findExecutable('ollama');
   availableAITools.ollamaModels = getOllamaModels(availableAITools.ollama);
 
@@ -318,6 +325,20 @@ function detectAITools() {
 
 // Build AI submenu dynamically based on available Ollama models
 function buildAISubmenu() {
+  // AI features not available on Windows
+  if (isWindows) {
+    return [
+      {
+        label: 'AI features not available on Windows',
+        enabled: false
+      },
+      {
+        label: 'Use macOS or Linux for AI support',
+        enabled: false
+      }
+    ];
+  }
+
   const submenu = [
     {
       label: 'Toggle AI Terminal',
@@ -1656,6 +1677,9 @@ ipcMain.handle('request-save', async () => {
 
 // RAG: Index folder
 ipcMain.handle('rag-index', async (event, projectRoot, targetPath) => {
+  if (isWindows) {
+    return { error: 'AI features are not available on Windows' };
+  }
   if (!availableAITools.ollama) {
     return { error: 'Ollama not installed' };
   }
@@ -1682,6 +1706,9 @@ ipcMain.handle('rag-index', async (event, projectRoot, targetPath) => {
 
 // RAG: Search
 ipcMain.handle('rag-search', async (event, query, folderPath) => {
+  if (isWindows) {
+    return { success: false, error: 'AI features are not available on Windows' };
+  }
   if (!availableAITools.ollama) {
     return { success: false, error: 'Ollama not installed' };
   }
@@ -1705,6 +1732,13 @@ ipcMain.handle('rag-search', async (event, query, folderPath) => {
 
 // Ollama execution using node-pty for proper TTY support
 ipcMain.handle('claude-execute', async (event, command, cwd) => {
+  // AI features not available on Windows
+  if (isWindows) {
+    mainWindow.webContents.send('claude-error', 'AI features are not available on Windows. Use macOS or Linux.\n');
+    mainWindow.webContents.send('claude-done', 1);
+    return 1;
+  }
+
   const ollamaModel = store.get('ollamaModel');
 
   return new Promise((resolve, reject) => {
