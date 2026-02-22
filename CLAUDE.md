@@ -60,8 +60,23 @@ src/
 ```bash
 npm install          # Install dependencies
 npm start            # Run in development
-npm run build        # Build DMG for distribution
 ```
+
+## Building & Releasing
+
+**Local build (Mac only):**
+```bash
+npm run build:mac    # Build DMG for macOS only
+```
+
+**DO NOT run `npm run build`** - It tries to build for all platforms and fails on macOS due to Wine/32-bit issues.
+
+**Release process:**
+1. Build locally for Mac: `npm run build:mac`
+2. Commit and push changes
+3. Create GitHub release: `gh release create vX.X.X dist/*.dmg --title "vX.X.X" --notes "Release notes"`
+
+Cross-platform builds (Windows/Linux) are handled by GitHub Actions CI.
 
 ## Important Guidelines
 

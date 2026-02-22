@@ -16,14 +16,24 @@ class Editor {
     this.searchResults = document.getElementById('search-results');
     this.sidebarResize = document.getElementById('sidebar-resize');
 
-    // Terminal elements
-    this.terminalPane = document.getElementById('terminal-pane');
-    this.terminalOutput = document.getElementById('terminal-output');
-    this.terminalInput = document.getElementById('terminal-input');
+    // Unified terminal panel elements
+    this.terminalPanel = document.getElementById('terminal-panel');
+    this.terminalResize = document.getElementById('terminal-resize');
     this.terminalClear = document.getElementById('terminal-clear');
     this.terminalStop = document.getElementById('terminal-stop');
     this.terminalClose = document.getElementById('terminal-close');
-    this.terminalResize = document.getElementById('terminal-resize');
+    this.terminalTabs = document.querySelectorAll('.terminal-tab');
+
+    // AI terminal content
+    this.aiTerminalContent = document.getElementById('ai-terminal-content');
+    this.terminalOutput = document.getElementById('terminal-output');
+    this.terminalInput = document.getElementById('terminal-input');
+
+    // Shell terminal content
+    this.shellTerminalContent = document.getElementById('shell-terminal-content');
+    this.shellTerminalContainer = document.getElementById('shell-terminal-container');
+    this.xterm = null; // xterm.js instance
+    this.xtermFitAddon = null;
 
     this.currentFilePath = null;
     this.basePath = null;
@@ -44,12 +54,16 @@ class Editor {
     this.focusedPane = 'editor'; // 'editor' or 'sidebar'
 
     // Terminal state
-    this.isTerminalVisible = false;
+    this.isTerminalPanelVisible = false;
+    this.activeTerminalTab = 'ai'; // 'ai' or 'shell'
     this.isClaudeRunning = false;
     this.terminalHistory = [];
     this.terminalHistoryIndex = -1;
     this.pseudoCollecting = false;
     this.pseudoOutput = '';
+
+    // Shell terminal state
+    this.isShellRunning = false;
 
     this.setupEditor();
     this.setupAutoSave();
@@ -57,6 +71,7 @@ class Editor {
     this.setupSearch();
     this.setupKeyboardNavigation();
     this.setupTerminal();
+    this.setupShellTerminal();
     this.setupIPC();
 
     // Initialize TabManager
@@ -293,6 +308,10 @@ class Editor {
       this.showShortcutsModal();
     });
 
+    window.addEventListener('vomit:show-documentation', (e) => {
+      this.showDocumentation(e.detail.content, e.detail.filePath);
+    });
+
     window.addEventListener('vomit:toggle-search', () => {
       this.toggleSearch();
     });
@@ -339,6 +358,8 @@ class Editor {
       if (this.isPreviewVisible) {
         document.body.classList.add('split-view');
       }
+      // Update xterm theme to match
+      this.updateXtermTheme();
     });
 
     // Handle external file changes
@@ -392,6 +413,22 @@ class Editor {
       this.markOutputComplete();
       if (e.detail === -1) {
         this.appendTerminalOutput('Stopped.', 'system');
+      }
+    });
+
+    // Shell terminal events
+    window.addEventListener('vomit:toggle-shell-terminal', () => {
+      this.toggleShellTerminal();
+    });
+
+    window.addEventListener('vomit:shell-output', (e) => {
+      this.appendShellOutput(e.detail);
+    });
+
+    window.addEventListener('vomit:shell-exit', (e) => {
+      this.isShellRunning = false;
+      if (e.detail === -1) {
+        this.appendShellOutput('\r\n[Shell terminated]\r\n');
       }
     });
 
@@ -636,6 +673,16 @@ class Editor {
         document.removeEventListener('keydown', handler);
       }
     });
+  }
+
+  showDocumentation(content, filePath) {
+    // Open documentation in a new tab with preview enabled
+    this.tabManager.createTab(filePath || 'Documentation', content);
+
+    // Enable preview mode for documentation
+    if (!this.isPreviewVisible) {
+      this.togglePreview();
+    }
   }
 
   navigateToParent() {
@@ -1870,7 +1917,10 @@ class Editor {
         if (this.isClaudeRunning) {
           this.stopAI();
         } else {
-          this.toggleTerminal();
+          // Close the terminal panel
+          this.isTerminalPanelVisible = false;
+          this.terminalPanel.classList.add('hidden');
+          this.cm.focus();
         }
       } else if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
@@ -1878,9 +1928,13 @@ class Editor {
       }
     });
 
-    // Clear button
+    // Clear button - clears active terminal
     this.terminalClear.addEventListener('click', () => {
-      this.clearTerminal();
+      if (this.activeTerminalTab === 'ai') {
+        this.clearTerminal();
+      } else {
+        this.clearShellTerminal();
+      }
     });
 
     // Stop button
@@ -1888,9 +1942,11 @@ class Editor {
       window.vomit.claudeStop();
     });
 
-    // Close button
+    // Close button - closes the entire terminal panel
     this.terminalClose.addEventListener('click', () => {
-      this.toggleTerminal();
+      this.isTerminalPanelVisible = false;
+      this.terminalPanel.classList.add('hidden');
+      this.cm.focus();
     });
 
     // Terminal resize
@@ -1899,8 +1955,16 @@ class Editor {
     // Initialize terminal title based on AI provider
     this.initTerminalTitle();
 
+    // Setup terminal tab switching
+    this.terminalTabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        const targetTab = tab.dataset.terminal;
+        this.switchTerminalTab(targetTab);
+      });
+    });
+
     // Global Ctrl+C handler for terminal
-    this.terminalPane.addEventListener('keydown', (e) => {
+    this.terminalPanel.addEventListener('keydown', (e) => {
       if (e.key === 'c' && e.ctrlKey && this.isClaudeRunning) {
         e.preventDefault();
         this.stopAI();
@@ -1909,11 +1973,53 @@ class Editor {
 
     // Also listen on document level when terminal is visible
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'c' && e.ctrlKey && this.isTerminalVisible && this.isClaudeRunning) {
+      if (e.key === 'c' && e.ctrlKey && this.isTerminalPanelVisible && this.isClaudeRunning) {
         e.preventDefault();
         this.stopAI();
       }
     });
+  }
+
+  switchTerminalTab(tabName) {
+    this.activeTerminalTab = tabName;
+
+    // Update tab buttons
+    this.terminalTabs.forEach(tab => {
+      tab.classList.toggle('active', tab.dataset.terminal === tabName);
+    });
+
+    // Update content visibility
+    this.aiTerminalContent.classList.toggle('active', tabName === 'ai');
+    this.shellTerminalContent.classList.toggle('active', tabName === 'shell');
+
+    // Focus appropriate element and initialize shell if needed
+    if (tabName === 'ai') {
+      this.terminalInput.focus();
+    } else if (tabName === 'shell') {
+      this.initXterm();
+      if (!this.isShellRunning) {
+        this.startShell();
+      }
+      setTimeout(() => {
+        if (this.xtermFitAddon) {
+          this.xtermFitAddon.fit();
+        }
+        if (this.xterm) {
+          this.xterm.focus();
+        }
+      }, 0);
+    }
+  }
+
+  async startShell() {
+    const cwd = this.projectRoot || this.currentDirectory;
+    await window.vomit.shellSpawn(cwd);
+    this.isShellRunning = true;
+    setTimeout(() => {
+      if (this.xterm) {
+        window.vomit.shellResize(this.xterm.cols, this.xterm.rows);
+      }
+    }, 100);
   }
 
   setupTerminalResize() {
@@ -1926,7 +2032,7 @@ class Editor {
     this.terminalResize.addEventListener('mousedown', (e) => {
       isResizing = true;
       startY = e.clientY;
-      startHeight = this.terminalPane.offsetHeight;
+      startHeight = this.terminalPanel.offsetHeight;
       document.body.style.cursor = 'ns-resize';
       document.body.style.userSelect = 'none';
     });
@@ -1935,7 +2041,11 @@ class Editor {
       if (!isResizing) return;
       const delta = startY - e.clientY;
       const newHeight = Math.max(100, Math.min(600, startHeight + delta));
-      this.terminalPane.style.height = `${newHeight}px`;
+      this.terminalPanel.style.height = `${newHeight}px`;
+      // Fit xterm when resizing
+      if (this.activeTerminalTab === 'shell' && this.xtermFitAddon) {
+        this.xtermFitAddon.fit();
+      }
     });
 
     document.addEventListener('mouseup', () => {
@@ -1943,26 +2053,201 @@ class Editor {
         isResizing = false;
         document.body.style.cursor = '';
         document.body.style.userSelect = '';
+        // Final fit and notify shell of resize
+        if (this.activeTerminalTab === 'shell' && this.xtermFitAddon) {
+          this.xtermFitAddon.fit();
+          if (this.isShellRunning && this.xterm) {
+            window.vomit.shellResize(this.xterm.cols, this.xterm.rows);
+          }
+        }
       }
     });
   }
 
   toggleTerminal() {
-    this.isTerminalVisible = !this.isTerminalVisible;
-    this.terminalPane.classList.toggle('hidden', !this.isTerminalVisible);
-
-    if (this.isTerminalVisible) {
-      this.terminalInput.focus();
-    } else {
+    if (this.isTerminalPanelVisible && this.activeTerminalTab === 'ai') {
+      // Already showing AI terminal, close the panel
+      this.isTerminalPanelVisible = false;
+      this.terminalPanel.classList.add('hidden');
       this.cm.focus();
+    } else {
+      // Show panel and switch to AI tab
+      this.isTerminalPanelVisible = true;
+      this.terminalPanel.classList.remove('hidden');
+      this.switchTerminalTab('ai');
     }
   }
 
   showTerminal() {
-    if (!this.isTerminalVisible) {
-      this.isTerminalVisible = true;
-      this.terminalPane.classList.remove('hidden');
-      this.terminalInput.focus();
+    if (!this.isTerminalPanelVisible || this.activeTerminalTab !== 'ai') {
+      this.isTerminalPanelVisible = true;
+      this.terminalPanel.classList.remove('hidden');
+      this.switchTerminalTab('ai');
+    }
+  }
+
+  // Shell Terminal Methods (using xterm.js)
+  setupShellTerminal() {
+    if (!this.shellTerminalContainer) return;
+    // Shell terminal is now part of unified panel - no separate setup needed
+  }
+
+  // Get xterm theme from CSS variables
+  getXtermTheme() {
+    const styles = getComputedStyle(document.body);
+    const bgPrimary = styles.getPropertyValue('--bg-primary').trim() || '#1e1e1e';
+    const bgSecondary = styles.getPropertyValue('--bg-secondary').trim() || '#252526';
+    const textPrimary = styles.getPropertyValue('--text-primary').trim() || '#d4d4d4';
+    const textMuted = styles.getPropertyValue('--text-muted').trim() || '#6e6e6e';
+    const accentColor = styles.getPropertyValue('--accent-color').trim() || '#569cd6';
+
+    // Detect if it's a light theme based on background luminance
+    const isLight = this.isLightColor(bgPrimary);
+
+    if (isLight) {
+      // Light theme colors
+      return {
+        background: bgPrimary,
+        foreground: textPrimary,
+        cursor: textPrimary,
+        cursorAccent: bgPrimary,
+        selectionBackground: 'rgba(0, 0, 0, 0.15)',
+        selectionForeground: textPrimary,
+        black: '#000000',
+        red: '#c91b00',
+        green: '#00c200',
+        yellow: '#c7c400',
+        blue: '#0225c7',
+        magenta: '#c930c7',
+        cyan: '#00c5c7',
+        white: '#c7c7c7',
+        brightBlack: '#676767',
+        brightRed: '#ff6d67',
+        brightGreen: '#5ff967',
+        brightYellow: '#fefb67',
+        brightBlue: '#6871ff',
+        brightMagenta: '#ff76ff',
+        brightCyan: '#5ffdff',
+        brightWhite: '#fffefe'
+      };
+    } else {
+      // Dark theme colors - derive from CSS variables where possible
+      return {
+        background: bgPrimary,
+        foreground: textPrimary,
+        cursor: accentColor,
+        cursorAccent: bgPrimary,
+        selectionBackground: 'rgba(255, 255, 255, 0.2)',
+        selectionForeground: textPrimary,
+        black: bgSecondary,
+        red: '#f38ba8',
+        green: '#a6e3a1',
+        yellow: '#f9e2af',
+        blue: '#89b4fa',
+        magenta: '#cba6f7',
+        cyan: '#94e2d5',
+        white: textPrimary,
+        brightBlack: textMuted,
+        brightRed: '#f38ba8',
+        brightGreen: '#a6e3a1',
+        brightYellow: '#f9e2af',
+        brightBlue: '#89b4fa',
+        brightMagenta: '#cba6f7',
+        brightCyan: '#94e2d5',
+        brightWhite: '#ffffff'
+      };
+    }
+  }
+
+  // Helper to detect if a color is light
+  isLightColor(color) {
+    const hex = color.replace('#', '');
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+    // Calculate relative luminance
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance > 0.5;
+  }
+
+  // Update xterm theme when app theme changes
+  updateXtermTheme() {
+    if (this.xterm) {
+      this.xterm.options.theme = this.getXtermTheme();
+    }
+  }
+
+  initXterm() {
+    if (this.xterm) return; // Already initialized
+
+    // Create xterm.js instance with theme from CSS variables
+    this.xterm = new Terminal({
+      cursorBlink: true,
+      cursorStyle: 'bar',
+      fontSize: 13,
+      fontFamily: "'MesloLGS NF', 'Hack Nerd Font', 'FiraCode Nerd Font', 'JetBrainsMono Nerd Font', 'SF Mono', 'Monaco', 'Menlo', 'Consolas', monospace",
+      theme: this.getXtermTheme(),
+      allowProposedApi: true,
+      scrollback: 10000
+    });
+
+    // Create and load fit addon
+    this.xtermFitAddon = new FitAddon.FitAddon();
+    this.xterm.loadAddon(this.xtermFitAddon);
+
+    // Open terminal in container
+    this.xterm.open(this.shellTerminalContainer);
+
+    // Fit to container
+    setTimeout(() => {
+      this.xtermFitAddon.fit();
+      // Send resize to PTY
+      if (this.isShellRunning) {
+        window.vomit.shellResize(this.xterm.cols, this.xterm.rows);
+      }
+    }, 0);
+
+    // Handle user input - send to PTY
+    this.xterm.onData((data) => {
+      if (this.isShellRunning) {
+        window.vomit.shellWrite(data);
+      }
+    });
+
+    // Handle window resize
+    window.addEventListener('resize', () => {
+      if (this.isTerminalPanelVisible && this.activeTerminalTab === 'shell' && this.xtermFitAddon) {
+        this.xtermFitAddon.fit();
+        if (this.isShellRunning) {
+          window.vomit.shellResize(this.xterm.cols, this.xterm.rows);
+        }
+      }
+    });
+  }
+
+  toggleShellTerminal() {
+    if (this.isTerminalPanelVisible && this.activeTerminalTab === 'shell') {
+      // Already showing shell terminal, close the panel
+      this.isTerminalPanelVisible = false;
+      this.terminalPanel.classList.add('hidden');
+      this.cm.focus();
+    } else {
+      // Show panel and switch to shell tab
+      this.isTerminalPanelVisible = true;
+      this.terminalPanel.classList.remove('hidden');
+      this.switchTerminalTab('shell');
+    }
+  }
+
+  appendShellOutput(data) {
+    if (this.xterm) {
+      this.xterm.write(data);
+    }
+  }
+
+  clearShellTerminal() {
+    if (this.xterm) {
+      this.xterm.clear();
     }
   }
 

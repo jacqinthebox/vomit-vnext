@@ -56,6 +56,7 @@ let editorWindows = []; // Track all editor windows
 let fileWatcher = null; // Watch for external file changes
 let lastKnownMtime = null; // Track file modification time
 let ollamaProcess = null; // Track running Ollama process
+let shellProcess = null; // Track running shell process
 
 // Cache for available Ollama
 let availableAITools = {
@@ -849,6 +850,18 @@ function createMenu() {
           }
         },
         { type: 'separator' },
+        ...(isWindows ? [] : [
+          {
+            label: 'Toggle Shell Terminal',
+            accelerator: 'CmdOrCtrl+`',
+            click: () => {
+              if (mainWindow) {
+                mainWindow.webContents.send('toggle-shell-terminal');
+              }
+            }
+          },
+          { type: 'separator' }
+        ]),
         {
           label: 'Next Tab',
           accelerator: 'CmdOrCtrl+Shift+]',
@@ -945,6 +958,29 @@ function createMenu() {
     {
       label: 'Help',
       submenu: [
+        {
+          label: 'Documentation',
+          accelerator: 'CmdOrCtrl+Shift+/',
+          click: () => {
+            if (mainWindow) {
+              // Load manual.md from app resources
+              const manualPath = path.join(__dirname, '..', 'manual.md');
+              try {
+                const content = fs.readFileSync(manualPath, 'utf8');
+                mainWindow.webContents.send('show-documentation', content, manualPath);
+              } catch (err) {
+                // Fallback: try from app root (development)
+                const devPath = path.join(__dirname, '..', '..', 'manual.md');
+                try {
+                  const content = fs.readFileSync(devPath, 'utf8');
+                  mainWindow.webContents.send('show-documentation', content, devPath);
+                } catch (e) {
+                  mainWindow.webContents.send('show-documentation', '# Documentation\n\nManual not found.', null);
+                }
+              }
+            }
+          }
+        },
         {
           label: 'Keyboard Shortcuts',
           accelerator: 'CmdOrCtrl+/',
@@ -1829,6 +1865,70 @@ ipcMain.on('claude-stop', () => {
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('claude-done', -1);
     }
+  }
+});
+
+// Shell Terminal IPC handlers
+ipcMain.handle('shell-spawn', async (event, cwd) => {
+  // Shell features not available on Windows
+  if (isWindows) {
+    mainWindow.webContents.send('shell-output', 'Shell terminal is not available on Windows.\n');
+    mainWindow.webContents.send('shell-exit', 1);
+    return 1;
+  }
+
+  // Kill any existing shell process
+  if (shellProcess) {
+    shellProcess.kill();
+    shellProcess = null;
+  }
+
+  const shell = process.env.SHELL || '/bin/bash';
+  const workingDir = cwd || process.env.HOME;
+
+  shellProcess = pty.spawn(shell, [], {
+    name: 'xterm-256color',
+    cols: 120,
+    rows: 30,
+    cwd: workingDir,
+    env: { ...process.env, TERM: 'xterm-256color' }
+  });
+
+  shellProcess.onData((data) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('shell-output', data);
+    }
+  });
+
+  shellProcess.onExit(({ exitCode }) => {
+    shellProcess = null;
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('shell-exit', exitCode);
+    }
+  });
+
+  return 0;
+});
+
+ipcMain.on('shell-write', (event, data) => {
+  if (shellProcess) {
+    shellProcess.write(data);
+  }
+});
+
+ipcMain.on('shell-stop', () => {
+  if (shellProcess) {
+    shellProcess.kill();
+    shellProcess = null;
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('shell-exit', -1);
+    }
+  }
+});
+
+ipcMain.on('shell-resize', (event, cols, rows) => {
+  if (shellProcess && cols && rows) {
+    shellProcess.resize(cols, rows);
   }
 });
 

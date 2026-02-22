@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="css/codemirror-dialog.css">
   <link rel="stylesheet" href="css/codemirror-show-hint.css">
   <link rel="stylesheet" href="css/katex.min.css">
+  <link rel="stylesheet" href="css/xterm.css">
 </head>
 <body class="theme-default">
   <div id="app">
@@ -45,20 +46,30 @@
       </div>
     </div>
 
-    <div id="terminal-pane" class="hidden">
+    <div id="terminal-panel" class="hidden">
       <div id="terminal-resize"></div>
       <div id="terminal-header">
-        <span class="terminal-title">Claude Terminal</span>
+        <div class="terminal-tabs">
+          <button class="terminal-tab active" data-terminal="ai">AI</button>
+          <button class="terminal-tab" data-terminal="shell">Shell</button>
+        </div>
         <div class="terminal-actions">
-          <button id="terminal-clear" title="Clear (Cmd+K)">Clear</button>
+          <button id="terminal-clear" title="Clear">Clear</button>
           <button id="terminal-stop" title="Stop" class="hidden">Stop</button>
           <button id="terminal-close" title="Close">&times;</button>
         </div>
       </div>
-      <div id="terminal-output"></div>
-      <div id="terminal-input-container">
-        <span class="terminal-prompt">❯</span>
-        <input type="text" id="terminal-input" placeholder="Ask AI... (use /doc to include document)" autocomplete="off">
+      <!-- AI Terminal Content -->
+      <div id="ai-terminal-content" class="terminal-content active">
+        <div id="terminal-output"></div>
+        <div id="terminal-input-container">
+          <span class="terminal-prompt">❯</span>
+          <input type="text" id="terminal-input" placeholder="Ask AI... (use /doc to include document)" autocomplete="off">
+        </div>
+      </div>
+      <!-- Shell Terminal Content -->
+      <div id="shell-terminal-content" class="terminal-content">
+        <div id="shell-terminal-container"></div>
       </div>
     </div>
 
@@ -110,6 +121,8 @@
   <script src="js/codemirror-anyword-hint.min.js"></script>
   <script src="js/hints.js"></script>
   <script src="js/emoji.js"></script>
+  <script src="js/xterm.min.js"></script>
+  <script src="js/xterm-addon-fit.min.js"></script>
   <script src="js/tabs.js"></script>
   <script src="js/editor.js"></script>
 </body>

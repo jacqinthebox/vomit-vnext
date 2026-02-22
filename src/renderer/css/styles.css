@@ -73,6 +73,7 @@ html, body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .sidebar.hidden {
@@ -330,9 +331,13 @@ html, body {
 }
 
 .sidebar-header {
-  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  height: 26px;
+  min-height: 26px;
   font-weight: 600;
-  font-size: 12px;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: var(--text-secondary);
@@ -996,11 +1001,12 @@ li.CodeMirror-hint-active {
 /* Tab Bar */
 #tab-bar {
   display: flex;
+  align-items: center;
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-color);
   padding-left: 8px;
-  height: 35px;
-  min-height: 35px;
+  height: 26px;
+  min-height: 26px;
   overflow-x: auto;
   overflow-y: hidden;
   flex-shrink: 0;
@@ -1018,11 +1024,10 @@ li.CodeMirror-hint-active {
 .tab {
   display: flex;
   align-items: center;
-  padding: 0 12px;
-  min-width: 100px;
-  max-width: 180px;
+  padding: 0 10px;
+  min-width: 80px;
+  max-width: 160px;
   height: 100%;
-  border-right: 1px solid var(--border-color);
   cursor: pointer;
   -webkit-app-region: no-drag;
   user-select: none;
@@ -1031,21 +1036,46 @@ li.CodeMirror-hint-active {
   transition: background 0.15s;
 }
 
+/* Subtle separator between tabs */
+.tab::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 5px;
+  bottom: 5px;
+  width: 1px;
+  background: var(--border-color);
+  opacity: 0.5;
+}
+
+.tab:last-child::after {
+  display: none;
+}
+
 .tab:hover {
   background: var(--bg-tertiary);
 }
 
 .tab.active {
   background: var(--bg-primary);
-  border-bottom: 2px solid var(--accent-color);
-  margin-bottom: -1px;
+}
+
+/* Active tab indicator - hairline at bottom */
+.tab.active::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--accent-color);
 }
 
 .tab-number {
-  font-size: 10px;
+  font-size: 9px;
   color: var(--text-muted);
-  margin-right: 6px;
-  min-width: 10px;
+  margin-right: 4px;
+  min-width: 8px;
   font-family: 'SF Mono', 'Menlo', monospace;
 }
 
@@ -1060,20 +1090,20 @@ li.CodeMirror-hint-active {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-primary);
 }
 
 .tab-close {
-  width: 18px;
-  height: 18px;
-  border-radius: 4px;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
   display: flex;
   align-items: center;
   justify-content: center;
   opacity: 0;
-  margin-left: 6px;
-  font-size: 16px;
+  margin-left: 4px;
+  font-size: 12px;
   color: var(--text-muted);
   background: transparent;
   border: none;
@@ -1201,8 +1231,8 @@ li.CodeMirror-hint-active {
   color: var(--text-muted);
 }
 
-/* Claude Terminal Panel */
-#terminal-pane {
+/* Unified Terminal Panel with Tabs */
+#terminal-panel {
   position: fixed;
   bottom: 24px; /* above status bar */
   left: 0;
@@ -1215,7 +1245,7 @@ li.CodeMirror-hint-active {
   z-index: 100;
 }
 
-#terminal-pane.hidden {
+#terminal-panel.hidden {
   display: none;
 }
 
@@ -1237,21 +1267,46 @@ li.CodeMirror-hint-active {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
+  padding: 0 8px;
+  height: 26px;
+  min-height: 26px;
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-color);
   flex-shrink: 0;
 }
 
-.terminal-title {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-secondary);
+.terminal-tabs {
+  display: flex;
+  gap: 0;
+  height: 100%;
+}
+
+.terminal-tab {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0 12px;
+  font-size: 11px;
+  height: 100%;
+  border-bottom: 1px solid transparent;
+  margin-bottom: -1px;
+}
+
+.terminal-tab:hover {
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+}
+
+.terminal-tab.active {
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  border-bottom-color: var(--accent-color);
 }
 
 .terminal-actions {
   display: flex;
-  gap: 8px;
+  gap: 4px;
 }
 
 .terminal-actions button {
@@ -1259,9 +1314,9 @@ li.CodeMirror-hint-active {
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  padding: 4px 8px;
-  font-size: 12px;
-  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 11px;
+  border-radius: 3px;
 }
 
 .terminal-actions button:hover {
@@ -1270,8 +1325,20 @@ li.CodeMirror-hint-active {
 }
 
 #terminal-close {
-  font-size: 16px;
+  font-size: 14px;
   line-height: 1;
+}
+
+/* Terminal content areas */
+.terminal-content {
+  display: none;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.terminal-content.active {
+  display: flex;
 }
 
 #terminal-output {
@@ -1378,7 +1445,29 @@ li.CodeMirror-hint-active {
   color: var(--text-muted);
 }
 
-/* Adjust main container when terminal is visible */
-body:has(#terminal-pane:not(.hidden)) #main-container {
+/* Adjust main container when terminal panel is visible */
+body:has(#terminal-panel:not(.hidden)) #main-container {
   height: calc(100vh - 324px); /* 300px terminal + 24px status bar */
+}
+
+/* Shell terminal container (xterm.js) */
+#shell-terminal-container {
+  flex: 1;
+  overflow: hidden;
+  background: var(--bg-primary);
+}
+
+/* xterm.js customizations */
+#shell-terminal-container .xterm {
+  padding: 4px 8px;
+  height: 100%;
+}
+
+#shell-terminal-container .xterm-viewport {
+  overflow-y: auto !important;
+  background: transparent !important;
+}
+
+#shell-terminal-container .xterm-screen {
+  height: 100%;
 }

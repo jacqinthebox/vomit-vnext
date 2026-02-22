@@ -50,6 +50,10 @@ ipcRenderer.on('show-shortcuts', () => {
   window.dispatchEvent(new CustomEvent('vomit:show-shortcuts'));
 });
 
+ipcRenderer.on('show-documentation', (event, content, filePath) => {
+  window.dispatchEvent(new CustomEvent('vomit:show-documentation', { detail: { content, filePath } }));
+});
+
 ipcRenderer.on('open-folder', (event, folderPath) => {
   window.dispatchEvent(new CustomEvent('vomit:open-folder', { detail: folderPath }));
 });
@@ -151,6 +155,19 @@ ipcRenderer.on('file-saved-as', (event, filePath) => {
   window.dispatchEvent(new CustomEvent('vomit:file-saved-as', { detail: filePath }));
 });
 
+// Shell Terminal events
+ipcRenderer.on('toggle-shell-terminal', () => {
+  window.dispatchEvent(new CustomEvent('vomit:toggle-shell-terminal'));
+});
+
+ipcRenderer.on('shell-output', (event, data) => {
+  window.dispatchEvent(new CustomEvent('vomit:shell-output', { detail: data }));
+});
+
+ipcRenderer.on('shell-exit', (event, code) => {
+  window.dispatchEvent(new CustomEvent('vomit:shell-exit', { detail: code }));
+});
+
 // Expose only the send methods (no callbacks needed)
 contextBridge.exposeInMainWorld('vomit', {
   watchFile: (filePath) => ipcRenderer.send('watch-file', filePath),
@@ -191,5 +208,10 @@ contextBridge.exposeInMainWorld('vomit', {
   createDirectory: (dirPath) => ipcRenderer.invoke('create-directory', dirPath),
   // RAG methods
   ragIndex: (projectRoot, targetPath) => ipcRenderer.invoke('rag-index', projectRoot, targetPath),
-  ragSearch: (query, folderPath) => ipcRenderer.invoke('rag-search', query, folderPath)
+  ragSearch: (query, folderPath) => ipcRenderer.invoke('rag-search', query, folderPath),
+  // Shell terminal methods
+  shellSpawn: (cwd) => ipcRenderer.invoke('shell-spawn', cwd),
+  shellWrite: (data) => ipcRenderer.send('shell-write', data),
+  shellResize: (cols, rows) => ipcRenderer.send('shell-resize', cols, rows),
+  shellStop: () => ipcRenderer.send('shell-stop')
 });
