@@ -116,6 +116,9 @@ class Editor {
         'Ctrl-`': () => this.wrapSelection('`', '`'),
         'Cmd-K': () => this.insertLink(),
         'Ctrl-K': () => this.insertLink(),
+        'Shift-Cmd-T': () => this.formatTable(),
+        'Shift-Ctrl-T': () => this.formatTable(),
+        'Alt-Z': () => this.toggleLineWrapping(),
         'Ctrl-J': (cm) => this.showHints(cm),
         'Ctrl-Space': (cm) => this.showHints(cm)
       },
@@ -296,6 +299,10 @@ class Editor {
       this.toggleFileTree();
     });
 
+    window.addEventListener('vomit:toggle-word-wrap', () => {
+      this.toggleLineWrapping();
+    });
+
     window.addEventListener('vomit:toggle-line-numbers', () => {
       this.toggleLineNumbers();
     });
@@ -342,6 +349,7 @@ class Editor {
         case 'code': this.wrapSelection('`', '`'); break;
         case 'link': this.insertLink(); break;
         case 'table': this.insertTable(); break;
+        case 'formatTable': this.formatTable(); break;
         case 'h1': this.insertAtLineStart('# '); break;
         case 'h2': this.insertAtLineStart('## '); break;
         case 'h3': this.insertAtLineStart('### '); break;
@@ -1156,6 +1164,106 @@ class Editor {
     this.updatePreview();
   }
 
+  toggleLineWrapping() {
+    const currentWrap = this.cm.getOption('lineWrapping');
+    this.cm.setOption('lineWrapping', !currentWrap);
+    // Visual feedback - could add status bar indicator
+  }
+
+  formatTable() {
+    const cursor = this.cm.getCursor();
+    const lineCount = this.cm.lineCount();
+
+    // Find table boundaries (lines starting with |)
+    let startLine = cursor.line;
+    let endLine = cursor.line;
+
+    // Search backwards for table start
+    while (startLine > 0 && this.cm.getLine(startLine - 1).trim().startsWith('|')) {
+      startLine--;
+    }
+
+    // Check if current line is part of a table
+    if (!this.cm.getLine(startLine).trim().startsWith('|')) {
+      return; // Not in a table
+    }
+
+    // Search forwards for table end
+    while (endLine < lineCount - 1 && this.cm.getLine(endLine + 1).trim().startsWith('|')) {
+      endLine++;
+    }
+
+    // Extract table lines
+    const tableLines = [];
+    for (let i = startLine; i <= endLine; i++) {
+      tableLines.push(this.cm.getLine(i));
+    }
+
+    // Parse table into cells
+    const rows = tableLines.map(line => {
+      // Split by | and trim, remove empty first/last elements
+      const cells = line.split('|').map(cell => cell.trim());
+      // Remove empty strings from start/end (from leading/trailing |)
+      if (cells[0] === '') cells.shift();
+      if (cells[cells.length - 1] === '') cells.pop();
+      return cells;
+    });
+
+    if (rows.length < 2) return; // Need at least header and separator
+
+    // Find max width for each column
+    const colCount = Math.max(...rows.map(r => r.length));
+    const colWidths = [];
+
+    for (let col = 0; col < colCount; col++) {
+      let maxWidth = 3; // Minimum width of 3 for separator dashes
+      for (let row = 0; row < rows.length; row++) {
+        const cell = rows[row][col] || '';
+        // Skip separator row for width calculation but ensure at least 3 dashes
+        if (row === 1 && cell.match(/^[-:]+$/)) continue;
+        maxWidth = Math.max(maxWidth, cell.length);
+      }
+      colWidths.push(maxWidth);
+    }
+
+    // Format each row
+    const formattedLines = rows.map((row, rowIndex) => {
+      const cells = [];
+      for (let col = 0; col < colCount; col++) {
+        let cell = row[col] || '';
+
+        // Handle separator row
+        if (rowIndex === 1 && (cell.match(/^[-:]+$/) || cell === '')) {
+          // Preserve alignment markers
+          const leftAlign = cell.startsWith(':');
+          const rightAlign = cell.endsWith(':');
+          const dashes = '-'.repeat(colWidths[col]);
+          if (leftAlign && rightAlign) {
+            cell = ':' + '-'.repeat(colWidths[col] - 2) + ':';
+          } else if (leftAlign) {
+            cell = ':' + '-'.repeat(colWidths[col] - 1);
+          } else if (rightAlign) {
+            cell = '-'.repeat(colWidths[col] - 1) + ':';
+          } else {
+            cell = dashes;
+          }
+        } else {
+          // Pad cell to column width
+          cell = cell.padEnd(colWidths[col]);
+        }
+        cells.push(cell);
+      }
+      return '| ' + cells.join(' | ') + ' |';
+    });
+
+    // Replace table in editor
+    const from = { line: startLine, ch: 0 };
+    const to = { line: endLine, ch: this.cm.getLine(endLine).length };
+    this.cm.replaceRange(formattedLines.join('\n'), from, to);
+    this.cm.focus();
+    this.updatePreview();
+  }
+
   insertSlide() {
     const content = this.getValue();
     const cursor = this.cm.getCursor();
@@ -1710,6 +1818,7 @@ class Editor {
       { section: 'View', label: 'Toggle Files', shortcut: '⌘E', action: () => this.toggleFileTree() },
       { section: 'View', label: 'Toggle Outline', shortcut: '⌘⇧O', action: () => this.toggleOutline() },
       { section: 'View', label: 'Toggle Line Numbers', shortcut: '⌘L', action: () => this.toggleLineNumbers() },
+      { section: 'View', label: 'Toggle Word Wrap', shortcut: '⌥Z', action: () => this.toggleLineWrapping() },
       { section: 'View', label: 'Find in File', shortcut: '⌘F', action: () => this.cm.execCommand('find') },
       { section: 'View', label: 'Find and Replace', shortcut: '⌘⌥F', action: () => this.cm.execCommand('replace') },
       { section: 'View', label: 'Search in Files', shortcut: '⌘⇧F', action: () => this.toggleSearch() },
@@ -1719,7 +1828,8 @@ class Editor {
       { section: 'Format', label: 'Italic', shortcut: '⌘I', action: () => this.wrapSelection('*', '*') },
       { section: 'Format', label: 'Code', shortcut: '⌘`', action: () => this.wrapSelection('`', '`') },
       { section: 'Format', label: 'Link', shortcut: '⌘K', action: () => this.insertLink() },
-      { section: 'Format', label: 'Table', shortcut: '⌘⇧T', action: () => this.insertTable() },
+      { section: 'Format', label: 'Insert Table', action: () => this.insertTable() },
+      { section: 'Format', label: 'Format Table', shortcut: '⌘⇧T', action: () => this.formatTable() },
       { section: 'Format', label: 'Heading 1', shortcut: '⌘⇧1', action: () => this.insertAtLineStart('# ') },
       { section: 'Format', label: 'Heading 2', shortcut: '⌘⇧2', action: () => this.insertAtLineStart('## ') },
       { section: 'Format', label: 'Heading 3', shortcut: '⌘⇧3', action: () => this.insertAtLineStart('### ') },

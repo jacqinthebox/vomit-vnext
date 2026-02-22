@@ -712,9 +712,13 @@ function createMenu() {
           click: () => sendFormatCommand('link')
         },
         {
-          label: 'Table',
-          accelerator: 'CmdOrCtrl+Shift+T',
+          label: 'Insert Table',
           click: () => sendFormatCommand('table')
+        },
+        {
+          label: 'Format Table',
+          accelerator: 'CmdOrCtrl+Shift+T',
+          click: () => sendFormatCommand('formatTable')
         },
         { type: 'separator' },
         {
@@ -798,6 +802,15 @@ function createMenu() {
           click: () => {
             if (mainWindow) {
               mainWindow.webContents.send('toggle-files');
+            }
+          }
+        },
+        {
+          label: 'Toggle Word Wrap',
+          accelerator: 'Alt+Z',
+          click: () => {
+            if (mainWindow) {
+              mainWindow.webContents.send('toggle-word-wrap');
             }
           }
         },

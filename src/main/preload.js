@@ -26,6 +26,10 @@ ipcRenderer.on('toggle-files', () => {
   window.dispatchEvent(new CustomEvent('vomit:toggle-files'));
 });
 
+ipcRenderer.on('toggle-word-wrap', () => {
+  window.dispatchEvent(new CustomEvent('vomit:toggle-word-wrap'));
+});
+
 ipcRenderer.on('toggle-search', () => {
   window.dispatchEvent(new CustomEvent('vomit:toggle-search'));
 });
