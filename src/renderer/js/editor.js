@@ -39,6 +39,8 @@ class Editor {
     this.basePath = null;
     this.currentDirectory = null;
     this.projectRoot = null; // Root folder when a project is opened
+    this.expandedFolders = new Set(); // Track expanded folders in tree view
+    this.treeCache = new Map(); // Cache directory contents for tree view
     this.isPreviewVisible = false;
     this.viewMode = 'editor';
     this.isFileTreeVisible = false;
@@ -1017,102 +1019,214 @@ class Editor {
   renderFileTree(items) {
     if (!items || items.length === 0) {
       this.fileTree.innerHTML = '<div class="file-item empty-message" style="color: var(--text-muted);">Empty folder</div>';
-    } else {
-      this.fileTree.innerHTML = items.map((item, index) => {
+      return;
+    }
+
+    // Cache items for the current directory
+    this.treeCache.set(this.currentDirectory, items);
+
+    // Render tree starting from root
+    this.fileTree.innerHTML = '';
+
+    // Add ".." parent item if not at project root
+    const isAtProjectRoot = this.projectRoot && this.currentDirectory === this.projectRoot;
+    if (!isAtProjectRoot && this.currentDirectory) {
+      const parentItem = document.createElement('div');
+      parentItem.className = 'file-item directory parent-dir';
+      parentItem.dataset.path = this.currentDirectory.split('/').slice(0, -1).join('/');
+      parentItem.dataset.isDir = 'true';
+      parentItem.dataset.depth = '0';
+      parentItem.tabIndex = 0;
+      parentItem.style.paddingLeft = '8px';
+      parentItem.innerHTML = `
+        <span class="chevron"></span>
+        <span class="icon"></span>
+        <span class="name">..</span>
+      `;
+      parentItem.addEventListener('click', () => this.navigateToParent());
+      parentItem.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          this.navigateToParent();
+        } else if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          this.focusNextTreeItem(parentItem);
+        }
+      });
+      this.fileTree.appendChild(parentItem);
+    }
+
+    this.renderTreeItems(items, this.fileTree, 0);
+    this.attachTreeHandlers();
+  }
+
+  renderTreeItems(items, container, depth) {
+    const chevronSvg = `<svg viewBox="0 0 16 16" fill="currentColor"><path d="M6 4l4 4-4 4"/></svg>`;
+
+    items.forEach(item => {
       const isActive = item.path === this.currentFilePath;
+      const isExpanded = this.expandedFolders.has(item.path);
       const typeClass = item.isDirectory ? 'directory' : (item.isMarkdown ? 'markdown' : 'file');
       const activeClass = isActive ? 'active' : '';
+      const expandedClass = isExpanded ? 'expanded' : '';
+      const indent = depth * 16;
 
-      return `<div class="file-item ${typeClass} ${activeClass}" data-path="${item.path}" data-is-dir="${item.isDirectory}" tabindex="0">
+      const itemEl = document.createElement('div');
+      itemEl.className = `file-item ${typeClass} ${activeClass} ${expandedClass}`.trim();
+      itemEl.dataset.path = item.path;
+      itemEl.dataset.isDir = item.isDirectory;
+      itemEl.dataset.depth = depth;
+      itemEl.tabIndex = 0;
+      itemEl.style.paddingLeft = `${8 + indent}px`;
+      itemEl.innerHTML = `
+        <span class="chevron">${chevronSvg}</span>
         <span class="icon"></span>
         <span class="name">${item.name}</span>
-      </div>`;
-    }).join('');
+      `;
+      container.appendChild(itemEl);
 
-    // Add click and keyboard handlers
+      // If directory is expanded and we have cached children, render them
+      if (item.isDirectory && isExpanded) {
+        const childContainer = document.createElement('div');
+        childContainer.className = 'tree-children expanded';
+        childContainer.dataset.parentPath = item.path;
+        container.appendChild(childContainer);
+
+        const cachedChildren = this.treeCache.get(item.path);
+        if (cachedChildren) {
+          this.renderTreeItems(cachedChildren, childContainer, depth + 1);
+        }
+      }
+    });
+  }
+
+  attachTreeHandlers() {
     this.fileTree.querySelectorAll('.file-item').forEach(el => {
-      const handleAction = () => {
+      const handleToggle = async () => {
         const filePath = el.dataset.path;
         const isDir = el.dataset.isDir === 'true';
 
         if (isDir) {
-          this.currentDirectory = filePath;
-          this.loadFileTree().then(() => {
-            const firstItem = this.fileTree.querySelector('.file-item');
-            if (firstItem) firstItem.focus();
-          });
+          await this.toggleFolder(el, filePath);
         } else {
-          // Update active state for preview
+          // Update active state
           this.fileTree.querySelectorAll('.file-item.active').forEach(item => item.classList.remove('active'));
           el.classList.add('active');
-          // Mark that focus should stay in sidebar
           this.focusedPane = 'sidebar';
           window.vomit.openFile(filePath);
         }
       };
 
-      el.addEventListener('click', handleAction);
+      el.addEventListener('click', handleToggle);
       el.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
           e.preventDefault();
-          handleAction();
+          handleToggle();
         } else if (e.key === 'ArrowDown') {
           e.preventDefault();
-          const next = el.nextElementSibling;
-          if (next && next.classList.contains('file-item')) next.focus();
+          this.focusNextTreeItem(el);
         } else if (e.key === 'ArrowUp') {
           e.preventDefault();
-          const prev = el.previousElementSibling;
-          if (prev && prev.classList.contains('file-item')) prev.focus();
+          this.focusPrevTreeItem(el);
         } else if (e.key === 'ArrowRight') {
           e.preventDefault();
           const isDir = el.dataset.isDir === 'true';
-          if (isDir) {
-            handleAction(); // Enter folder
+          const isExpanded = el.classList.contains('expanded');
+          if (isDir && !isExpanded) {
+            handleToggle();
+          } else if (isDir && isExpanded) {
+            this.focusNextTreeItem(el);
           }
         } else if (e.key === 'ArrowLeft') {
           e.preventDefault();
-          this.navigateToParent();
+          const isDir = el.dataset.isDir === 'true';
+          const isExpanded = el.classList.contains('expanded');
+          if (isDir && isExpanded) {
+            handleToggle();
+          } else {
+            this.focusParentFolder(el);
+          }
         } else if (e.key === 'Escape') {
           this.cm.focus();
           this.focusedPane = 'editor';
         }
       });
 
-      // Context menu for rename, delete, show in finder
       el.addEventListener('contextmenu', (e) => {
         e.preventDefault();
         this.showFileContextMenu(el, e.clientX, e.clientY);
       });
     });
+  }
+
+  async toggleFolder(el, folderPath) {
+    const isExpanded = el.classList.contains('expanded');
+
+    if (isExpanded) {
+      // Collapse: remove expanded class and children container
+      el.classList.remove('expanded');
+      this.expandedFolders.delete(folderPath);
+      const childContainer = el.nextElementSibling;
+      if (childContainer && childContainer.classList.contains('tree-children')) {
+        childContainer.remove();
+      }
+    } else {
+      // Expand: add expanded class and load children
+      el.classList.add('expanded');
+      this.expandedFolders.add(folderPath);
+
+      // Check cache first
+      let children = this.treeCache.get(folderPath);
+      if (!children) {
+        children = await window.vomit.getDirectoryContents(folderPath);
+        this.treeCache.set(folderPath, children);
+      }
+
+      if (children && children.length > 0) {
+        const childContainer = document.createElement('div');
+        childContainer.className = 'tree-children expanded';
+        childContainer.dataset.parentPath = folderPath;
+        el.after(childContainer);
+
+        const depth = parseInt(el.dataset.depth) + 1;
+        this.renderTreeItems(children, childContainer, depth);
+        this.attachTreeHandlers();
+      }
     }
+  }
 
-    // Add parent directory item if not at project root
-    const isAtProjectRoot = this.projectRoot && this.currentDirectory === this.projectRoot;
-    if (!isAtProjectRoot) {
-      const parentItem = document.createElement('div');
-      parentItem.className = 'file-item directory parent-dir';
-      parentItem.tabIndex = 0;
-      parentItem.innerHTML = '<span class="icon"></span><span class="name">..</span>';
+  focusNextTreeItem(el) {
+    // Get all visible file items
+    const allItems = Array.from(this.fileTree.querySelectorAll('.file-item'));
+    const currentIndex = allItems.indexOf(el);
+    if (currentIndex < allItems.length - 1) {
+      allItems[currentIndex + 1].focus();
+    }
+  }
 
-      const goUp = () => {
-        this.navigateToParent();
-      };
-      parentItem.addEventListener('click', goUp);
-      parentItem.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-          e.preventDefault();
-          goUp();
-        } else if (e.key === 'ArrowDown') {
-          e.preventDefault();
-          const next = parentItem.nextElementSibling;
-          if (next && next.classList.contains('file-item')) next.focus();
-        } else if (e.key === 'Escape') {
-          this.cm.focus();
-          this.focusedPane = 'editor';
-        }
-      });
-      this.fileTree.insertBefore(parentItem, this.fileTree.firstChild);
+  focusPrevTreeItem(el) {
+    const allItems = Array.from(this.fileTree.querySelectorAll('.file-item'));
+    const currentIndex = allItems.indexOf(el);
+    if (currentIndex > 0) {
+      allItems[currentIndex - 1].focus();
+    }
+  }
+
+  focusParentFolder(el) {
+    // Find the parent folder by looking at depth
+    const depth = parseInt(el.dataset.depth);
+    if (depth === 0) return;
+
+    const allItems = Array.from(this.fileTree.querySelectorAll('.file-item'));
+    const currentIndex = allItems.indexOf(el);
+
+    // Search backwards for an item with lower depth
+    for (let i = currentIndex - 1; i >= 0; i--) {
+      const itemDepth = parseInt(allItems[i].dataset.depth);
+      if (itemDepth < depth) {
+        allItems[i].focus();
+        return;
+      }
     }
   }
 
@@ -2403,6 +2517,15 @@ class Editor {
       }
     }
 
+    // Check for /agent command - agentic mode with tool calling
+    if (command.startsWith('/agent ')) {
+      const prompt = command.substring(7).trim();
+      if (prompt) {
+        await this.executeAgentCommand(prompt, cwd);
+        return;
+      }
+    }
+
     let finalCommand = command;
 
     // Check for /doc prefix to include document context
@@ -2420,6 +2543,22 @@ class Editor {
 
     try {
       await window.vomit.claudeExecute(finalCommand, cwd);
+    } catch (err) {
+      this.appendTerminalOutput(`Error: ${err.message}`, 'error');
+      this.isClaudeRunning = false;
+      this.terminalStop.classList.add('hidden');
+    }
+  }
+
+  async executeAgentCommand(prompt, cwd) {
+    this.appendTerminalOutput(`❯ /agent ${prompt}`, 'input');
+    this.appendTerminalOutput('Running in agent mode with tools...', 'system');
+
+    this.isClaudeRunning = true;
+    this.terminalStop.classList.remove('hidden');
+
+    try {
+      await window.vomit.agentExecute(prompt, cwd);
     } catch (err) {
       this.appendTerminalOutput(`Error: ${err.message}`, 'error');
       this.isClaudeRunning = false;

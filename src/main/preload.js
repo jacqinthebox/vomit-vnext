@@ -206,6 +206,8 @@ contextBridge.exposeInMainWorld('vomit', {
   claudeExecute: (command, cwd) => ipcRenderer.invoke('claude-execute', command, cwd),
   claudeStop: () => ipcRenderer.send('claude-stop'),
   getAIProvider: () => ipcRenderer.invoke('get-ai-provider'),
+  // Agent mode with tool calling
+  agentExecute: (prompt, cwd) => ipcRenderer.invoke('agent-execute', prompt, cwd),
   // File operations for pseudonymization
   readFile: (filePath) => ipcRenderer.invoke('read-file', filePath),
   writeFile: (filePath, content) => ipcRenderer.invoke('write-file', filePath, content),
