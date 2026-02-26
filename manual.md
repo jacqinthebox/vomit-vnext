@@ -135,7 +135,10 @@ Vomit includes a built-in AI terminal powered by Ollama. All processing happens 
 | `/depseudo` | Restore original data from pseudonymized file |
 | `/index` | Index all documents for RAG search |
 | `/index subfolder` | Index only a specific subfolder |
+| `/index file.xml` | Index a single file |
 | `/rag <query>` | Search indexed documents and ask AI with context |
+| `/agent <prompt>` | Agentic mode with tools (bash, file read/write) |
+| `/agent clear` | Clear agent conversation history |
 
 ### RAG (Retrieval Augmented Generation)
 
@@ -147,7 +150,44 @@ ollama pull nomic-embed-text
 
 # In Vomit AI terminal
 /index                              # Index entire project
+/index subfolder                    # Index specific subfolder
+/index file.xml                     # Index a single file
 /rag how does authentication work?  # Search and ask
+```
+
+**How it works:**
+
+1. `/index` chunks your documents and creates embeddings using `nomic-embed-text`
+2. Embeddings are stored in a SQLite database at `~/.config/vomit/rag/`
+3. The database is **tied to the open folder** - each project has its own index
+4. `/rag <query>` finds similar chunks and includes them as context for the AI
+
+**Supported file types:** `.md`, `.txt`, `.js`, `.ts`, `.py`, `.json`, `.yaml`, `.yml`, `.xml`, `.html`, `.css`, `.tf`, `.sh`, `.tpl`
+
+**Note:** You must have a folder open (`Cmd+Alt+O`) for RAG to work. The index persists - close and reopen the folder and your index is still there.
+
+### Agent Mode
+
+Use `/agent` for agentic AI with tool calling - the AI can run commands, read/write files:
+
+```bash
+/agent list the files in this directory
+/agent run kubectl get pods
+/agent create a hello world script in hello.py
+/agent clear                        # Clear conversation history
+```
+
+**Available tools:**
+- `bash` - Run any shell command
+- `read_file` - Read file contents
+- `write_file` - Create or overwrite files
+- `list_files` - List directory contents
+
+Agent mode has **conversation memory** - follow-up questions work:
+
+```bash
+/agent run kubectl get pods
+/agent what does that output mean?  # Remembers previous result
 ```
 
 ---
