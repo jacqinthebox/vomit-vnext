@@ -198,43 +198,60 @@ function getRAGDatabase(folderPath) {
 
 // Index all documents in a folder
 async function indexFolder(projectRoot, targetPath, progressCallback) {
-  const extensions = ['.md', '.txt', '.js', '.ts', '.py', '.json', '.yaml', '.yml', '.tf', '.sh'];
+  const extensions = ['.md', '.txt', '.js', '.ts', '.py', '.json', '.yaml', '.yml', '.xml', '.html', '.css', '.tf', '.sh', '.tpl'];
   // Always store database in project root
   const db = getRAGDatabase(projectRoot);
 
-  // If indexing a subfolder, only clear chunks from that subfolder
-  const isSubfolder = targetPath !== projectRoot;
-  if (isSubfolder) {
-    const subfolderPrefix = path.relative(projectRoot, targetPath);
-    db.prepare('DELETE FROM chunks WHERE file_path LIKE ?').run(`${subfolderPrefix}%`);
+  // Check if targetPath is a single file or a directory
+  const targetStat = fs.statSync(targetPath);
+  const isSingleFile = targetStat.isFile();
+
+  if (isSingleFile) {
+    // For single file, only clear chunks for that file
+    const relativePath = path.relative(projectRoot, targetPath);
+    db.prepare('DELETE FROM chunks WHERE file_path = ?').run(relativePath);
   } else {
-    // Clear entire index when indexing full project
-    db.exec('DELETE FROM chunks');
+    // If indexing a subfolder, only clear chunks from that subfolder
+    const isSubfolder = targetPath !== projectRoot;
+    if (isSubfolder) {
+      const subfolderPrefix = path.relative(projectRoot, targetPath);
+      db.prepare('DELETE FROM chunks WHERE file_path LIKE ?').run(`${subfolderPrefix}%`);
+    } else {
+      // Clear entire index when indexing full project
+      db.exec('DELETE FROM chunks');
+    }
   }
 
-  // Recursively find all files
-  const findFiles = (dir) => {
-    const files = [];
-    try {
-      const items = fs.readdirSync(dir);
-      for (const item of items) {
-        if (item.startsWith('.') || item === 'node_modules' || item === 'pseudonymized') continue;
-        const fullPath = path.join(dir, item);
-        const stat = fs.statSync(fullPath);
-        if (stat.isDirectory()) {
-          files.push(...findFiles(fullPath));
-        } else {
-          const ext = path.extname(item).toLowerCase();
-          if (extensions.includes(ext)) {
-            files.push(fullPath);
+  // Get files to index
+  let files = [];
+
+  if (isSingleFile) {
+    // Single file - just use it directly
+    files = [targetPath];
+  } else {
+    // Recursively find all files in directory
+    const findFiles = (dir) => {
+      const found = [];
+      try {
+        const items = fs.readdirSync(dir);
+        for (const item of items) {
+          if (item.startsWith('.') || item === 'node_modules' || item === 'pseudonymized') continue;
+          const fullPath = path.join(dir, item);
+          const stat = fs.statSync(fullPath);
+          if (stat.isDirectory()) {
+            found.push(...findFiles(fullPath));
+          } else {
+            const ext = path.extname(item).toLowerCase();
+            if (extensions.includes(ext)) {
+              found.push(fullPath);
+            }
           }
         }
-      }
-    } catch (e) {}
-    return files;
-  };
-
-  const files = findFiles(targetPath);
+      } catch (e) {}
+      return found;
+    };
+    files = findFiles(targetPath);
+  }
   let processed = 0;
   let chunksIndexed = 0;
 
