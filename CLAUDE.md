@@ -66,17 +66,19 @@ npm start            # Run in development
 
 **Local build (Mac only):**
 ```bash
-npm run build:mac    # Build DMG for macOS only
+npx electron-builder --mac --dir    # Build .app only (recommended)
 ```
+
+The built app will be at `dist/mac-arm64/Vomit.app`.
+
+**DO NOT build DMG locally** - The DMG builder often fails with "disk busy" errors. Use `--dir` flag to build just the .app file.
 
 **DO NOT run `npm run build`** - It tries to build for all platforms and fails on macOS due to Wine/32-bit issues.
 
 **Release process:**
-1. Build locally for Mac: `npm run build:mac`
+1. Build locally: `npx electron-builder --mac --dir`
 2. Commit and push changes
-3. Create GitHub release: `gh release create vX.X.X dist/*.dmg --title "vX.X.X" --notes "Release notes"`
-
-Cross-platform builds (Windows/Linux) are handled by GitHub Actions CI.
+3. DMG and cross-platform builds are handled by GitHub Actions CI
 
 ## Important Guidelines
 
