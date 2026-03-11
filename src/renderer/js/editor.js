@@ -738,14 +738,7 @@ class Editor {
       sidebarFolderName.textContent = folderName;
     }
 
-    // Show file tree sidebar
-    this.isFileTreeVisible = true;
-    this.isOutlineVisible = false;
-    this.isSearchVisible = false;
-    this.sidebarFiles.classList.remove('hidden');
-    this.sidebarOutline.classList.add('hidden');
-    this.sidebarSearch.classList.add('hidden');
-    this.updateResizeHandle();
+    // Load file tree data (but don't show sidebar - user can toggle with Cmd+E)
     this.loadFileTree();
   }
 

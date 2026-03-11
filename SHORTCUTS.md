@@ -39,6 +39,7 @@ Press **Cmd+/** to open this help at any time.
 | Cmd+P | Toggle preview pane |
 | Cmd+O | Toggle outline sidebar |
 | Cmd+E | Toggle file explorer |
+| Cmd+Shift+R | Refresh file tree |
 | Cmd+L | Toggle line numbers |
 | Cmd+F | Find in file |
 | Cmd+Option+F | Find and replace |
@@ -128,7 +129,10 @@ Press **Cmd+/** to open this help at any time.
 | `/depseudo` | Restore original data from mapping |
 | `/index` | Index folder for RAG |
 | `/index <subfolder>` | Index specific subfolder |
+| `/index <file>` | Index a single file |
 | `/rag <query>` | Search docs and ask AI |
+| `/agent <prompt>` | Agentic mode with tools (bash, file read/write) |
+| `/agent clear` | Clear agent conversation history |
 
 ---
 

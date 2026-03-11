@@ -38,7 +38,7 @@ src/
 
 ### AI Terminal (Ollama) — macOS/Linux Only
 - Toggle with `Cmd+J`
-- Commands: `/doc`, `/pseudo`, `/depseudo`, `/index`, `/rag`
+- Commands: `/doc`, `/pseudo`, `/depseudo`, `/index`, `/rag`, `/agent`
 - Models detected from local Ollama installation
 - **Not available on Windows** due to node-pty dependencies
 

@@ -67,7 +67,8 @@
     "files": [
       "src/**/*",
       "bin/**/*",
-      "node_modules/**/*"
+      "node_modules/**/*",
+      "manual.md"
     ],
     "fileAssociations": [
       {

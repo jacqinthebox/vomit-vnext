@@ -823,6 +823,15 @@ function createMenu() {
           }
         },
         {
+          label: 'Refresh File Tree',
+          accelerator: 'CmdOrCtrl+Shift+R',
+          click: () => {
+            if (mainWindow) {
+              mainWindow.webContents.send('refresh-file-tree');
+            }
+          }
+        },
+        {
           label: 'Toggle Word Wrap',
           accelerator: 'Alt+Z',
           click: () => {
@@ -993,20 +1002,13 @@ function createMenu() {
           accelerator: 'CmdOrCtrl+Shift+/',
           click: () => {
             if (mainWindow) {
-              // Load manual.md from app resources
-              const manualPath = path.join(__dirname, '..', 'manual.md');
+              // Load manual.md from app root (works for both dev and packaged)
+              const manualPath = path.join(app.getAppPath(), 'manual.md');
               try {
                 const content = fs.readFileSync(manualPath, 'utf8');
                 mainWindow.webContents.send('show-documentation', content, manualPath);
               } catch (err) {
-                // Fallback: try from app root (development)
-                const devPath = path.join(__dirname, '..', '..', 'manual.md');
-                try {
-                  const content = fs.readFileSync(devPath, 'utf8');
-                  mainWindow.webContents.send('show-documentation', content, devPath);
-                } catch (e) {
-                  mainWindow.webContents.send('show-documentation', '# Documentation\n\nManual not found.', null);
-                }
+                mainWindow.webContents.send('show-documentation', '# Documentation\n\nManual not found.', null);
               }
             }
           }
