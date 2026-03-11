@@ -70,6 +70,7 @@ class Editor {
     this.setupEditor();
     this.setupAutoSave();
     this.setupSidebarResize();
+    this.setupFileTreeContextMenu();
     this.setupSearch();
     this.setupKeyboardNavigation();
     this.setupTerminal();
@@ -341,6 +342,10 @@ class Editor {
 
     window.addEventListener('vomit:refresh-file-tree', () => {
       this.loadFileTree();
+    });
+
+    window.addEventListener('vomit:new-folder', () => {
+      this.createNewFolder();
     });
 
     window.addEventListener('vomit:format-command', (e) => {
@@ -878,6 +883,66 @@ class Editor {
         document.body.style.userSelect = '';
       }
     });
+  }
+
+  setupFileTreeContextMenu() {
+    // Context menu for sidebar header (create folder at project root)
+    const sidebarHeader = this.sidebarFiles.querySelector('.sidebar-header');
+    if (sidebarHeader) {
+      sidebarHeader.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        if (this.projectRoot) {
+          this.showRootContextMenu(e.clientX, e.clientY);
+        }
+      });
+    }
+
+    // Context menu for file tree empty space (create folder at current directory)
+    this.fileTree.addEventListener('contextmenu', (e) => {
+      // Only trigger if clicking on the file tree itself, not on file items
+      if (e.target === this.fileTree || e.target.classList.contains('empty-message')) {
+        e.preventDefault();
+        if (this.currentDirectory) {
+          this.showRootContextMenu(e.clientX, e.clientY);
+        }
+      }
+    });
+  }
+
+  showRootContextMenu(x, y) {
+    // Remove any existing context menu
+    const existingMenu = document.querySelector('.file-context-menu');
+    if (existingMenu) existingMenu.remove();
+
+    const menu = document.createElement('div');
+    menu.className = 'file-context-menu';
+    menu.innerHTML = `
+      <div class="context-menu-item" data-action="new-file">New File</div>
+      <div class="context-menu-item" data-action="new-folder">New Folder</div>
+    `;
+    menu.style.left = `${x}px`;
+    menu.style.top = `${y}px`;
+    document.body.appendChild(menu);
+
+    // Handle menu item clicks
+    menu.addEventListener('click', (e) => {
+      const action = e.target.dataset.action;
+      if (action === 'new-file') {
+        this.createNewFile(this.currentDirectory);
+      } else if (action === 'new-folder') {
+        this.createNewFolder(this.currentDirectory);
+      }
+      menu.remove();
+    });
+
+    // Close menu on outside click
+    const closeMenu = (e) => {
+      if (!menu.contains(e.target)) {
+        menu.remove();
+        document.removeEventListener('click', closeMenu);
+      }
+    };
+    setTimeout(() => document.addEventListener('click', closeMenu), 0);
   }
 
   updateResizeHandle() {
@@ -1784,9 +1849,13 @@ class Editor {
     // Don't show menu for parent directory (..)
     if (isParentDir) return;
 
+    const isDir = el.dataset.isDir === 'true';
     const menu = document.createElement('div');
     menu.className = 'file-context-menu';
     menu.innerHTML = `
+      <div class="context-menu-item" data-action="new-file">New File</div>
+      <div class="context-menu-item" data-action="new-folder">New Folder</div>
+      <div class="context-menu-divider"></div>
       <div class="context-menu-item" data-action="rename">Rename</div>
       <div class="context-menu-item" data-action="delete">Delete</div>
       <div class="context-menu-divider"></div>
@@ -1799,7 +1868,13 @@ class Editor {
     // Handle menu item clicks
     menu.addEventListener('click', (e) => {
       const action = e.target.dataset.action;
-      if (action === 'rename') {
+      if (action === 'new-file') {
+        const targetDir = isDir ? filePath : this.currentDirectory;
+        this.createNewFile(targetDir);
+      } else if (action === 'new-folder') {
+        const targetDir = isDir ? filePath : this.currentDirectory;
+        this.createNewFolder(targetDir);
+      } else if (action === 'rename') {
         this.startRename(el);
       } else if (action === 'delete') {
         this.deleteItem(filePath);
@@ -1893,10 +1968,181 @@ class Editor {
           }
         }
       }
+      // Clear tree cache for parent directory to force refresh
+      const parentDir = itemPath.substring(0, itemPath.lastIndexOf('/'));
+      this.treeCache.delete(parentDir);
+      // Also remove from expanded folders if it was a folder
+      this.expandedFolders.delete(itemPath);
       this.loadFileTree();
     } else if (result.error) {
       alert(result.error);
     }
+  }
+
+  async createNewFolder(parentDir) {
+    // Use current directory if no parent specified
+    const targetDir = parentDir || this.currentDirectory;
+    if (!targetDir) {
+      alert('No folder open. Open a folder first.');
+      return;
+    }
+
+    // Create inline input in the file tree
+    const inputContainer = document.createElement('div');
+    inputContainer.className = 'file-item new-folder-input';
+    inputContainer.innerHTML = `
+      <span class="icon">📁</span>
+      <input type="text" class="rename-input" placeholder="folder name" value="New Folder">
+    `;
+
+    // Find where to insert the input
+    // If the parent folder is expanded, insert at the start of its children
+    const parentEl = this.fileTree.querySelector(`.file-item[data-path="${CSS.escape(targetDir)}"]`);
+    let insertTarget = this.fileTree;
+
+    if (parentEl && parentEl.dataset.isDir === 'true') {
+      const childContainer = parentEl.nextElementSibling;
+      if (childContainer && childContainer.classList.contains('tree-children')) {
+        insertTarget = childContainer;
+      } else {
+        // Expand folder first if not expanded
+        if (!parentEl.classList.contains('expanded')) {
+          await this.toggleFolder(parentEl, targetDir);
+        }
+        const newChildContainer = parentEl.nextElementSibling;
+        if (newChildContainer && newChildContainer.classList.contains('tree-children')) {
+          insertTarget = newChildContainer;
+        }
+      }
+    }
+
+    // Insert at the beginning of the target container
+    insertTarget.insertBefore(inputContainer, insertTarget.firstChild);
+
+    const input = inputContainer.querySelector('input');
+    input.focus();
+    input.select();
+
+    const finishCreate = async (save) => {
+      if (save) {
+        const folderName = input.value.trim();
+        if (folderName) {
+          const newFolderPath = `${targetDir}/${folderName}`;
+          try {
+            await window.vomit.createDirectory(newFolderPath);
+            // Clear tree cache for parent to force refresh
+            this.treeCache.delete(targetDir);
+          } catch (err) {
+            alert(`Failed to create folder: ${err.message}`);
+          }
+        }
+      }
+      inputContainer.remove();
+      this.loadFileTree();
+    };
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        finishCreate(true);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        finishCreate(false);
+      }
+    });
+
+    input.addEventListener('blur', () => {
+      finishCreate(true);
+    });
+  }
+
+  async createNewFile(parentDir) {
+    // Use current directory if no parent specified
+    const targetDir = parentDir || this.currentDirectory;
+    if (!targetDir) {
+      alert('No folder open. Open a folder first.');
+      return;
+    }
+
+    // Create inline input in the file tree
+    const inputContainer = document.createElement('div');
+    inputContainer.className = 'file-item new-file-input';
+    inputContainer.innerHTML = `
+      <span class="icon">📄</span>
+      <input type="text" class="rename-input" placeholder="filename.md" value="untitled.md">
+    `;
+
+    // Find where to insert the input
+    const parentEl = this.fileTree.querySelector(`.file-item[data-path="${CSS.escape(targetDir)}"]`);
+    let insertTarget = this.fileTree;
+
+    if (parentEl && parentEl.dataset.isDir === 'true') {
+      const childContainer = parentEl.nextElementSibling;
+      if (childContainer && childContainer.classList.contains('tree-children')) {
+        insertTarget = childContainer;
+      } else {
+        // Expand folder first if not expanded
+        if (!parentEl.classList.contains('expanded')) {
+          await this.toggleFolder(parentEl, targetDir);
+        }
+        const newChildContainer = parentEl.nextElementSibling;
+        if (newChildContainer && newChildContainer.classList.contains('tree-children')) {
+          insertTarget = newChildContainer;
+        }
+      }
+    }
+
+    // Insert at the beginning of the target container
+    insertTarget.insertBefore(inputContainer, insertTarget.firstChild);
+
+    const input = inputContainer.querySelector('input');
+    input.focus();
+    // Select just the filename part, not the extension
+    const dotIndex = input.value.lastIndexOf('.');
+    if (dotIndex > 0) {
+      input.setSelectionRange(0, dotIndex);
+    } else {
+      input.select();
+    }
+
+    const finishCreate = async (save) => {
+      if (save) {
+        const fileName = input.value.trim();
+        if (fileName) {
+          const newFilePath = `${targetDir}/${fileName}`;
+          try {
+            // Create empty file
+            await window.vomit.writeFile(newFilePath, '');
+            // Clear tree cache for parent to force refresh
+            this.treeCache.delete(targetDir);
+            // Open the new file
+            window.vomit.openFile(newFilePath);
+          } catch (err) {
+            alert(`Failed to create file: ${err.message}`);
+          }
+        }
+      }
+      inputContainer.remove();
+      this.loadFileTree();
+    };
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        finishCreate(true);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        finishCreate(false);
+      }
+    });
+
+    input.addEventListener('blur', () => {
+      finishCreate(true);
+    });
   }
 
   async showCommandPalette() {
@@ -1916,6 +2162,8 @@ class Editor {
       { section: 'File', label: 'New Presentation', shortcut: '⌘⌥N', action: () => window.vomit.newPresentation() },
       { section: 'File', label: 'Open File', shortcut: '⌘O', action: () => window.vomit.openFileDialog() },
       { section: 'File', label: 'Open Folder', shortcut: '⌘⌥O', action: () => window.vomit.openFolderDialog() },
+      { section: 'File', label: 'New Folder', shortcut: '⌘⇧F', action: () => this.createNewFolder() },
+      { section: 'File', label: 'New File in Folder', shortcut: '⌘⇧N', action: () => this.createNewFile() },
       { section: 'File', label: 'Save', shortcut: '⌘S', action: () => window.vomit.saveContent(this.getValue()) },
       { section: 'File', label: 'Save As', shortcut: '⌘⇧S', action: () => window.vomit.saveAs() },
       { section: 'File', label: 'Close Tab', shortcut: '⌘W', action: () => this.tabManager.closeCurrentTab() },

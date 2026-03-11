@@ -636,6 +636,15 @@ function createMenu() {
           accelerator: 'CmdOrCtrl+Alt+N',
           click: () => newPresentation()
         },
+        {
+          label: 'New Folder',
+          accelerator: 'CmdOrCtrl+Shift+F',
+          click: () => {
+            if (mainWindow) {
+              mainWindow.webContents.send('new-folder');
+            }
+          }
+        },
         { type: 'separator' },
         {
           label: 'Open File...',

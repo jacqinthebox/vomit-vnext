@@ -66,6 +66,10 @@ ipcRenderer.on('refresh-file-tree', () => {
   window.dispatchEvent(new CustomEvent('vomit:refresh-file-tree'));
 });
 
+ipcRenderer.on('new-folder', () => {
+  window.dispatchEvent(new CustomEvent('vomit:new-folder'));
+});
+
 ipcRenderer.on('format-command', (event, command) => {
   window.dispatchEvent(new CustomEvent('vomit:format-command', { detail: command }));
 });
