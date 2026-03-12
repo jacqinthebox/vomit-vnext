@@ -35,37 +35,8 @@ class Editor {
     this.xterm = null; // xterm.js instance
     this.xtermFitAddon = null;
 
-    this.currentFilePath = null;
-    this.basePath = null;
-    this.currentDirectory = null;
-    this.projectRoot = null; // Root folder when a project is opened
-    this.expandedFolders = new Set(); // Track expanded folders in tree view
-    this.treeCache = new Map(); // Cache directory contents for tree view
-    this.isPreviewVisible = false;
-    this.viewMode = 'editor';
-    this.isFileTreeVisible = false;
-    this.isOutlineVisible = false;
-    this.isSearchVisible = false;
-    this.isDirty = false;
-    this.isRestoringTab = false;
-    this.autoSaveEnabled = true; // Will be loaded from main process
-    this.searchTimeout = null;
-    this.autoSaveTimeout = null;
-    this.pendingLineJump = null;
-    this.selectedSearchIndex = -1;
-    this.focusedPane = 'editor'; // 'editor' or 'sidebar'
-
-    // Terminal state
-    this.isTerminalPanelVisible = false;
-    this.activeTerminalTab = 'ai'; // 'ai' or 'shell'
-    this.isClaudeRunning = false;
-    this.terminalHistory = [];
-    this.terminalHistoryIndex = -1;
-    this.pseudoCollecting = false;
-    this.pseudoOutput = '';
-
-    // Shell terminal state
-    this.isShellRunning = false;
+    // Centralized state management
+    this.state = new EditorState();
 
     this.setupEditor();
     this.setupAutoSave();
@@ -97,16 +68,8 @@ class Editor {
   }
 
   setupEditor() {
-    // Initialize CodeMirror
-    this.cm = CodeMirror(this.editorContainer, {
-      mode: 'yaml-frontmatter',  // GFM with YAML frontmatter support
-      theme: 'default',
-      lineNumbers: false,
-      lineWrapping: true,
-      autofocus: true,
-      indentUnit: 2,
-      tabSize: 2,
-      indentWithTabs: false,
+    // Initialize CodeMirror via host
+    this.host = new CodemirrorHost(this.editorContainer, {
       extraKeys: {
         'Tab': (cm) => {
           cm.replaceSelection('  ');
@@ -127,6 +90,7 @@ class Editor {
       },
       placeholder: '# Start writing your presentation...\n\nUse --- on its own line to separate slides.\n\nAdd speaker notes after ??? on a slide.'
     });
+    this.cm = this.host.cm;  // Backward compat alias
 
     // Handle changes
     this.cm.on('change', () => {
@@ -135,9 +99,9 @@ class Editor {
       this.updateOutline();
 
       // Skip dirty marking if we're restoring a tab
-      if (this.isRestoringTab) return;
+      if (this.state.isRestoringTab) return;
 
-      this.isDirty = true;
+      this.state.isDirty = true;
       window.vomit.contentChanged(this.getValue());
 
       // Notify TabManager of dirty state
@@ -214,19 +178,19 @@ class Editor {
 
       // Update directory if basePath is provided
       if (basePath) {
-        this.basePath = basePath;
-        this.currentDirectory = basePath;
+        this.state.basePath = basePath;
+        this.state.currentDirectory = basePath;
       }
 
       this.cm.setOption('filename', filePath); // For hints file-type detection
       this.updateEditorMode();
       this.applyFrontmatterSettings(content);
 
-      if (this.isOutlineVisible) {
+      if (this.state.isOutlineVisible) {
         this.updateOutline();
       }
-      if (this.isFileTreeVisible) {
-        const preserveFocus = this.focusedPane === 'sidebar';
+      if (this.state.isFileTreeVisible) {
+        const preserveFocus = this.state.focusedPane === 'sidebar';
         this.loadFileTree().then(() => {
           if (preserveFocus) {
             const activeItem = this.fileTree.querySelector('.file-item.active');
@@ -235,10 +199,10 @@ class Editor {
         });
       }
       // Handle pending line jump from search
-      if (this.pendingLineJump) {
+      if (this.state.pendingLineJump) {
         setTimeout(() => {
-          this.goToLine(this.pendingLineJump - 1);
-          this.pendingLineJump = null;
+          this.goToLine(this.state.pendingLineJump - 1);
+          this.state.pendingLineJump = null;
         }, 100);
       }
     });
@@ -266,7 +230,7 @@ class Editor {
 
     window.addEventListener('vomit:request-content', () => {
       window.vomit.saveContent(this.getValue());
-      this.isDirty = false;
+      this.state.isDirty = false;
       if (this.tabManager) {
         this.tabManager.markCurrentTabClean();
       }
@@ -274,8 +238,8 @@ class Editor {
 
     window.addEventListener('vomit:file-saved-as', (e) => {
       const filePath = e.detail;
-      this.currentFilePath = filePath;
-      this.basePath = filePath ? filePath.substring(0, filePath.lastIndexOf('/')) : null;
+      this.state.currentFilePath = filePath;
+      this.state.basePath = filePath ? filePath.substring(0, filePath.lastIndexOf('/')) : null;
       if (this.tabManager) {
         this.tabManager.updateCurrentTabPath(filePath);
       }
@@ -370,7 +334,7 @@ class Editor {
 
     window.addEventListener('vomit:set-theme', (e) => {
       document.body.className = `theme-${e.detail}`;
-      if (this.isPreviewVisible) {
+      if (this.state.isPreviewVisible) {
         document.body.classList.add('split-view');
       }
       // Update xterm theme to match
@@ -388,7 +352,7 @@ class Editor {
         if (tab) {
           await this.handleExternalFileChange(tab);
         }
-      } else if (this.currentFilePath === changedPath) {
+      } else if (this.state.currentFilePath === changedPath) {
         await this.handleExternalFileChange(null);
       }
     });
@@ -409,10 +373,10 @@ class Editor {
 
     window.addEventListener('vomit:claude-output', (e) => {
       // Collect output during pseudonymization
-      if (this.pseudoCollecting) {
+      if (this.state.pseudoCollecting) {
         // Strip ANSI escape codes for clean output
         const cleanOutput = e.detail.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '');
-        this.pseudoOutput += cleanOutput;
+        this.state.pseudoOutput += cleanOutput;
       } else {
         this.appendTerminalOutput(e.detail, 'output');
       }
@@ -423,7 +387,7 @@ class Editor {
     });
 
     window.addEventListener('vomit:claude-done', (e) => {
-      this.isClaudeRunning = false;
+      this.state.isClaudeRunning = false;
       this.terminalStop.classList.add('hidden');
       this.markOutputComplete();
       if (e.detail === -1) {
@@ -441,7 +405,7 @@ class Editor {
     });
 
     window.addEventListener('vomit:shell-exit', (e) => {
-      this.isShellRunning = false;
+      this.state.isShellRunning = false;
       if (e.detail === -1) {
         this.appendShellOutput('\r\n[Shell terminated]\r\n');
       }
@@ -464,8 +428,8 @@ class Editor {
   }
 
   async handleExternalFileChange(tab) {
-    const filePath = tab ? tab.filePath : this.currentFilePath;
-    const isDirty = tab ? tab.isDirty : this.isDirty;
+    const filePath = tab ? tab.filePath : this.state.currentFilePath;
+    const isDirty = tab ? tab.isDirty : this.state.isDirty;
     const filename = filePath ? filePath.split('/').pop() : 'file';
 
     if (isDirty) {
@@ -515,7 +479,7 @@ class Editor {
   async reloadFileContent(filePath, tab) {
     const result = await window.vomit.reloadFile(filePath);
     if (result.success) {
-      this.isRestoringTab = true;
+      this.state.isRestoringTab = true;
 
       if (tab && this.tabManager) {
         // Update tab content
@@ -525,7 +489,7 @@ class Editor {
         // If this is the active tab, update the editor
         if (this.tabManager.activeTabId === tab.id) {
           this.cm.setValue(result.content);
-          this.isDirty = false;
+          this.state.isDirty = false;
           this.updatePreview();
           this.updateStatus();
         }
@@ -534,45 +498,45 @@ class Editor {
       } else {
         // No tabs, just update the editor
         this.cm.setValue(result.content);
-        this.isDirty = false;
+        this.state.isDirty = false;
         this.updatePreview();
         this.updateStatus();
       }
 
-      this.isRestoringTab = false;
+      this.state.isRestoringTab = false;
     }
   }
 
   toggleFileTree() {
-    this.isFileTreeVisible = !this.isFileTreeVisible;
-    this.sidebarFiles.classList.toggle('hidden', !this.isFileTreeVisible);
+    this.state.isFileTreeVisible = !this.state.isFileTreeVisible;
+    this.sidebarFiles.classList.toggle('hidden', !this.state.isFileTreeVisible);
     this.updateResizeHandle();
-    if (this.isFileTreeVisible) {
+    if (this.state.isFileTreeVisible) {
       // Close other sidebars
-      this.isOutlineVisible = false;
-      this.isSearchVisible = false;
+      this.state.isOutlineVisible = false;
+      this.state.isSearchVisible = false;
       this.sidebarOutline.classList.add('hidden');
       this.sidebarSearch.classList.add('hidden');
-      this.focusedPane = 'sidebar';
+      this.state.focusedPane = 'sidebar';
       this.loadFileTree().then(() => {
         const firstItem = this.fileTree.querySelector('.file-item');
         if (firstItem) firstItem.focus();
       });
     } else {
       // Return focus to editor when hiding
-      this.focusedPane = 'editor';
+      this.state.focusedPane = 'editor';
       this.cm.focus();
     }
   }
 
   toggleOutline() {
-    this.isOutlineVisible = !this.isOutlineVisible;
-    this.sidebarOutline.classList.toggle('hidden', !this.isOutlineVisible);
+    this.state.isOutlineVisible = !this.state.isOutlineVisible;
+    this.sidebarOutline.classList.toggle('hidden', !this.state.isOutlineVisible);
     this.updateResizeHandle();
-    if (this.isOutlineVisible) {
+    if (this.state.isOutlineVisible) {
       // Close other sidebars
-      this.isFileTreeVisible = false;
-      this.isSearchVisible = false;
+      this.state.isFileTreeVisible = false;
+      this.state.isSearchVisible = false;
       this.sidebarFiles.classList.add('hidden');
       this.sidebarSearch.classList.add('hidden');
       this.updateOutline();
@@ -695,23 +659,23 @@ class Editor {
     this.tabManager.createTab(filePath || 'Documentation', content);
 
     // Enable preview mode for documentation
-    if (!this.isPreviewVisible) {
+    if (!this.state.isPreviewVisible) {
       this.togglePreview();
     }
   }
 
   navigateToParent() {
-    if (!this.currentDirectory) return;
+    if (!this.state.currentDirectory) return;
     // Don't navigate above project root
-    if (this.projectRoot && this.currentDirectory === this.projectRoot) return;
+    if (this.state.projectRoot && this.state.currentDirectory === this.state.projectRoot) return;
 
-    const parts = this.currentDirectory.split('/');
+    const parts = this.state.currentDirectory.split('/');
     if (parts.length > 2) {
       const newDir = parts.slice(0, -1).join('/');
       // Extra check: don't go above project root
-      if (this.projectRoot && !newDir.startsWith(this.projectRoot)) return;
+      if (this.state.projectRoot && !newDir.startsWith(this.state.projectRoot)) return;
 
-      this.currentDirectory = newDir;
+      this.state.currentDirectory = newDir;
       this.loadFileTree().then(() => {
         // Focus first item after navigating up
         const firstItem = this.fileTree.querySelector('.file-item');
@@ -728,13 +692,13 @@ class Editor {
         !this.tabManager.tabs.values().next().value.filePath &&
         !this.tabManager.tabs.values().next().value.content.trim();
 
-      if ((this.projectRoot && this.projectRoot !== folderPath) || hasOnlyEmptyUntitled) {
+      if ((this.state.projectRoot && this.state.projectRoot !== folderPath) || hasOnlyEmptyUntitled) {
         this.tabManager.closeAllTabs(true, false);
       }
     }
 
-    this.currentDirectory = folderPath;
-    this.projectRoot = folderPath; // Set as project root - can't navigate above this
+    this.state.currentDirectory = folderPath;
+    this.state.projectRoot = folderPath; // Set as project root - can't navigate above this
 
     // Update sidebar header with folder name
     const folderName = folderPath.split('/').pop().toUpperCase();
@@ -750,9 +714,9 @@ class Editor {
   setupSearch() {
     // Debounced search on input
     this.searchInput.addEventListener('input', () => {
-      clearTimeout(this.searchTimeout);
-      this.selectedSearchIndex = -1;
-      this.searchTimeout = setTimeout(() => this.performSearch(), 300);
+      clearTimeout(this.state.searchTimeout);
+      this.state.selectedSearchIndex = -1;
+      this.state.searchTimeout = setTimeout(() => this.performSearch(), 300);
     });
 
     // Keyboard navigation in search
@@ -761,18 +725,18 @@ class Editor {
 
       if (e.key === 'ArrowDown') {
         e.preventDefault();
-        this.selectedSearchIndex = Math.min(this.selectedSearchIndex + 1, items.length - 1);
+        this.state.selectedSearchIndex = Math.min(this.state.selectedSearchIndex + 1, items.length - 1);
         this.updateSearchSelection(items);
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
-        this.selectedSearchIndex = Math.max(this.selectedSearchIndex - 1, -1);
+        this.state.selectedSearchIndex = Math.max(this.state.selectedSearchIndex - 1, -1);
         this.updateSearchSelection(items);
       } else if (e.key === 'Enter') {
         e.preventDefault();
-        if (this.selectedSearchIndex >= 0 && items[this.selectedSearchIndex]) {
-          items[this.selectedSearchIndex].click();
+        if (this.state.selectedSearchIndex >= 0 && items[this.state.selectedSearchIndex]) {
+          items[this.state.selectedSearchIndex].click();
         } else {
-          clearTimeout(this.searchTimeout);
+          clearTimeout(this.state.searchTimeout);
           this.performSearch();
         }
       } else if (e.key === 'Escape') {
@@ -784,10 +748,10 @@ class Editor {
 
   updateSearchSelection(items) {
     items.forEach((item, i) => {
-      item.classList.toggle('selected', i === this.selectedSearchIndex);
+      item.classList.toggle('selected', i === this.state.selectedSearchIndex);
     });
-    if (this.selectedSearchIndex >= 0 && items[this.selectedSearchIndex]) {
-      items[this.selectedSearchIndex].scrollIntoView({ block: 'nearest' });
+    if (this.state.selectedSearchIndex >= 0 && items[this.state.selectedSearchIndex]) {
+      items[this.state.selectedSearchIndex].scrollIntoView({ block: 'nearest' });
     }
   }
 
@@ -804,25 +768,25 @@ class Editor {
   async setupAutoSave() {
     // Load initial auto-save state from main process
     if (window.vomit && window.vomit.getAutoSaveEnabled) {
-      this.autoSaveEnabled = await window.vomit.getAutoSaveEnabled();
+      this.state.autoSaveEnabled = await window.vomit.getAutoSaveEnabled();
     }
 
     // Listen for auto-save toggle changes
     window.addEventListener('vomit:auto-save-changed', (e) => {
-      this.autoSaveEnabled = e.detail;
-      console.log('Auto-save', this.autoSaveEnabled ? 'enabled' : 'disabled');
+      this.state.autoSaveEnabled = e.detail;
+      console.log('Auto-save', this.state.autoSaveEnabled ? 'enabled' : 'disabled');
     });
 
     // Save when window loses focus
     window.addEventListener('blur', () => {
-      if (this.autoSaveEnabled && this.isDirty && this.currentFilePath) {
+      if (this.state.autoSaveEnabled && this.state.isDirty && this.state.currentFilePath) {
         this.autoSave();
       }
     });
 
     // Save before closing/navigating away
     window.addEventListener('beforeunload', (e) => {
-      if (this.autoSaveEnabled && this.isDirty && this.currentFilePath) {
+      if (this.state.autoSaveEnabled && this.state.isDirty && this.state.currentFilePath) {
         this.autoSave();
       }
     });
@@ -830,24 +794,24 @@ class Editor {
 
   scheduleAutoSave() {
     // Only auto-save if enabled and file has been saved before (has a path)
-    if (!this.autoSaveEnabled || !this.currentFilePath) return;
+    if (!this.state.autoSaveEnabled || !this.state.currentFilePath) return;
 
     // Clear existing timeout
-    clearTimeout(this.autoSaveTimeout);
+    clearTimeout(this.state.autoSaveTimeout);
 
     // Schedule save for 2 seconds after last change
-    this.autoSaveTimeout = setTimeout(() => {
-      if (this.isDirty && this.autoSaveEnabled) {
+    this.state.autoSaveTimeout = setTimeout(() => {
+      if (this.state.isDirty && this.state.autoSaveEnabled) {
         this.autoSave();
       }
     }, 2000);
   }
 
   autoSave() {
-    if (!this.autoSaveEnabled || !this.isDirty || !this.currentFilePath) return;
+    if (!this.state.autoSaveEnabled || !this.state.isDirty || !this.state.currentFilePath) return;
 
     window.vomit.saveContent(this.getValue());
-    this.isDirty = false;
+    this.state.isDirty = false;
     this.updateStatus();
   }
 
@@ -862,9 +826,9 @@ class Editor {
       document.body.style.userSelect = 'none';
 
       // Find which sidebar is visible
-      if (this.isFileTreeVisible) currentSidebar = this.sidebarFiles;
-      else if (this.isOutlineVisible) currentSidebar = this.sidebarOutline;
-      else if (this.isSearchVisible) currentSidebar = this.sidebarSearch;
+      if (this.state.isFileTreeVisible) currentSidebar = this.sidebarFiles;
+      else if (this.state.isOutlineVisible) currentSidebar = this.sidebarOutline;
+      else if (this.state.isSearchVisible) currentSidebar = this.sidebarSearch;
     });
 
     document.addEventListener('mousemove', (e) => {
@@ -891,7 +855,7 @@ class Editor {
     if (sidebarHeader) {
       sidebarHeader.addEventListener('contextmenu', (e) => {
         e.preventDefault();
-        if (this.projectRoot) {
+        if (this.state.projectRoot) {
           this.showRootContextMenu(e.clientX, e.clientY);
         }
       });
@@ -902,7 +866,7 @@ class Editor {
       // Only trigger if clicking on the file tree itself, not on file items
       if (e.target === this.fileTree || e.target.classList.contains('empty-message')) {
         e.preventDefault();
-        if (this.currentDirectory) {
+        if (this.state.currentDirectory) {
           this.showRootContextMenu(e.clientX, e.clientY);
         }
       }
@@ -928,9 +892,9 @@ class Editor {
     menu.addEventListener('click', (e) => {
       const action = e.target.dataset.action;
       if (action === 'new-file') {
-        this.createNewFile(this.currentDirectory);
+        this.createNewFile(this.state.currentDirectory);
       } else if (action === 'new-folder') {
-        this.createNewFolder(this.currentDirectory);
+        this.createNewFolder(this.state.currentDirectory);
       }
       menu.remove();
     });
@@ -946,13 +910,13 @@ class Editor {
   }
 
   updateResizeHandle() {
-    const anySidebarVisible = this.isFileTreeVisible || this.isOutlineVisible || this.isSearchVisible;
+    const anySidebarVisible = this.state.isFileTreeVisible || this.state.isOutlineVisible || this.state.isSearchVisible;
     this.sidebarResize.classList.toggle('hidden', !anySidebarVisible);
   }
 
   togglePaneFocus() {
-    const anySidebarOpen = this.isFileTreeVisible || this.isOutlineVisible || this.isSearchVisible;
-    const isPreviewOnly = this.viewMode === 'preview';
+    const anySidebarOpen = this.state.isFileTreeVisible || this.state.isOutlineVisible || this.state.isSearchVisible;
+    const isPreviewOnly = this.state.viewMode === 'preview';
 
     if (!anySidebarOpen) {
       // No sidebar open, focus editor or preview
@@ -962,21 +926,21 @@ class Editor {
       return;
     }
 
-    if (this.focusedPane === 'editor') {
+    if (this.state.focusedPane === 'editor') {
       // Move focus to sidebar
-      this.focusedPane = 'sidebar';
-      if (this.isSearchVisible) {
+      this.state.focusedPane = 'sidebar';
+      if (this.state.isSearchVisible) {
         this.searchInput.focus();
-      } else if (this.isFileTreeVisible) {
+      } else if (this.state.isFileTreeVisible) {
         const firstItem = this.fileTree.querySelector('.file-item');
         if (firstItem) firstItem.focus();
-      } else if (this.isOutlineVisible) {
+      } else if (this.state.isOutlineVisible) {
         const firstItem = this.outlineList.querySelector('.outline-item');
         if (firstItem) firstItem.focus();
       }
     } else {
       // Move focus back to editor (or preview if in preview-only mode)
-      this.focusedPane = 'editor';
+      this.state.focusedPane = 'editor';
       if (!isPreviewOnly) {
         this.cm.focus();
       } else {
@@ -987,13 +951,13 @@ class Editor {
   }
 
   toggleSearch() {
-    this.isSearchVisible = !this.isSearchVisible;
-    this.sidebarSearch.classList.toggle('hidden', !this.isSearchVisible);
+    this.state.isSearchVisible = !this.state.isSearchVisible;
+    this.sidebarSearch.classList.toggle('hidden', !this.state.isSearchVisible);
     this.updateResizeHandle();
-    if (this.isSearchVisible) {
+    if (this.state.isSearchVisible) {
       // Close other sidebars
-      this.isFileTreeVisible = false;
-      this.isOutlineVisible = false;
+      this.state.isFileTreeVisible = false;
+      this.state.isOutlineVisible = false;
       this.sidebarFiles.classList.add('hidden');
       this.sidebarOutline.classList.add('hidden');
       // Focus the search input
@@ -1008,21 +972,21 @@ class Editor {
       return;
     }
 
-    if (!this.currentDirectory) {
-      this.currentDirectory = await window.vomit.getCurrentDirectory();
+    if (!this.state.currentDirectory) {
+      this.state.currentDirectory = await window.vomit.getCurrentDirectory();
     }
 
-    if (!this.currentDirectory) {
+    if (!this.state.currentDirectory) {
       this.searchResults.innerHTML = '<div class="search-no-results">Open a file to search in its directory</div>';
       return;
     }
 
-    const results = await window.vomit.searchInFiles(this.currentDirectory, query);
+    const results = await window.vomit.searchInFiles(this.state.currentDirectory, query);
     this.renderSearchResults(results, query);
   }
 
   renderSearchResults(results, query) {
-    this.selectedSearchIndex = -1;
+    this.state.selectedSearchIndex = -1;
 
     if (!results || results.length === 0) {
       this.searchResults.innerHTML = '<div class="search-no-results">No results found</div>';
@@ -1054,23 +1018,23 @@ class Editor {
         const line = parseInt(el.dataset.line, 10);
         window.vomit.openFile(filePath);
         // After file loads, jump to line (handled via event)
-        this.pendingLineJump = line;
+        this.state.pendingLineJump = line;
       });
     });
   }
 
   async loadFileTree() {
-    if (!this.currentDirectory) {
+    if (!this.state.currentDirectory) {
       // Try to get current directory from main process
-      this.currentDirectory = await window.vomit.getCurrentDirectory();
+      this.state.currentDirectory = await window.vomit.getCurrentDirectory();
     }
 
-    if (!this.currentDirectory) {
+    if (!this.state.currentDirectory) {
       this.fileTree.innerHTML = '<div class="file-item" style="color: var(--text-muted); padding: 16px;">Open a file to see its directory</div>';
       return;
     }
 
-    const items = await window.vomit.getDirectoryContents(this.currentDirectory);
+    const items = await window.vomit.getDirectoryContents(this.state.currentDirectory);
     this.renderFileTree(items);
   }
 
@@ -1081,17 +1045,17 @@ class Editor {
     }
 
     // Cache items for the current directory
-    this.treeCache.set(this.currentDirectory, items);
+    this.state.treeCache.set(this.state.currentDirectory, items);
 
     // Render tree starting from root
     this.fileTree.innerHTML = '';
 
     // Add ".." parent item if not at project root
-    const isAtProjectRoot = this.projectRoot && this.currentDirectory === this.projectRoot;
-    if (!isAtProjectRoot && this.currentDirectory) {
+    const isAtProjectRoot = this.state.projectRoot && this.state.currentDirectory === this.state.projectRoot;
+    if (!isAtProjectRoot && this.state.currentDirectory) {
       const parentItem = document.createElement('div');
       parentItem.className = 'file-item directory parent-dir';
-      parentItem.dataset.path = this.currentDirectory.split('/').slice(0, -1).join('/');
+      parentItem.dataset.path = this.state.currentDirectory.split('/').slice(0, -1).join('/');
       parentItem.dataset.isDir = 'true';
       parentItem.dataset.depth = '0';
       parentItem.tabIndex = 0;
@@ -1122,8 +1086,8 @@ class Editor {
     const chevronSvg = `<svg viewBox="0 0 16 16" fill="currentColor"><path d="M6 4l4 4-4 4"/></svg>`;
 
     items.forEach(item => {
-      const isActive = item.path === this.currentFilePath;
-      const isExpanded = this.expandedFolders.has(item.path);
+      const isActive = item.path === this.state.currentFilePath;
+      const isExpanded = this.state.expandedFolders.has(item.path);
       const typeClass = item.isDirectory ? 'directory' : (item.isMarkdown ? 'markdown' : 'file');
       const activeClass = isActive ? 'active' : '';
       const expandedClass = isExpanded ? 'expanded' : '';
@@ -1150,7 +1114,7 @@ class Editor {
         childContainer.dataset.parentPath = item.path;
         container.appendChild(childContainer);
 
-        const cachedChildren = this.treeCache.get(item.path);
+        const cachedChildren = this.state.treeCache.get(item.path);
         if (cachedChildren) {
           this.renderTreeItems(cachedChildren, childContainer, depth + 1);
         }
@@ -1170,7 +1134,7 @@ class Editor {
           // Update active state
           this.fileTree.querySelectorAll('.file-item.active').forEach(item => item.classList.remove('active'));
           el.classList.add('active');
-          this.focusedPane = 'sidebar';
+          this.state.focusedPane = 'sidebar';
           window.vomit.openFile(filePath);
         }
       };
@@ -1206,7 +1170,7 @@ class Editor {
           }
         } else if (e.key === 'Escape') {
           this.cm.focus();
-          this.focusedPane = 'editor';
+          this.state.focusedPane = 'editor';
         }
       });
 
@@ -1223,7 +1187,7 @@ class Editor {
     if (isExpanded) {
       // Collapse: remove expanded class and children container
       el.classList.remove('expanded');
-      this.expandedFolders.delete(folderPath);
+      this.state.expandedFolders.delete(folderPath);
       const childContainer = el.nextElementSibling;
       if (childContainer && childContainer.classList.contains('tree-children')) {
         childContainer.remove();
@@ -1231,13 +1195,13 @@ class Editor {
     } else {
       // Expand: add expanded class and load children
       el.classList.add('expanded');
-      this.expandedFolders.add(folderPath);
+      this.state.expandedFolders.add(folderPath);
 
       // Check cache first
-      let children = this.treeCache.get(folderPath);
+      let children = this.state.treeCache.get(folderPath);
       if (!children) {
         children = await window.vomit.getDirectoryContents(folderPath);
-        this.treeCache.set(folderPath, children);
+        this.state.treeCache.set(folderPath, children);
       }
 
       if (children && children.length > 0) {
@@ -1474,23 +1438,23 @@ class Editor {
     // Cycle through: editor-only → split-view → preview-only → editor-only
     const body = document.body;
 
-    if (!this.isPreviewVisible) {
+    if (!this.state.isPreviewVisible) {
       // editor-only → split-view
-      this.isPreviewVisible = true;
-      this.viewMode = 'split';
+      this.state.isPreviewVisible = true;
+      this.state.viewMode = 'split';
       body.classList.remove('editor-only', 'preview-only');
       body.classList.add('split-view');
       this.previewPane.classList.add('visible');
       this.updatePreview();
-    } else if (this.viewMode === 'split') {
+    } else if (this.state.viewMode === 'split') {
       // split-view → preview-only
-      this.viewMode = 'preview';
+      this.state.viewMode = 'preview';
       body.classList.remove('split-view', 'editor-only');
       body.classList.add('preview-only');
     } else {
       // preview-only → editor-only
-      this.isPreviewVisible = false;
-      this.viewMode = 'editor';
+      this.state.isPreviewVisible = false;
+      this.state.viewMode = 'editor';
       body.classList.remove('split-view', 'preview-only');
       body.classList.add('editor-only');
       this.previewPane.classList.remove('visible');
@@ -1499,8 +1463,8 @@ class Editor {
   }
 
   isMarkdownFile() {
-    if (!this.currentFilePath) return true; // Default to markdown for new files
-    const ext = this.currentFilePath.split('.').pop().toLowerCase();
+    if (!this.state.currentFilePath) return true; // Default to markdown for new files
+    const ext = this.state.currentFilePath.split('.').pop().toLowerCase();
     return ['md', 'markdown'].includes(ext);
   }
 
@@ -1534,7 +1498,7 @@ class Editor {
       const validThemes = ['default', 'dark', 'catppuccin', 'nord', 'solarized', 'light'];
       if (validThemes.includes(theme)) {
         document.body.className = `theme-${theme}`;
-        if (this.isPreviewVisible) {
+        if (this.state.isPreviewVisible) {
           document.body.classList.add('split-view');
         }
       }
@@ -1552,8 +1516,8 @@ class Editor {
   }
 
   getEditorMode() {
-    if (!this.currentFilePath) return 'yaml-frontmatter';
-    const ext = this.currentFilePath.split('.').pop().toLowerCase();
+    if (!this.state.currentFilePath) return 'yaml-frontmatter';
+    const ext = this.state.currentFilePath.split('.').pop().toLowerCase();
     const modeMap = {
       'md': 'yaml-frontmatter', 'markdown': 'yaml-frontmatter',
       'js': 'javascript', 'ts': 'javascript', 'json': 'javascript',
@@ -1578,8 +1542,8 @@ class Editor {
   }
 
   getFileLanguage() {
-    if (!this.currentFilePath) return 'text';
-    const ext = this.currentFilePath.split('.').pop().toLowerCase();
+    if (!this.state.currentFilePath) return 'text';
+    const ext = this.state.currentFilePath.split('.').pop().toLowerCase();
     const langMap = {
       'js': 'javascript', 'ts': 'typescript', 'py': 'python',
       'rb': 'ruby', 'go': 'go', 'rs': 'rust', 'java': 'java',
@@ -1592,7 +1556,7 @@ class Editor {
   }
 
   updatePreview() {
-    if (!this.isPreviewVisible) return;
+    if (!this.state.isPreviewVisible) return;
 
     const content = this.getValue();
 
@@ -1682,7 +1646,7 @@ class Editor {
   }
 
   renderMarkdown(text) {
-    const basePath = this.basePath;
+    const basePath = this.state.basePath;
 
     // Replace emoji shortcodes
     if (window.replaceEmojis) {
@@ -1740,14 +1704,14 @@ class Editor {
     const content = this.getValue();
 
     // File name and path
-    if (this.currentFilePath) {
-      const modified = this.isDirty ? ' (modified)' : '';
+    if (this.state.currentFilePath) {
+      const modified = this.state.isDirty ? ' (modified)' : '';
       // Shorten home directory to ~
-      const displayPath = this.currentFilePath.replace(/^\/Users\/[^/]+/, '~');
+      const displayPath = this.state.currentFilePath.replace(/^\/Users\/[^/]+/, '~');
       this.statusFile.textContent = displayPath + modified;
-      this.statusFile.title = this.currentFilePath; // Full path on hover
+      this.statusFile.title = this.state.currentFilePath; // Full path on hover
     } else {
-      this.statusFile.textContent = this.isDirty ? 'Untitled (modified)' : 'Untitled';
+      this.statusFile.textContent = this.state.isDirty ? 'Untitled (modified)' : 'Untitled';
       this.statusFile.title = '';
     }
 
@@ -1768,7 +1732,7 @@ class Editor {
   }
 
   updateOutline() {
-    if (!this.isOutlineVisible) return;
+    if (!this.state.isOutlineVisible) return;
 
     const content = this.getValue();
     const lines = content.split('\n');
@@ -1869,10 +1833,10 @@ class Editor {
     menu.addEventListener('click', (e) => {
       const action = e.target.dataset.action;
       if (action === 'new-file') {
-        const targetDir = isDir ? filePath : this.currentDirectory;
+        const targetDir = isDir ? filePath : this.state.currentDirectory;
         this.createNewFile(targetDir);
       } else if (action === 'new-folder') {
-        const targetDir = isDir ? filePath : this.currentDirectory;
+        const targetDir = isDir ? filePath : this.state.currentDirectory;
         this.createNewFolder(targetDir);
       } else if (action === 'rename') {
         this.startRename(el);
@@ -1970,9 +1934,9 @@ class Editor {
       }
       // Clear tree cache for parent directory to force refresh
       const parentDir = itemPath.substring(0, itemPath.lastIndexOf('/'));
-      this.treeCache.delete(parentDir);
+      this.state.treeCache.delete(parentDir);
       // Also remove from expanded folders if it was a folder
-      this.expandedFolders.delete(itemPath);
+      this.state.expandedFolders.delete(itemPath);
       this.loadFileTree();
     } else if (result.error) {
       alert(result.error);
@@ -1981,7 +1945,7 @@ class Editor {
 
   async createNewFolder(parentDir) {
     // Use current directory if no parent specified
-    const targetDir = parentDir || this.currentDirectory;
+    const targetDir = parentDir || this.state.currentDirectory;
     if (!targetDir) {
       alert('No folder open. Open a folder first.');
       return;
@@ -2031,7 +1995,7 @@ class Editor {
           try {
             await window.vomit.createDirectory(newFolderPath);
             // Clear tree cache for parent to force refresh
-            this.treeCache.delete(targetDir);
+            this.state.treeCache.delete(targetDir);
           } catch (err) {
             alert(`Failed to create folder: ${err.message}`);
           }
@@ -2060,7 +2024,7 @@ class Editor {
 
   async createNewFile(parentDir) {
     // Use current directory if no parent specified
-    const targetDir = parentDir || this.currentDirectory;
+    const targetDir = parentDir || this.state.currentDirectory;
     if (!targetDir) {
       alert('No folder open. Open a folder first.');
       return;
@@ -2116,7 +2080,7 @@ class Editor {
             // Create empty file
             await window.vomit.writeFile(newFilePath, '');
             // Clear tree cache for parent to force refresh
-            this.treeCache.delete(targetDir);
+            this.state.treeCache.delete(targetDir);
             // Open the new file
             window.vomit.openFile(newFilePath);
           } catch (err) {
@@ -2353,37 +2317,37 @@ class Editor {
         const command = this.terminalInput.value.trim();
         if (command) {
           this.executeClaudeCommand(command);
-          this.terminalHistory.push(command);
-          this.terminalHistoryIndex = this.terminalHistory.length;
+          this.state.terminalHistory.push(command);
+          this.state.terminalHistoryIndex = this.state.terminalHistory.length;
           this.terminalInput.value = '';
         }
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
-        if (this.terminalHistoryIndex > 0) {
-          this.terminalHistoryIndex--;
-          this.terminalInput.value = this.terminalHistory[this.terminalHistoryIndex] || '';
+        if (this.state.terminalHistoryIndex > 0) {
+          this.state.terminalHistoryIndex--;
+          this.terminalInput.value = this.state.terminalHistory[this.state.terminalHistoryIndex] || '';
         }
       } else if (e.key === 'ArrowDown') {
         e.preventDefault();
-        if (this.terminalHistoryIndex < this.terminalHistory.length - 1) {
-          this.terminalHistoryIndex++;
-          this.terminalInput.value = this.terminalHistory[this.terminalHistoryIndex] || '';
+        if (this.state.terminalHistoryIndex < this.state.terminalHistory.length - 1) {
+          this.state.terminalHistoryIndex++;
+          this.terminalInput.value = this.state.terminalHistory[this.state.terminalHistoryIndex] || '';
         } else {
-          this.terminalHistoryIndex = this.terminalHistory.length;
+          this.state.terminalHistoryIndex = this.state.terminalHistory.length;
           this.terminalInput.value = '';
         }
       } else if (e.key === 'c' && e.ctrlKey) {
         // Ctrl+C to stop running process
         e.preventDefault();
-        if (this.isClaudeRunning) {
+        if (this.state.isClaudeRunning) {
           this.stopAI();
         }
       } else if (e.key === 'Escape') {
-        if (this.isClaudeRunning) {
+        if (this.state.isClaudeRunning) {
           this.stopAI();
         } else {
           // Close the terminal panel
-          this.isTerminalPanelVisible = false;
+          this.state.isTerminalPanelVisible = false;
           this.terminalPanel.classList.add('hidden');
           this.cm.focus();
         }
@@ -2395,7 +2359,7 @@ class Editor {
 
     // Clear button - clears active terminal
     this.terminalClear.addEventListener('click', () => {
-      if (this.activeTerminalTab === 'ai') {
+      if (this.state.activeTerminalTab === 'ai') {
         this.clearTerminal();
       } else {
         this.clearShellTerminal();
@@ -2409,7 +2373,7 @@ class Editor {
 
     // Close button - closes the entire terminal panel
     this.terminalClose.addEventListener('click', () => {
-      this.isTerminalPanelVisible = false;
+      this.state.isTerminalPanelVisible = false;
       this.terminalPanel.classList.add('hidden');
       this.cm.focus();
     });
@@ -2430,7 +2394,7 @@ class Editor {
 
     // Global Ctrl+C handler for terminal
     this.terminalPanel.addEventListener('keydown', (e) => {
-      if (e.key === 'c' && e.ctrlKey && this.isClaudeRunning) {
+      if (e.key === 'c' && e.ctrlKey && this.state.isClaudeRunning) {
         e.preventDefault();
         this.stopAI();
       }
@@ -2438,7 +2402,7 @@ class Editor {
 
     // Also listen on document level when terminal is visible
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'c' && e.ctrlKey && this.isTerminalPanelVisible && this.isClaudeRunning) {
+      if (e.key === 'c' && e.ctrlKey && this.state.isTerminalPanelVisible && this.state.isClaudeRunning) {
         e.preventDefault();
         this.stopAI();
       }
@@ -2446,7 +2410,7 @@ class Editor {
   }
 
   switchTerminalTab(tabName) {
-    this.activeTerminalTab = tabName;
+    this.state.activeTerminalTab = tabName;
 
     // Update tab buttons
     this.terminalTabs.forEach(tab => {
@@ -2462,7 +2426,7 @@ class Editor {
       this.terminalInput.focus();
     } else if (tabName === 'shell') {
       this.initXterm();
-      if (!this.isShellRunning) {
+      if (!this.state.isShellRunning) {
         this.startShell();
       }
       setTimeout(() => {
@@ -2477,9 +2441,9 @@ class Editor {
   }
 
   async startShell() {
-    const cwd = this.projectRoot || this.currentDirectory;
+    const cwd = this.state.projectRoot || this.state.currentDirectory;
     await window.vomit.shellSpawn(cwd);
-    this.isShellRunning = true;
+    this.state.isShellRunning = true;
     setTimeout(() => {
       if (this.xterm) {
         window.vomit.shellResize(this.xterm.cols, this.xterm.rows);
@@ -2508,7 +2472,7 @@ class Editor {
       const newHeight = Math.max(100, Math.min(600, startHeight + delta));
       this.terminalPanel.style.height = `${newHeight}px`;
       // Fit xterm when resizing
-      if (this.activeTerminalTab === 'shell' && this.xtermFitAddon) {
+      if (this.state.activeTerminalTab === 'shell' && this.xtermFitAddon) {
         this.xtermFitAddon.fit();
       }
     });
@@ -2519,9 +2483,9 @@ class Editor {
         document.body.style.cursor = '';
         document.body.style.userSelect = '';
         // Final fit and notify shell of resize
-        if (this.activeTerminalTab === 'shell' && this.xtermFitAddon) {
+        if (this.state.activeTerminalTab === 'shell' && this.xtermFitAddon) {
           this.xtermFitAddon.fit();
-          if (this.isShellRunning && this.xterm) {
+          if (this.state.isShellRunning && this.xterm) {
             window.vomit.shellResize(this.xterm.cols, this.xterm.rows);
           }
         }
@@ -2530,22 +2494,22 @@ class Editor {
   }
 
   toggleTerminal() {
-    if (this.isTerminalPanelVisible && this.activeTerminalTab === 'ai') {
+    if (this.state.isTerminalPanelVisible && this.state.activeTerminalTab === 'ai') {
       // Already showing AI terminal, close the panel
-      this.isTerminalPanelVisible = false;
+      this.state.isTerminalPanelVisible = false;
       this.terminalPanel.classList.add('hidden');
       this.cm.focus();
     } else {
       // Show panel and switch to AI tab
-      this.isTerminalPanelVisible = true;
+      this.state.isTerminalPanelVisible = true;
       this.terminalPanel.classList.remove('hidden');
       this.switchTerminalTab('ai');
     }
   }
 
   showTerminal() {
-    if (!this.isTerminalPanelVisible || this.activeTerminalTab !== 'ai') {
-      this.isTerminalPanelVisible = true;
+    if (!this.state.isTerminalPanelVisible || this.state.activeTerminalTab !== 'ai') {
+      this.state.isTerminalPanelVisible = true;
       this.terminalPanel.classList.remove('hidden');
       this.switchTerminalTab('ai');
     }
@@ -2667,23 +2631,23 @@ class Editor {
     setTimeout(() => {
       this.xtermFitAddon.fit();
       // Send resize to PTY
-      if (this.isShellRunning) {
+      if (this.state.isShellRunning) {
         window.vomit.shellResize(this.xterm.cols, this.xterm.rows);
       }
     }, 0);
 
     // Handle user input - send to PTY
     this.xterm.onData((data) => {
-      if (this.isShellRunning) {
+      if (this.state.isShellRunning) {
         window.vomit.shellWrite(data);
       }
     });
 
     // Handle window resize
     window.addEventListener('resize', () => {
-      if (this.isTerminalPanelVisible && this.activeTerminalTab === 'shell' && this.xtermFitAddon) {
+      if (this.state.isTerminalPanelVisible && this.state.activeTerminalTab === 'shell' && this.xtermFitAddon) {
         this.xtermFitAddon.fit();
-        if (this.isShellRunning) {
+        if (this.state.isShellRunning) {
           window.vomit.shellResize(this.xterm.cols, this.xterm.rows);
         }
       }
@@ -2691,14 +2655,14 @@ class Editor {
   }
 
   toggleShellTerminal() {
-    if (this.isTerminalPanelVisible && this.activeTerminalTab === 'shell') {
+    if (this.state.isTerminalPanelVisible && this.state.activeTerminalTab === 'shell') {
       // Already showing shell terminal, close the panel
-      this.isTerminalPanelVisible = false;
+      this.state.isTerminalPanelVisible = false;
       this.terminalPanel.classList.add('hidden');
       this.cm.focus();
     } else {
       // Show panel and switch to shell tab
-      this.isTerminalPanelVisible = true;
+      this.state.isTerminalPanelVisible = true;
       this.terminalPanel.classList.remove('hidden');
       this.switchTerminalTab('shell');
     }
@@ -2718,7 +2682,7 @@ class Editor {
 
   async executeClaudeCommand(command) {
     // Get working directory - prefer project root, fall back to current file's directory
-    const cwd = this.projectRoot || this.currentDirectory;
+    const cwd = this.state.projectRoot || this.state.currentDirectory;
 
     if (!cwd) {
       this.appendTerminalOutput('Error: No project folder open. Open a folder first with Cmd+Alt+O.', 'error');
@@ -2779,14 +2743,14 @@ class Editor {
       this.appendTerminalOutput(`❯ ${command}`, 'input');
     }
 
-    this.isClaudeRunning = true;
+    this.state.isClaudeRunning = true;
     this.terminalStop.classList.remove('hidden');
 
     try {
       await window.vomit.claudeExecute(finalCommand, cwd);
     } catch (err) {
       this.appendTerminalOutput(`Error: ${err.message}`, 'error');
-      this.isClaudeRunning = false;
+      this.state.isClaudeRunning = false;
       this.terminalStop.classList.add('hidden');
     }
   }
@@ -2795,14 +2759,14 @@ class Editor {
     this.appendTerminalOutput(`❯ /agent ${prompt}`, 'input');
     this.appendTerminalOutput('Running in agent mode with tools...', 'system');
 
-    this.isClaudeRunning = true;
+    this.state.isClaudeRunning = true;
     this.terminalStop.classList.remove('hidden');
 
     try {
       await window.vomit.agentExecute(prompt, cwd);
     } catch (err) {
       this.appendTerminalOutput(`Error: ${err.message}`, 'error');
-      this.isClaudeRunning = false;
+      this.state.isClaudeRunning = false;
       this.terminalStop.classList.add('hidden');
     }
   }
@@ -2818,7 +2782,7 @@ class Editor {
     }
 
     // Determine output file paths
-    const currentFile = this.currentFilePath;
+    const currentFile = this.state.currentFilePath;
     let outputPath;
     let mappingPath;
     if (currentFile) {
@@ -2861,12 +2825,12 @@ File to analyze:
 ${docContent}
 \`\`\``;
 
-    this.isClaudeRunning = true;
+    this.state.isClaudeRunning = true;
     this.terminalStop.classList.remove('hidden');
 
     // Collect the AI output
-    this.pseudoOutput = '';
-    this.pseudoCollecting = true;
+    this.state.pseudoOutput = '';
+    this.state.pseudoCollecting = true;
     this.pseudoOutputPath = outputPath;
 
     try {
@@ -2874,8 +2838,8 @@ ${docContent}
       // Wait for completion and save
       await this.waitForAIComplete();
 
-      if (this.pseudoOutput.trim()) {
-        const output = this.pseudoOutput.trim();
+      if (this.state.pseudoOutput.trim()) {
+        const output = this.state.pseudoOutput.trim();
         let mapping = null;
 
         // Parse JSON mapping from AI output
@@ -2914,7 +2878,7 @@ ${docContent}
       this.markOutputComplete();
     } catch (err) {
       this.appendTerminalOutput(`Error: ${err.message}`, 'error');
-      this.isClaudeRunning = false;
+      this.state.isClaudeRunning = false;
       this.terminalStop.classList.add('hidden');
     }
   }
@@ -2922,7 +2886,7 @@ ${docContent}
   async depseudonymizeCurrentDoc() {
     this.appendTerminalOutput('❯ /depseudo', 'input');
 
-    const currentFile = this.currentFilePath;
+    const currentFile = this.state.currentFilePath;
     if (!currentFile) {
       this.appendTerminalOutput('Error: No file open. Open a file first.', 'error');
       return;
@@ -3001,7 +2965,7 @@ ${docContent}
           // If it's the active tab, update the editor
           if (existingTab.id === this.tabManager.activeTabId) {
             this.cm.setValue(content);
-            this.isDirty = false;
+            this.state.isDirty = false;
             this.updatePreview();
             this.updateStatus();
           }
@@ -3074,8 +3038,8 @@ File content:
           const fullPrompt = pseudoPrompt + '\n```\n' + content + '\n```';
 
           // Collect the AI response
-          this.pseudoOutput = '';
-          this.pseudoCollecting = true;
+          this.state.pseudoOutput = '';
+          this.state.pseudoCollecting = true;
 
           await window.vomit.claudeExecute(fullPrompt, cwd);
 
@@ -3084,7 +3048,7 @@ File content:
 
           // Save pseudonymized content
           const outputPath = `${outputDir}/${file.relativePath}`;
-          await window.vomit.writeFile(outputPath, this.pseudoOutput);
+          await window.vomit.writeFile(outputPath, this.state.pseudoOutput);
 
           processed++;
           this.appendTerminalOutput(`✓ Saved: pseudonymized/${file.relativePath}`, 'output');
@@ -3161,7 +3125,7 @@ User question: ${query}
 
 Provide a helpful, accurate answer based on the context above. If the context doesn't contain relevant information, say so.`;
 
-      this.isClaudeRunning = true;
+      this.state.isClaudeRunning = true;
       this.terminalStop.classList.remove('hidden');
 
       await window.vomit.claudeExecute(ragPrompt, cwd);
@@ -3201,8 +3165,8 @@ Provide a helpful, accurate answer based on the context above. If the context do
   waitForAIComplete() {
     return new Promise((resolve) => {
       const checkComplete = () => {
-        if (!this.isClaudeRunning) {
-          this.pseudoCollecting = false;
+        if (!this.state.isClaudeRunning) {
+          this.state.pseudoCollecting = false;
           resolve();
         } else {
           setTimeout(checkComplete, 100);
@@ -3339,7 +3303,7 @@ Provide a helpful, accurate answer based on the context above. If the context do
 
   stopAI() {
     window.vomit.claudeStop();
-    this.pseudoCollecting = false;
+    this.state.pseudoCollecting = false;
     this.appendTerminalOutput('^C', 'system');
   }
 

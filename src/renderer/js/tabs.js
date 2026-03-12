@@ -53,7 +53,7 @@ class TabManager {
     tab.cursorPosition = cm.getCursor();
     tab.scrollInfo = cm.getScrollInfo();
     tab.history = cm.getDoc().getHistory();
-    tab.isDirty = this.editor.isDirty;
+    tab.isDirty = this.editor.state.isDirty;
     tab.lastAccessed = Date.now();
   }
 
@@ -61,7 +61,7 @@ class TabManager {
     const cm = this.editor.cm;
 
     // Prevent change handler from marking tab dirty during restore
-    this.editor.isRestoringTab = true;
+    this.editor.state.isRestoringTab = true;
 
     // Set content (this clears history)
     cm.setValue(tab.content);
@@ -86,12 +86,12 @@ class TabManager {
     }
 
     // Update editor state
-    this.editor.currentFilePath = tab.filePath;
-    this.editor.basePath = tab.filePath ? tab.filePath.substring(0, tab.filePath.lastIndexOf('/')) : null;
-    this.editor.isDirty = tab.isDirty;
+    this.editor.state.currentFilePath = tab.filePath;
+    this.editor.state.basePath = tab.filePath ? tab.filePath.substring(0, tab.filePath.lastIndexOf('/')) : null;
+    this.editor.state.isDirty = tab.isDirty;
 
     // Re-enable change handler
-    this.editor.isRestoringTab = false;
+    this.editor.state.isRestoringTab = false;
 
     // Update preview and status
     this.editor.updatePreview();
@@ -317,8 +317,8 @@ class TabManager {
     const tab = this.tabs.get(this.activeTabId);
     if (tab) {
       tab.filePath = filePath;
-      this.editor.currentFilePath = filePath;
-      this.editor.basePath = filePath ? filePath.substring(0, filePath.lastIndexOf('/')) : null;
+      this.editor.state.currentFilePath = filePath;
+      this.editor.state.basePath = filePath ? filePath.substring(0, filePath.lastIndexOf('/')) : null;
       this.renderTabBar();
       this.updateWindowTitle();
     }
