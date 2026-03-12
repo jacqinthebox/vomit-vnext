@@ -2,71 +2,25 @@ const { app, BrowserWindow, Menu, dialog, ipcMain, globalShortcut, shell } = req
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
-const Store = require('electron-store');
-
-// Platform detection
-const isWindows = process.platform === 'win32';
-
-// Only load node-pty on non-Windows platforms (AI features not supported on Windows)
-let pty = null;
-if (!isWindows) {
-  pty = require('node-pty');
-}
+const pty = require('node-pty');
+const configStore = require('./services/configStore');
+const { SessionState } = require('./services/sessionState');
+const { RendererBus } = require('./ipc/rendererBus');
 
 // Set app name for About dialog
 app.setName('Vomit');
 
-const store = new Store({
-  defaults: {
-    theme: 'default',
-    lastOpenedFile: null,
-    autoSaveEnabled: true,
-    recentFiles: [],
-    ollamaModel: 'llama3.2' // default Ollama model
-  }
-});
+const state = new SessionState();
+const bus = new RendererBus();
 
-const MAX_RECENT_FILES = 10;
+// Initialize state from configStore
+state.currentTheme = configStore.getTheme();
+state.autoSaveEnabled = configStore.getAutoSaveEnabled();
 
-function addToRecentFiles(filePath) {
-  if (!filePath) return;
-
-  let recent = store.get('recentFiles') || [];
-  // Remove if already exists
-  recent = recent.filter(f => f !== filePath);
-  // Add to front
-  recent.unshift(filePath);
-  // Limit to max
-  recent = recent.slice(0, MAX_RECENT_FILES);
-  store.set('recentFiles', recent);
-
-  // Rebuild menu to update Recent Files
-  createMenu();
-}
-
-let mainWindow = null;
-let currentTheme = store.get('theme');
-let autoSaveEnabled = store.get('autoSaveEnabled');
-let presentationWindow = null;
-let presenterWindow = null;
-let currentFilePath = null;
-let currentContent = '';
-let currentProjectRoot = null; // Track current project folder
-let editorWindows = []; // Track all editor windows
 let fileWatcher = null; // Watch for external file changes
-let lastKnownMtime = null; // Track file modification time
-let ollamaProcess = null; // Track running Ollama process
-let shellProcess = null; // Track running shell process
 
-// Cache for available Ollama
-let availableAITools = {
-  ollama: null,
-  ollamaModels: []
-};
-
-// Find executable path (works on macOS and Linux only - AI not supported on Windows)
+// Find executable path
 function findExecutable(name) {
-  if (isWindows) return null; // AI features not available on Windows
   const exe = name;
 
   // Check common locations directly (packaged apps have limited PATH)
@@ -330,57 +284,36 @@ async function searchIndex(query, folderPath, topK = 5) {
 
 // Detect available Ollama installation and models
 function detectAITools() {
-  // Skip AI detection on Windows - not supported
-  if (isWindows) {
-    return availableAITools;
-  }
+  state.availableAITools.ollama = findExecutable('ollama');
+  state.availableAITools.ollamaModels = getOllamaModels(state.availableAITools.ollama);
 
-  availableAITools.ollama = findExecutable('ollama');
-  availableAITools.ollamaModels = getOllamaModels(availableAITools.ollama);
-
-  return availableAITools;
+  return state.availableAITools;
 }
 
 // Build AI submenu dynamically based on available Ollama models
 function buildAISubmenu() {
-  // AI features not available on Windows
-  if (isWindows) {
-    return [
-      {
-        label: 'AI features not available on Windows',
-        enabled: false
-      },
-      {
-        label: 'Use macOS or Linux for AI support',
-        enabled: false
-      }
-    ];
-  }
-
   const submenu = [
     {
       label: 'Toggle AI Terminal',
       accelerator: 'CmdOrCtrl+J',
       click: () => {
-        if (mainWindow) {
-          mainWindow.webContents.send('toggle-terminal');
-        }
+        bus.send('toggle-terminal');
       }
     },
     { type: 'separator' }
   ];
 
   // Add Ollama models if available
-  if (availableAITools.ollamaModels.length > 0) {
-    for (const model of availableAITools.ollamaModels) {
+  if (state.availableAITools.ollamaModels.length > 0) {
+    for (const model of state.availableAITools.ollamaModels) {
       submenu.push({
         label: model,
         type: 'radio',
-        checked: store.get('ollamaModel') === model,
+        checked: configStore.getOllamaModel() === model,
         click: () => setOllamaModel(model)
       });
     }
-  } else if (availableAITools.ollama) {
+  } else if (state.availableAITools.ollama) {
     submenu.push({
       label: 'No models installed',
       enabled: false
@@ -405,14 +338,12 @@ function buildAISubmenu() {
 
 // Set Ollama model and show terminal
 function setOllamaModel(model) {
-  store.set('ollamaModel', model);
+  configStore.setOllamaModel(model);
   createMenu();
 
   // Notify renderer and show terminal
-  if (mainWindow) {
-    mainWindow.webContents.send('ai-provider-changed', { provider: 'ollama', model });
-    mainWindow.webContents.send('show-terminal');
-  }
+  bus.send('ai-provider-changed', { provider: 'ollama', model });
+  bus.send('show-terminal');
 }
 
 function createMainWindow() {
@@ -423,7 +354,7 @@ function createMainWindow() {
     app.dock.setIcon(iconPath);
   }
 
-  mainWindow = new BrowserWindow({
+  bus.setMainWindow(new BrowserWindow({
     width: 1200,
     height: 800,
     minWidth: 600,
@@ -437,15 +368,15 @@ function createMainWindow() {
     },
     titleBarStyle: 'hiddenInset',
     trafficLightPosition: { x: 12, y: 10 }
-  });
+  }));
 
-  mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
+  bus.getMainWindow().loadFile(path.join(__dirname, '../renderer/index.html'));
 
   // Warning for unsaved untitled files
-  mainWindow.on('close', async (e) => {
-    if (!currentFilePath && currentContent && currentContent.trim()) {
+  bus.getMainWindow().on('close', async (e) => {
+    if (!state.currentFilePath && state.currentContent && state.currentContent.trim()) {
       e.preventDefault();
-      const result = await dialog.showMessageBox(mainWindow, {
+      const result = await dialog.showMessageBox(bus.getMainWindow(), {
         type: 'warning',
         buttons: ['Save', "Don't Save", 'Cancel'],
         defaultId: 0,
@@ -458,28 +389,28 @@ function createMainWindow() {
       if (result.response === 0) {
         // Save
         await saveFileAs();
-        mainWindow.destroy();
+        bus.getMainWindow().destroy();
       } else if (result.response === 1) {
         // Don't Save
-        mainWindow.destroy();
+        bus.getMainWindow().destroy();
       }
       // Cancel: do nothing, window stays open
     }
   });
 
-  mainWindow.on('closed', () => {
-    mainWindow = null;
-    if (presentationWindow) presentationWindow.close();
-    if (presenterWindow) presenterWindow.close();
+  bus.getMainWindow().on('closed', () => {
+    bus.setMainWindow(null);
+    if (bus.getPresentationWindow()) bus.getPresentationWindow().close();
+    if (bus.getPresenterWindow()) bus.getPresenterWindow().close();
   });
 
-  mainWindow.webContents.on('did-finish-load', () => {
+  bus.getMainWindow().webContents.on('did-finish-load', () => {
     // Apply saved theme
-    mainWindow.webContents.send('set-theme', currentTheme);
+    bus.send('set-theme', state.currentTheme);
 
-    if (currentFilePath && currentContent) {
-      const basePath = path.dirname(currentFilePath);
-      mainWindow.webContents.send('load-content', currentContent, currentFilePath, basePath);
+    if (state.currentFilePath && state.currentContent) {
+      const basePath = path.dirname(state.currentFilePath);
+      bus.send('load-content', state.currentContent, state.currentFilePath, basePath);
     }
   });
 }
@@ -506,19 +437,21 @@ function createNewEditorWindow() {
   newWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
 
   newWindow.webContents.on('did-finish-load', () => {
-    newWindow.webContents.send('set-theme', currentTheme);
+    newWindow.webContents.send('set-theme', state.currentTheme);
   });
 
   newWindow.on('closed', () => {
-    editorWindows = editorWindows.filter(w => w !== newWindow);
+    const wins = bus.getEditorWindows();
+    const idx = wins.indexOf(newWindow);
+    if (idx !== -1) wins.splice(idx, 1);
   });
 
-  editorWindows.push(newWindow);
+  bus.getEditorWindows().push(newWindow);
   return newWindow;
 }
 
 function createPresentationWindow() {
-  presentationWindow = new BrowserWindow({
+  bus.setPresentationWindow(new BrowserWindow({
     width: 1280,
     height: 720,
     title: 'Presentation',
@@ -528,19 +461,19 @@ function createPresentationWindow() {
       nodeIntegration: false
     },
     backgroundColor: '#1e1e1e'
+  }));
+
+  bus.getPresentationWindow().loadFile(path.join(__dirname, '../renderer/presentation.html'));
+
+  bus.getPresentationWindow().on('closed', () => {
+    bus.setPresentationWindow(null);
   });
 
-  presentationWindow.loadFile(path.join(__dirname, '../renderer/presentation.html'));
-
-  presentationWindow.on('closed', () => {
-    presentationWindow = null;
-  });
-
-  return presentationWindow;
+  return bus.getPresentationWindow();
 }
 
 function createPresenterWindow() {
-  presenterWindow = new BrowserWindow({
+  bus.setPresenterWindow(new BrowserWindow({
     width: 1000,
     height: 700,
     title: 'Presenter View',
@@ -550,19 +483,19 @@ function createPresenterWindow() {
       nodeIntegration: false
     },
     backgroundColor: '#2d2d2d'
+  }));
+
+  bus.getPresenterWindow().loadFile(path.join(__dirname, '../renderer/presenter.html'));
+
+  bus.getPresenterWindow().on('closed', () => {
+    bus.setPresenterWindow(null);
   });
 
-  presenterWindow.loadFile(path.join(__dirname, '../renderer/presenter.html'));
-
-  presenterWindow.on('closed', () => {
-    presenterWindow = null;
-  });
-
-  return presenterWindow;
+  return bus.getPresenterWindow();
 }
 
 function buildRecentFilesMenu() {
-  const recentFiles = store.get('recentFiles') || [];
+  const recentFiles = configStore.getRecentFiles();
 
   if (recentFiles.length === 0) {
     return [{ label: 'No Recent Files', enabled: false }];
@@ -585,7 +518,7 @@ function buildRecentFilesMenu() {
   items.push({
     label: 'Clear Recent Files',
     click: () => {
-      store.set('recentFiles', []);
+      configStore.clearRecentFiles();
       createMenu();
     }
   });
@@ -616,9 +549,7 @@ function createMenu() {
           label: 'New Tab',
           accelerator: 'CmdOrCtrl+T',
           click: () => {
-            if (mainWindow) {
-              mainWindow.webContents.send('new-tab');
-            }
+            bus.send('new-tab');
           }
         },
         {
@@ -640,9 +571,7 @@ function createMenu() {
           label: 'New Folder',
           accelerator: 'CmdOrCtrl+Shift+F',
           click: () => {
-            if (mainWindow) {
-              mainWindow.webContents.send('new-folder');
-            }
+            bus.send('new-folder');
           }
         },
         { type: 'separator' },
@@ -665,9 +594,7 @@ function createMenu() {
           label: 'Close Tab',
           accelerator: 'CmdOrCtrl+W',
           click: () => {
-            if (mainWindow) {
-              mainWindow.webContents.send('close-tab');
-            }
+            bus.send('close-tab');
           }
         },
         { type: 'separator' },
@@ -691,13 +618,11 @@ function createMenu() {
         {
           label: 'Auto Save',
           type: 'checkbox',
-          checked: autoSaveEnabled,
+          checked: state.autoSaveEnabled,
           click: (menuItem) => {
-            autoSaveEnabled = menuItem.checked;
-            store.set('autoSaveEnabled', autoSaveEnabled);
-            if (mainWindow) {
-              mainWindow.webContents.send('auto-save-changed', autoSaveEnabled);
-            }
+            state.autoSaveEnabled = menuItem.checked;
+            configStore.setAutoSaveEnabled(state.autoSaveEnabled);
+            bus.send('auto-save-changed', state.autoSaveEnabled);
           }
         }
       ]
@@ -798,9 +723,7 @@ function createMenu() {
           label: 'Command Palette...',
           accelerator: 'CmdOrCtrl+.',
           click: () => {
-            if (mainWindow) {
-              mainWindow.webContents.send('show-command-palette');
-            }
+            bus.send('show-command-palette');
           }
         },
         { type: 'separator' },
@@ -808,45 +731,35 @@ function createMenu() {
           label: 'Toggle Preview',
           accelerator: 'CmdOrCtrl+P',
           click: () => {
-            if (mainWindow) {
-              mainWindow.webContents.send('toggle-preview');
-            }
+            bus.send('toggle-preview');
           }
         },
         {
           label: 'Toggle Outline',
           accelerator: 'CmdOrCtrl+Shift+O',
           click: () => {
-            if (mainWindow) {
-              mainWindow.webContents.send('toggle-outline');
-            }
+            bus.send('toggle-outline');
           }
         },
         {
           label: 'Toggle Files',
           accelerator: 'CmdOrCtrl+E',
           click: () => {
-            if (mainWindow) {
-              mainWindow.webContents.send('toggle-files');
-            }
+            bus.send('toggle-files');
           }
         },
         {
           label: 'Refresh File Tree',
           accelerator: 'CmdOrCtrl+Shift+R',
           click: () => {
-            if (mainWindow) {
-              mainWindow.webContents.send('refresh-file-tree');
-            }
+            bus.send('refresh-file-tree');
           }
         },
         {
           label: 'Toggle Word Wrap',
           accelerator: 'Alt+Z',
           click: () => {
-            if (mainWindow) {
-              mainWindow.webContents.send('toggle-word-wrap');
-            }
+            bus.send('toggle-word-wrap');
           }
         },
         { type: 'separator' },
@@ -854,27 +767,21 @@ function createMenu() {
           label: 'Find in File',
           accelerator: 'CmdOrCtrl+F',
           click: () => {
-            if (mainWindow) {
-              mainWindow.webContents.send('find-in-file');
-            }
+            bus.send('find-in-file');
           }
         },
         {
           label: 'Find and Replace',
           accelerator: 'CmdOrCtrl+Alt+F',
           click: () => {
-            if (mainWindow) {
-              mainWindow.webContents.send('find-and-replace');
-            }
+            bus.send('find-and-replace');
           }
         },
         {
           label: 'Search in Files',
           accelerator: 'CmdOrCtrl+Shift+F',
           click: () => {
-            if (mainWindow) {
-              mainWindow.webContents.send('toggle-search');
-            }
+            bus.send('toggle-search');
           }
         },
         { type: 'separator' },
@@ -882,9 +789,7 @@ function createMenu() {
           label: 'Toggle Line Numbers',
           accelerator: 'CmdOrCtrl+L',
           click: () => {
-            if (mainWindow) {
-              mainWindow.webContents.send('toggle-line-numbers');
-            }
+            bus.send('toggle-line-numbers');
           }
         },
         { type: 'separator' },
@@ -892,40 +797,30 @@ function createMenu() {
           label: 'Go to Parent Folder',
           accelerator: 'CmdOrCtrl+Up',
           click: () => {
-            if (mainWindow) {
-              mainWindow.webContents.send('navigate-parent');
-            }
+            bus.send('navigate-parent');
           }
         },
         { type: 'separator' },
-        ...(isWindows ? [] : [
-          {
-            label: 'Toggle Shell Terminal',
-            accelerator: 'CmdOrCtrl+`',
-            click: () => {
-              if (mainWindow) {
-                mainWindow.webContents.send('toggle-shell-terminal');
-              }
-            }
-          },
-          { type: 'separator' }
-        ]),
+        {
+          label: 'Toggle Shell Terminal',
+          accelerator: 'CmdOrCtrl+`',
+          click: () => {
+            bus.send('toggle-shell-terminal');
+          }
+        },
+        { type: 'separator' },
         {
           label: 'Next Tab',
           accelerator: 'CmdOrCtrl+Shift+]',
           click: () => {
-            if (mainWindow) {
-              mainWindow.webContents.send('next-tab');
-            }
+            bus.send('next-tab');
           }
         },
         {
           label: 'Previous Tab',
           accelerator: 'CmdOrCtrl+Shift+[',
           click: () => {
-            if (mainWindow) {
-              mainWindow.webContents.send('prev-tab');
-            }
+            bus.send('prev-tab');
           }
         },
         { type: 'separator' },
@@ -933,18 +828,14 @@ function createMenu() {
           label: `Go to Tab ${n}`,
           accelerator: `CmdOrCtrl+${n}`,
           click: () => {
-            if (mainWindow) {
-              mainWindow.webContents.send('go-to-tab', n);
-            }
+            bus.send('go-to-tab', n);
           }
         })),
         {
           label: 'Go to Last Tab',
           accelerator: 'CmdOrCtrl+9',
           click: () => {
-            if (mainWindow) {
-              mainWindow.webContents.send('go-to-tab', 9);
-            }
+            bus.send('go-to-tab', 9);
           }
         },
         { type: 'separator' },
@@ -1010,14 +901,14 @@ function createMenu() {
           label: 'Documentation',
           accelerator: 'CmdOrCtrl+Shift+/',
           click: () => {
-            if (mainWindow) {
+            if (bus.getMainWindow()) {
               // Load manual.md from app root (works for both dev and packaged)
               const manualPath = path.join(app.getAppPath(), 'manual.md');
               try {
                 const content = fs.readFileSync(manualPath, 'utf8');
-                mainWindow.webContents.send('show-documentation', content, manualPath);
+                bus.send('show-documentation', content, manualPath);
               } catch (err) {
-                mainWindow.webContents.send('show-documentation', '# Documentation\n\nManual not found.', null);
+                bus.send('show-documentation', '# Documentation\n\nManual not found.', null);
               }
             }
           }
@@ -1026,9 +917,7 @@ function createMenu() {
           label: 'Keyboard Shortcuts',
           accelerator: 'CmdOrCtrl+/',
           click: () => {
-            if (mainWindow) {
-              mainWindow.webContents.send('show-shortcuts');
-            }
+            bus.send('show-shortcuts');
           }
         },
         { type: 'separator' },
@@ -1045,16 +934,14 @@ function createMenu() {
 }
 
 async function newFile() {
-  currentFilePath = null;
-  currentContent = '';
-  if (mainWindow) {
-    mainWindow.webContents.send('load-content', '', null);
-    mainWindow.setTitle('Untitled - Vomit');
-  }
+  state.currentFilePath = null;
+  state.currentContent = '';
+  bus.send('load-content', '', null);
+  bus.getMainWindow()?.setTitle('Untitled - Vomit');
 }
 
 async function newPresentation() {
-  currentFilePath = null;
+  state.currentFilePath = null;
   const template = `---
 theme: catppuccin
 font-size: 16px
@@ -1098,15 +985,13 @@ function greet(name) {
 
 Questions?
 `;
-  currentContent = template;
-  if (mainWindow) {
-    mainWindow.webContents.send('load-content', template, null);
-    mainWindow.setTitle('Untitled Presentation - Vomit');
-  }
+  state.currentContent = template;
+  bus.send('load-content', template, null);
+  bus.getMainWindow()?.setTitle('Untitled Presentation - Vomit');
 }
 
 async function openFile() {
-  const result = await dialog.showOpenDialog(mainWindow, {
+  const result = await dialog.showOpenDialog(bus.getMainWindow(), {
     title: 'Open Markdown File',
     filters: [
       { name: 'Markdown Files', extensions: ['md', 'markdown'] },
@@ -1122,37 +1007,36 @@ async function openFile() {
 }
 
 async function openFolder() {
-  const result = await dialog.showOpenDialog(mainWindow, {
+  const result = await dialog.showOpenDialog(bus.getMainWindow(), {
     title: 'Open Folder',
     properties: ['openDirectory', 'createDirectory']
   });
 
   if (!result.canceled && result.filePaths.length > 0) {
     const folderPath = result.filePaths[0];
-    currentProjectRoot = folderPath;
-    store.set('lastOpenedFolder', folderPath);
-    mainWindow.webContents.send('open-folder', folderPath);
-    mainWindow.setTitle(`${path.basename(folderPath)} - Vomit`);
+    state.currentProjectRoot = folderPath;
+    configStore.setLastOpenedFolder(folderPath);
+    bus.send('open-folder', folderPath);
+    bus.getMainWindow()?.setTitle(`${path.basename(folderPath)} - Vomit`);
   }
 }
 
-let watchedFilePath = null;
 
 function stopFileWatcher() {
-  if (watchedFilePath) {
+  if (state.watchedFilePath) {
     try {
-      fs.unwatchFile(watchedFilePath);
+      fs.unwatchFile(state.watchedFilePath);
     } catch (err) {
       // Ignore errors when unwatching
     }
-    watchedFilePath = null;
+    state.watchedFilePath = null;
   }
-  lastKnownMtime = null;
+  state.lastKnownMtime = null;
 }
 
 function startFileWatcher(filePath) {
   // Don't restart if already watching this file
-  if (watchedFilePath === filePath) {
+  if (state.watchedFilePath === filePath) {
     return;
   }
 
@@ -1164,18 +1048,16 @@ function startFileWatcher(filePath) {
 
   try {
     // Get initial modification time
-    lastKnownMtime = fs.statSync(filePath).mtimeMs;
-    watchedFilePath = filePath;
+    state.lastKnownMtime = fs.statSync(filePath).mtimeMs;
+    state.watchedFilePath = filePath;
 
     // Use fs.watchFile (polling) instead of fs.watch - more reliable on macOS
     fs.watchFile(filePath, { interval: 1000 }, (curr, prev) => {
       // File was modified externally
-      if (curr.mtimeMs !== lastKnownMtime && curr.mtimeMs !== prev.mtimeMs) {
-        lastKnownMtime = curr.mtimeMs;
+      if (curr.mtimeMs !== state.lastKnownMtime && curr.mtimeMs !== prev.mtimeMs) {
+        state.lastKnownMtime = curr.mtimeMs;
 
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('file-changed-externally', filePath);
-        }
+        bus.send('file-changed-externally', filePath);
       }
     });
   } catch (err) {
@@ -1186,44 +1068,43 @@ function startFileWatcher(filePath) {
 function loadFile(filePath) {
   try {
     const content = fs.readFileSync(filePath, 'utf-8');
-    currentFilePath = filePath;
-    currentContent = content;
+    state.currentFilePath = filePath;
+    state.currentContent = content;
 
     // Save as last opened file and add to recent
-    store.set('lastOpenedFile', filePath);
-    addToRecentFiles(filePath);
+    configStore.setLastOpenedFile(filePath);
+    configStore.addRecentFile(filePath);
+    createMenu();
 
     // Start watching for external changes
     startFileWatcher(filePath);
 
-    if (mainWindow) {
-      const basePath = path.dirname(filePath);
-      mainWindow.webContents.send('load-content', content, filePath, basePath);
-      mainWindow.setTitle(`${path.basename(filePath)} - Vomit`);
-    }
+    const basePath = path.dirname(filePath);
+    bus.send('load-content', content, filePath, basePath);
+    bus.getMainWindow()?.setTitle(`${path.basename(filePath)} - Vomit`);
   } catch (err) {
     dialog.showErrorBox('Error', `Failed to open file: ${err.message}`);
   }
 }
 
 async function saveFile() {
-  if (!currentFilePath) {
+  if (!state.currentFilePath) {
     return saveFileAs();
   }
 
-  mainWindow.webContents.send('request-content');
+  bus.send('request-content');
 }
 
 async function saveFileAs() {
   // Default to project root if available, otherwise use current file's directory
   let defaultPath = 'untitled.md';
-  if (currentFilePath) {
-    defaultPath = currentFilePath;
-  } else if (currentProjectRoot) {
-    defaultPath = path.join(currentProjectRoot, 'untitled.md');
+  if (state.currentFilePath) {
+    defaultPath = state.currentFilePath;
+  } else if (state.currentProjectRoot) {
+    defaultPath = path.join(state.currentProjectRoot, 'untitled.md');
   }
 
-  const result = await dialog.showSaveDialog(mainWindow, {
+  const result = await dialog.showSaveDialog(bus.getMainWindow(), {
     title: 'Save Markdown File',
     filters: [
       { name: 'Markdown Files', extensions: ['md'] }
@@ -1232,86 +1113,78 @@ async function saveFileAs() {
   });
 
   if (!result.canceled && result.filePath) {
-    currentFilePath = result.filePath;
+    state.currentFilePath = result.filePath;
     // Notify renderer of new file path so tab can update
-    mainWindow.webContents.send('file-saved-as', result.filePath);
-    mainWindow.webContents.send('request-content');
+    bus.send('file-saved-as', result.filePath);
+    bus.send('request-content');
     // Refresh file tree after save completes
     setTimeout(() => {
-      mainWindow.webContents.send('refresh-file-tree');
+      bus.send('refresh-file-tree');
     }, 100);
   }
 }
 
 function writeFile(content) {
-  if (!currentFilePath) return;
+  if (!state.currentFilePath) return;
 
   try {
     // Check if file was modified externally before saving
-    if (fs.existsSync(currentFilePath) && lastKnownMtime) {
-      const currentMtime = fs.statSync(currentFilePath).mtimeMs;
-      if (currentMtime !== lastKnownMtime) {
+    if (fs.existsSync(state.currentFilePath) && state.lastKnownMtime) {
+      const currentMtime = fs.statSync(state.currentFilePath).mtimeMs;
+      if (currentMtime !== state.lastKnownMtime) {
         // File changed externally - notify renderer instead of overwriting
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('file-changed-externally', currentFilePath);
-        }
+        bus.send('file-changed-externally', state.currentFilePath);
         return; // Don't overwrite
       }
     }
 
-    fs.writeFileSync(currentFilePath, content, 'utf-8');
-    currentContent = content;
+    fs.writeFileSync(state.currentFilePath, content, 'utf-8');
+    state.currentContent = content;
 
     // Update mtime to avoid detecting our own save as external change
-    lastKnownMtime = fs.statSync(currentFilePath).mtimeMs;
+    state.lastKnownMtime = fs.statSync(state.currentFilePath).mtimeMs;
 
-    if (mainWindow) {
-      mainWindow.setTitle(`${path.basename(currentFilePath)} - Vomit`);
-    }
+    bus.getMainWindow()?.setTitle(`${path.basename(state.currentFilePath)} - Vomit`);
   } catch (err) {
     dialog.showErrorBox('Error', `Failed to save file: ${err.message}`);
   }
 }
 
 function startPresentation() {
-  if (!presentationWindow) {
+  if (!bus.getPresentationWindow()) {
     createPresentationWindow();
   }
 
-  const basePath = currentFilePath ? path.dirname(currentFilePath) : null;
+  const basePath = state.currentFilePath ? path.dirname(state.currentFilePath) : null;
 
-  presentationWindow.webContents.on('did-finish-load', () => {
-    presentationWindow.webContents.send('load-presentation', currentContent, basePath);
-    presentationWindow.setFullScreen(true);
+  bus.getPresentationWindow().webContents.on('did-finish-load', () => {
+    bus.sendToPresentation('load-presentation', state.currentContent, basePath);
+    bus.getPresentationWindow().setFullScreen(true);
   });
 
-  if (presentationWindow.webContents.isLoading()) {
+  if (bus.getPresentationWindow().webContents.isLoading()) {
     // Will be handled by the did-finish-load event
   } else {
-    presentationWindow.webContents.send('load-presentation', currentContent, basePath);
-    presentationWindow.setFullScreen(true);
+    bus.sendToPresentation('load-presentation', state.currentContent, basePath);
+    bus.getPresentationWindow().setFullScreen(true);
   }
 
-  presentationWindow.focus();
+  bus.getPresentationWindow().focus();
 }
 
 function startPresentationWithPresenter() {
-  if (!presentationWindow) {
+  if (!bus.getPresentationWindow()) {
     createPresentationWindow();
   }
-  if (!presenterWindow) {
+  if (!bus.getPresenterWindow()) {
     createPresenterWindow();
   }
 
-  const basePath = currentFilePath ? path.dirname(currentFilePath) : null;
+  const basePath = state.currentFilePath ? path.dirname(state.currentFilePath) : null;
 
   const loadContent = () => {
-    if (presentationWindow) {
-      presentationWindow.webContents.send('load-presentation', currentContent, basePath);
-    }
-    if (presenterWindow) {
-      presenterWindow.webContents.send('load-presentation', currentContent, basePath);
-    }
+    bus.sendToPresentation('load-presentation', state.currentContent, basePath);
+    bus.sendToPresenter('load-presentation', state.currentContent, basePath);
   };
 
   let loadedCount = 0;
@@ -1322,40 +1195,38 @@ function startPresentationWithPresenter() {
     }
   };
 
-  if (!presentationWindow.webContents.isLoading()) {
+  if (!bus.getPresentationWindow().webContents.isLoading()) {
     checkLoaded();
   } else {
-    presentationWindow.webContents.once('did-finish-load', checkLoaded);
+    bus.getPresentationWindow().webContents.once('did-finish-load', checkLoaded);
   }
 
-  if (!presenterWindow.webContents.isLoading()) {
+  if (!bus.getPresenterWindow().webContents.isLoading()) {
     checkLoaded();
   } else {
-    presenterWindow.webContents.once('did-finish-load', checkLoaded);
+    bus.getPresenterWindow().webContents.once('did-finish-load', checkLoaded);
   }
 
-  presentationWindow.focus();
+  bus.getPresentationWindow().focus();
 }
 
 function endPresentation() {
-  if (presentationWindow) {
-    presentationWindow.setFullScreen(false);
-    presentationWindow.close();
+  if (bus.getPresentationWindow()) {
+    bus.getPresentationWindow().setFullScreen(false);
+    bus.getPresentationWindow().close();
   }
-  if (presenterWindow) {
-    presenterWindow.close();
+  if (bus.getPresenterWindow()) {
+    bus.getPresenterWindow().close();
   }
 }
 
 function sendFormatCommand(command) {
-  if (mainWindow) {
-    mainWindow.webContents.send('format-command', command);
-  }
+  bus.send('format-command', command);
 }
 
 async function exportToPDF() {
-  if (!currentContent) {
-    dialog.showMessageBox(mainWindow, {
+  if (!state.currentContent) {
+    dialog.showMessageBox(bus.getMainWindow(), {
       type: 'warning',
       title: 'No Content',
       message: 'Nothing to export. Please open or create a presentation first.'
@@ -1364,11 +1235,11 @@ async function exportToPDF() {
   }
 
   // Ask where to save
-  const defaultName = currentFilePath
-    ? path.basename(currentFilePath, '.md') + '.pdf'
+  const defaultName = state.currentFilePath
+    ? path.basename(state.currentFilePath, '.md') + '.pdf'
     : 'presentation.pdf';
 
-  const result = await dialog.showSaveDialog(mainWindow, {
+  const result = await dialog.showSaveDialog(bus.getMainWindow(), {
     title: 'Export to PDF',
     defaultPath: defaultName,
     filters: [{ name: 'PDF Files', extensions: ['pdf'] }]
@@ -1390,11 +1261,11 @@ async function exportToPDF() {
 
   pdfWindow.loadFile(path.join(__dirname, '../renderer/pdf-export.html'));
 
-  const basePath = currentFilePath ? path.dirname(currentFilePath) : null;
+  const basePath = state.currentFilePath ? path.dirname(state.currentFilePath) : null;
 
   pdfWindow.webContents.on('did-finish-load', async () => {
     // Send content to render
-    pdfWindow.webContents.send('render-for-pdf', currentContent, basePath);
+    pdfWindow.webContents.send('render-for-pdf', state.currentContent, basePath);
 
     // Wait for rendering to complete
     await new Promise(resolve => setTimeout(resolve, 1000));
@@ -1409,7 +1280,7 @@ async function exportToPDF() {
 
       fs.writeFileSync(result.filePath, pdfData);
 
-      dialog.showMessageBox(mainWindow, {
+      dialog.showMessageBox(bus.getMainWindow(), {
         type: 'info',
         title: 'Export Complete',
         message: `PDF exported successfully to:\n${result.filePath}`
@@ -1423,18 +1294,12 @@ async function exportToPDF() {
 }
 
 function setTheme(theme) {
-  currentTheme = theme;
-  store.set('theme', theme);
+  state.currentTheme = theme;
+  configStore.setTheme(theme);
 
-  if (mainWindow) {
-    mainWindow.webContents.send('set-theme', theme);
-  }
-  if (presentationWindow) {
-    presentationWindow.webContents.send('set-theme', theme);
-  }
-  if (presenterWindow) {
-    presenterWindow.webContents.send('set-theme', theme);
-  }
+  bus.send('set-theme', theme);
+  bus.sendToPresentation('set-theme', theme);
+  bus.sendToPresenter('set-theme', theme);
 }
 
 function showHelp() {
@@ -1453,14 +1318,10 @@ ipcMain.on('open-file-path', (event, filePath) => {
 });
 
 ipcMain.on('content-changed', (event, content) => {
-  currentContent = content;
+  state.currentContent = content;
   // Sync to presentation windows if open
-  if (presentationWindow) {
-    presentationWindow.webContents.send('update-content', content);
-  }
-  if (presenterWindow) {
-    presenterWindow.webContents.send('update-content', content);
-  }
+  bus.sendToPresentation('update-content', content);
+  bus.sendToPresenter('update-content', content);
 });
 
 // Update file watcher when active file changes (e.g., tab switch)
@@ -1470,23 +1331,23 @@ ipcMain.on('watch-file', (event, filePath) => {
 
 // Sync current file path when switching tabs
 ipcMain.on('set-current-file', (event, filePath) => {
-  currentFilePath = filePath;
+  state.currentFilePath = filePath;
   if (filePath) {
-    currentContent = '';
+    state.currentContent = '';
     try {
-      currentContent = fs.readFileSync(filePath, 'utf-8');
+      state.currentContent = fs.readFileSync(filePath, 'utf-8');
     } catch (e) {}
   }
 });
 
 // Get auto-save state
 ipcMain.handle('get-auto-save-enabled', () => {
-  return autoSaveEnabled;
+  return state.autoSaveEnabled;
 });
 
 // Get recent files
 ipcMain.handle('get-recent-files', () => {
-  const recentFiles = store.get('recentFiles') || [];
+  const recentFiles = configStore.getRecentFiles();
   return recentFiles
     .filter(f => fs.existsSync(f))
     .map(f => ({ path: f, name: path.basename(f) }));
@@ -1494,8 +1355,8 @@ ipcMain.handle('get-recent-files', () => {
 
 // Check if there's a last session to restore
 ipcMain.handle('has-last-session', () => {
-  const lastFolder = store.get('lastOpenedFolder');
-  const lastFile = store.get('lastOpenedFile');
+  const lastFolder = configStore.getLastOpenedFolder();
+  const lastFile = configStore.getLastOpenedFile();
   return (lastFolder && fs.existsSync(lastFolder)) || (lastFile && fs.existsSync(lastFile));
 });
 
@@ -1508,16 +1369,16 @@ ipcMain.on('save-as', () => saveFileAs());
 
 // Reload file from disk (for external changes)
 ipcMain.handle('reload-file', async (event, filePath) => {
-  const pathToReload = filePath || currentFilePath;
+  const pathToReload = filePath || state.currentFilePath;
   if (!pathToReload || !fs.existsSync(pathToReload)) {
     return { success: false, error: 'File not found' };
   }
 
   try {
     const content = fs.readFileSync(pathToReload, 'utf-8');
-    lastKnownMtime = fs.statSync(pathToReload).mtimeMs;
-    if (pathToReload === currentFilePath) {
-      currentContent = content;
+    state.lastKnownMtime = fs.statSync(pathToReload).mtimeMs;
+    if (pathToReload === state.currentFilePath) {
+      state.currentContent = content;
     }
     return { success: true, content };
   } catch (err) {
@@ -1534,21 +1395,13 @@ ipcMain.on('start-presentation-with-presenter', () => {
 });
 
 ipcMain.on('navigate-slide', (event, direction) => {
-  if (presentationWindow && !presentationWindow.isDestroyed()) {
-    presentationWindow.webContents.send('navigate-slide', direction);
-  }
-  if (presenterWindow && !presenterWindow.isDestroyed()) {
-    presenterWindow.webContents.send('navigate-slide', direction);
-  }
+  bus.sendToPresentation('navigate-slide', direction);
+  bus.sendToPresenter('navigate-slide', direction);
 });
 
 ipcMain.on('go-to-slide', (event, index) => {
-  if (presentationWindow && !presentationWindow.isDestroyed()) {
-    presentationWindow.webContents.send('go-to-slide', index);
-  }
-  if (presenterWindow && !presenterWindow.isDestroyed()) {
-    presenterWindow.webContents.send('go-to-slide', index);
-  }
+  bus.sendToPresentation('go-to-slide', index);
+  bus.sendToPresenter('go-to-slide', index);
 });
 
 // Open external links
@@ -1585,8 +1438,8 @@ ipcMain.handle('get-directory-contents', async (event, dirPath) => {
 
 // Get current file directory
 ipcMain.handle('get-current-directory', async () => {
-  if (currentFilePath) {
-    return path.dirname(currentFilePath);
+  if (state.currentFilePath) {
+    return path.dirname(state.currentFilePath);
   }
   return null;
 });
@@ -1604,9 +1457,9 @@ ipcMain.handle('rename-item', async (event, oldPath, newName) => {
     fs.renameSync(oldPath, newPath);
 
     // Update currentFilePath if we renamed the open file
-    if (currentFilePath === oldPath) {
-      currentFilePath = newPath;
-      mainWindow.setTitle(`${path.basename(newPath)} - Vomit`);
+    if (state.currentFilePath === oldPath) {
+      state.currentFilePath = newPath;
+      bus.getMainWindow()?.setTitle(`${path.basename(newPath)} - Vomit`);
     }
 
     return { success: true, newPath };
@@ -1618,7 +1471,7 @@ ipcMain.handle('rename-item', async (event, oldPath, newName) => {
 // Delete file or folder
 ipcMain.handle('delete-item', async (event, itemPath) => {
   try {
-    const result = await dialog.showMessageBox(mainWindow, {
+    const result = await dialog.showMessageBox(bus.getMainWindow(), {
       type: 'warning',
       buttons: ['Cancel', 'Delete'],
       defaultId: 0,
@@ -1706,8 +1559,8 @@ ipcMain.handle('save-image', async (event, imageData, suggestedName) => {
   try {
     // Determine save location - use folder next to current file, or temp
     let imagesDir;
-    if (currentFilePath) {
-      imagesDir = path.join(path.dirname(currentFilePath), 'images');
+    if (state.currentFilePath) {
+      imagesDir = path.join(path.dirname(state.currentFilePath), 'images');
     } else {
       imagesDir = path.join(app.getPath('temp'), 'vomit-images');
     }
@@ -1729,7 +1582,7 @@ ipcMain.handle('save-image', async (event, imageData, suggestedName) => {
     fs.writeFileSync(filepath, buffer);
 
     // Return relative path if we have a current file, otherwise absolute
-    if (currentFilePath) {
+    if (state.currentFilePath) {
       return `images/${filename}`;
     }
     return filepath;
@@ -1741,7 +1594,7 @@ ipcMain.handle('save-image', async (event, imageData, suggestedName) => {
 
 // Unsaved changes dialog for tabs
 ipcMain.handle('show-unsaved-dialog', async (event, filename) => {
-  const result = await dialog.showMessageBox(mainWindow, {
+  const result = await dialog.showMessageBox(bus.getMainWindow(), {
     type: 'warning',
     buttons: ['Save', "Don't Save", 'Cancel'],
     defaultId: 0,
@@ -1759,7 +1612,7 @@ ipcMain.handle('show-unsaved-dialog', async (event, filename) => {
 // Request save from renderer (for tab close with save)
 ipcMain.handle('request-save', async () => {
   return new Promise((resolve) => {
-    mainWindow.webContents.send('request-content');
+    bus.send('request-content');
     // The save will happen, resolve after a short delay
     setTimeout(resolve, 200);
   });
@@ -1767,23 +1620,18 @@ ipcMain.handle('request-save', async () => {
 
 // RAG: Index folder
 ipcMain.handle('rag-index', async (event, projectRoot, targetPath) => {
-  if (isWindows) {
-    return { error: 'AI features are not available on Windows' };
-  }
-  if (!availableAITools.ollama) {
+  if (!state.availableAITools.ollama) {
     return { error: 'Ollama not installed' };
   }
 
   // Check if nomic-embed-text is available
-  if (!availableAITools.ollamaModels.some(m => m.includes('nomic-embed-text'))) {
+  if (!state.availableAITools.ollamaModels.some(m => m.includes('nomic-embed-text'))) {
     return { error: 'nomic-embed-text model not found. Run: ollama pull nomic-embed-text' };
   }
 
   // Send progress updates to renderer
   const progressCallback = (progress) => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('rag-progress', progress);
-    }
+    bus.send('rag-progress', progress);
   };
 
   try {
@@ -1796,10 +1644,7 @@ ipcMain.handle('rag-index', async (event, projectRoot, targetPath) => {
 
 // RAG: Search
 ipcMain.handle('rag-search', async (event, query, folderPath) => {
-  if (isWindows) {
-    return { success: false, error: 'AI features are not available on Windows' };
-  }
-  if (!availableAITools.ollama) {
+  if (!state.availableAITools.ollama) {
     return { success: false, error: 'Ollama not installed' };
   }
 
@@ -1822,38 +1667,31 @@ ipcMain.handle('rag-search', async (event, query, folderPath) => {
 
 // Ollama execution using node-pty for proper TTY support
 ipcMain.handle('claude-execute', async (event, command, cwd) => {
-  // AI features not available on Windows
-  if (isWindows) {
-    mainWindow.webContents.send('claude-error', 'AI features are not available on Windows. Use macOS or Linux.\n');
-    mainWindow.webContents.send('claude-done', 1);
-    return 1;
-  }
-
-  const ollamaModel = store.get('ollamaModel');
+  const ollamaModel = configStore.getOllamaModel();
 
   return new Promise((resolve, reject) => {
     // Kill any existing process
-    if (ollamaProcess) {
-      ollamaProcess.kill();
-      ollamaProcess = null;
+    if (state.ollamaProcess) {
+      state.ollamaProcess.kill();
+      state.ollamaProcess = null;
     }
 
-    const execPath = availableAITools.ollama;
+    const execPath = state.availableAITools.ollama;
     if (!execPath) {
-      mainWindow.webContents.send('claude-error', 'Ollama is not installed. Install it from https://ollama.ai\n');
-      mainWindow.webContents.send('claude-done', 1);
+      bus.send('claude-error', 'Ollama is not installed. Install it from https://ollama.ai\n');
+      bus.send('claude-done', 1);
       resolve(1);
       return;
     }
-    if (availableAITools.ollamaModels.length === 0) {
-      mainWindow.webContents.send('claude-error', `No Ollama models found. Run: ollama pull llama3.2\n`);
-      mainWindow.webContents.send('claude-done', 1);
+    if (state.availableAITools.ollamaModels.length === 0) {
+      bus.send('claude-error', `No Ollama models found. Run: ollama pull llama3.2\n`);
+      bus.send('claude-done', 1);
       resolve(1);
       return;
     }
     if (!ollamaModel) {
-      mainWindow.webContents.send('claude-error', 'No AI model selected. Select one from the AI menu.\n');
-      mainWindow.webContents.send('claude-done', 1);
+      bus.send('claude-error', 'No AI model selected. Select one from the AI menu.\n');
+      bus.send('claude-done', 1);
       resolve(1);
       return;
     }
@@ -1861,7 +1699,7 @@ ipcMain.handle('claude-execute', async (event, command, cwd) => {
     const args = ['run', ollamaModel, command];
 
     // Spawn Ollama with PTY for proper terminal emulation
-    ollamaProcess = pty.spawn(execPath, args, {
+    state.ollamaProcess = pty.spawn(execPath, args, {
       name: 'xterm-color',
       cols: 120,
       rows: 30,
@@ -1869,8 +1707,7 @@ ipcMain.handle('claude-execute', async (event, command, cwd) => {
       env: { ...process.env }
     });
 
-    ollamaProcess.onData((data) => {
-      if (mainWindow && !mainWindow.isDestroyed()) {
+    state.ollamaProcess.onData((data) => {
         // Clean ANSI escape codes and spinner characters but preserve newlines and spaces
         let cleanData = data
           .replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '')   // ANSI escape codes (colors, cursor, etc.)
@@ -1890,36 +1727,29 @@ ipcMain.handle('claude-execute', async (event, command, cwd) => {
 
         // Send if there's any content (including just newlines for formatting)
         if (cleanData.length > 0) {
-          mainWindow.webContents.send('claude-output', cleanData);
+          bus.send('claude-output', cleanData);
         }
-      }
     });
 
-    ollamaProcess.onExit(({ exitCode }) => {
-      ollamaProcess = null;
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('claude-done', exitCode);
-      }
+    state.ollamaProcess.onExit(({ exitCode }) => {
+      state.ollamaProcess = null;
+      bus.send('claude-done', exitCode);
       resolve(exitCode);
     });
   });
 });
 
 ipcMain.on('claude-stop', () => {
-  if (ollamaProcess) {
-    ollamaProcess.kill(); // node-pty kill() method
-    ollamaProcess = null;
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('claude-done', -1);
-    }
+  if (state.ollamaProcess) {
+    state.ollamaProcess.kill(); // node-pty kill() method
+    state.ollamaProcess = null;
+    bus.send('claude-done', -1);
   }
   // Also stop agent mode
-  agentAborted = true;
+  state.agentAborted = true;
 });
 
 // ============== Agent Mode with Tool Calling ==============
-let agentAborted = false;
-let agentConversationHistory = []; // Persist conversation across /agent calls
 
 // Tool definitions for Ollama
 const agentTools = [
@@ -2049,27 +1879,21 @@ async function executeAgentTool(toolName, args, cwd) {
 
 // Agent execution using Ollama HTTP API with tool calling
 ipcMain.handle('agent-execute', async (event, prompt, cwd) => {
-  if (isWindows) {
-    mainWindow.webContents.send('claude-error', 'Agent mode is not available on Windows.\n');
-    mainWindow.webContents.send('claude-done', 1);
-    return 1;
-  }
-
-  const ollamaModel = store.get('ollamaModel');
+  const ollamaModel = configStore.getOllamaModel();
   if (!ollamaModel) {
-    mainWindow.webContents.send('claude-error', 'No AI model selected. Select one from the AI menu.\n');
-    mainWindow.webContents.send('claude-done', 1);
+    bus.send('claude-error', 'No AI model selected. Select one from the AI menu.\n');
+    bus.send('claude-done', 1);
     return 1;
   }
 
-  agentAborted = false;
+  state.agentAborted = false;
   const workingDir = cwd || process.env.HOME;
 
   // Check for /clear command to reset conversation
   if (prompt.trim().toLowerCase() === 'clear' || prompt.trim().toLowerCase() === '/clear') {
-    agentConversationHistory = [];
-    mainWindow.webContents.send('claude-output', 'Conversation history cleared.\n');
-    mainWindow.webContents.send('claude-done', 0);
+    state.agentConversationHistory = [];
+    bus.send('claude-output', 'Conversation history cleared.\n');
+    bus.send('claude-done', 0);
     return 0;
   }
 
@@ -2082,16 +1906,16 @@ When you need to run commands, read files, write files, or list directories, use
   };
 
   // Start with system message, then history, then new prompt
-  const messages = [systemMessage, ...agentConversationHistory, { role: 'user', content: prompt }];
+  const messages = [systemMessage, ...state.agentConversationHistory, { role: 'user', content: prompt }];
 
   // Add user message to history
-  agentConversationHistory.push({ role: 'user', content: prompt });
+  state.agentConversationHistory.push({ role: 'user', content: prompt });
 
   try {
     let iterations = 0;
     const maxIterations = 20; // Prevent infinite loops
 
-    while (iterations < maxIterations && !agentAborted) {
+    while (iterations < maxIterations && !state.agentAborted) {
       iterations++;
 
       // Call Ollama API with tools
@@ -2160,13 +1984,13 @@ When you need to run commands, read files, write files, or list directories, use
 
       if (toolCalls.length > 0) {
         for (const toolCall of toolCalls) {
-          if (agentAborted) break;
+          if (state.agentAborted) break;
 
           const toolName = toolCall.function.name;
           const toolArgs = toolCall.function.arguments;
 
           // Show tool call in terminal
-          mainWindow.webContents.send('claude-output', `\n▶ ${toolName}: ${JSON.stringify(toolArgs)}\n`);
+          bus.send('claude-output', `\n▶ ${toolName}: ${JSON.stringify(toolArgs)}\n`);
 
           // Execute the tool
           const toolResult = await executeAgentTool(toolName, toolArgs, workingDir);
@@ -2175,7 +1999,7 @@ When you need to run commands, read files, write files, or list directories, use
           const displayResult = toolResult.length > 2000
             ? toolResult.substring(0, 2000) + '\n... (truncated)'
             : toolResult;
-          mainWindow.webContents.send('claude-output', `${displayResult}\n`);
+          bus.send('claude-output', `${displayResult}\n`);
 
           // Add tool result to messages (for current loop)
           messages.push({
@@ -2184,7 +2008,7 @@ When you need to run commands, read files, write files, or list directories, use
           });
 
           // Save tool call and result to conversation history
-          agentConversationHistory.push({
+          state.agentConversationHistory.push({
             role: 'assistant',
             content: `[Used ${toolName}: ${JSON.stringify(toolArgs)}]\n\nResult:\n${toolResult.substring(0, 1000)}${toolResult.length > 1000 ? '...' : ''}`
           });
@@ -2192,9 +2016,9 @@ When you need to run commands, read files, write files, or list directories, use
       } else {
         // No tool calls - model is done, show final response
         if (assistantMessage.content) {
-          mainWindow.webContents.send('claude-output', assistantMessage.content);
+          bus.send('claude-output', assistantMessage.content);
           // Save final response to conversation history
-          agentConversationHistory.push({
+          state.agentConversationHistory.push({
             role: 'assistant',
             content: assistantMessage.content
           });
@@ -2204,42 +2028,35 @@ When you need to run commands, read files, write files, or list directories, use
     }
 
     if (iterations >= maxIterations) {
-      mainWindow.webContents.send('claude-output', '\n(Reached maximum iterations)\n');
+      bus.send('claude-output', '\n(Reached maximum iterations)\n');
     }
 
     // Limit conversation history to last 20 messages to prevent context overflow
-    if (agentConversationHistory.length > 20) {
-      agentConversationHistory = agentConversationHistory.slice(-20);
+    if (state.agentConversationHistory.length > 20) {
+      state.agentConversationHistory = state.agentConversationHistory.slice(-20);
     }
 
-    mainWindow.webContents.send('claude-done', 0);
+    bus.send('claude-done', 0);
     return 0;
   } catch (e) {
-    mainWindow.webContents.send('claude-error', `Agent error: ${e.message}\n`);
-    mainWindow.webContents.send('claude-done', 1);
+    bus.send('claude-error', `Agent error: ${e.message}\n`);
+    bus.send('claude-done', 1);
     return 1;
   }
 });
 
 // Shell Terminal IPC handlers
 ipcMain.handle('shell-spawn', async (event, cwd) => {
-  // Shell features not available on Windows
-  if (isWindows) {
-    mainWindow.webContents.send('shell-output', 'Shell terminal is not available on Windows.\n');
-    mainWindow.webContents.send('shell-exit', 1);
-    return 1;
-  }
-
   // Kill any existing shell process
-  if (shellProcess) {
-    shellProcess.kill();
-    shellProcess = null;
+  if (state.shellProcess) {
+    state.shellProcess.kill();
+    state.shellProcess = null;
   }
 
   const shell = process.env.SHELL || '/bin/bash';
   const workingDir = cwd || process.env.HOME;
 
-  shellProcess = pty.spawn(shell, [], {
+  state.shellProcess = pty.spawn(shell, [], {
     name: 'xterm-256color',
     cols: 120,
     rows: 30,
@@ -2247,48 +2064,42 @@ ipcMain.handle('shell-spawn', async (event, cwd) => {
     env: { ...process.env, TERM: 'xterm-256color' }
   });
 
-  shellProcess.onData((data) => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('shell-output', data);
-    }
+  state.shellProcess.onData((data) => {
+    bus.send('shell-output', data);
   });
 
-  shellProcess.onExit(({ exitCode }) => {
-    shellProcess = null;
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('shell-exit', exitCode);
-    }
+  state.shellProcess.onExit(({ exitCode }) => {
+    state.shellProcess = null;
+    bus.send('shell-exit', exitCode);
   });
 
   return 0;
 });
 
 ipcMain.on('shell-write', (event, data) => {
-  if (shellProcess) {
-    shellProcess.write(data);
+  if (state.shellProcess) {
+    state.shellProcess.write(data);
   }
 });
 
 ipcMain.on('shell-stop', () => {
-  if (shellProcess) {
-    shellProcess.kill();
-    shellProcess = null;
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('shell-exit', -1);
-    }
+  if (state.shellProcess) {
+    state.shellProcess.kill();
+    state.shellProcess = null;
+    bus.send('shell-exit', -1);
   }
 });
 
 ipcMain.on('shell-resize', (event, cols, rows) => {
-  if (shellProcess && cols && rows) {
-    shellProcess.resize(cols, rows);
+  if (state.shellProcess && cols && rows) {
+    state.shellProcess.resize(cols, rows);
   }
 });
 
 ipcMain.handle('get-ai-provider', () => {
   return {
-    provider: store.get('aiProvider'),
-    model: store.get('ollamaModel')
+    provider: configStore.getAIProvider(),
+    model: configStore.getOllamaModel()
   };
 });
 
@@ -2327,11 +2138,11 @@ app.whenReady().then(() => {
     const stats = fs.statSync(targetPath);
     if (stats.isDirectory()) {
       // Open folder
-      currentProjectRoot = targetPath;
-      store.set('lastOpenedFolder', targetPath);
-      mainWindow.webContents.once('did-finish-load', () => {
-        mainWindow.webContents.send('open-folder', targetPath);
-        mainWindow.setTitle(`${path.basename(targetPath)} - Vomit`);
+      state.currentProjectRoot = targetPath;
+      configStore.setLastOpenedFolder(targetPath);
+      bus.getMainWindow().webContents.once('did-finish-load', () => {
+        bus.send('open-folder', targetPath);
+        bus.getMainWindow()?.setTitle(`${path.basename(targetPath)} - Vomit`);
       });
     } else {
       // Open file
@@ -2339,14 +2150,14 @@ app.whenReady().then(() => {
     }
   } else {
     // Try to restore last session (folder first, then file)
-    const lastFolder = store.get('lastOpenedFolder');
-    const lastFile = store.get('lastOpenedFile');
+    const lastFolder = configStore.getLastOpenedFolder();
+    const lastFile = configStore.getLastOpenedFile();
 
     if (lastFolder && fs.existsSync(lastFolder)) {
-      currentProjectRoot = lastFolder;
-      mainWindow.webContents.once('did-finish-load', () => {
-        mainWindow.webContents.send('open-folder', lastFolder);
-        mainWindow.setTitle(`${path.basename(lastFolder)} - Vomit`);
+      state.currentProjectRoot = lastFolder;
+      bus.getMainWindow().webContents.once('did-finish-load', () => {
+        bus.send('open-folder', lastFolder);
+        bus.getMainWindow()?.setTitle(`${path.basename(lastFolder)} - Vomit`);
         // Also load last file if it's within the folder
         if (lastFile && fs.existsSync(lastFile) && lastFile.startsWith(lastFolder)) {
           loadFile(lastFile);
@@ -2372,7 +2183,7 @@ app.on('window-all-closed', () => {
 
 app.on('open-file', (event, filePath) => {
   event.preventDefault();
-  if (mainWindow) {
+  if (bus.getMainWindow()) {
     loadFile(filePath);
   } else {
     app.whenReady().then(() => {
