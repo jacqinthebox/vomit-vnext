@@ -1,7 +1,7 @@
 // @ts-check
 'use strict';
 
-const { app, Menu, shell } = require('electron');
+const { app, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs');
 

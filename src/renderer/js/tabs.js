@@ -94,9 +94,9 @@ class TabManager {
     this.editor.state.isRestoringTab = false;
 
     // Update preview and status
-    this.editor.updatePreview();
-    this.editor.updateStatus();
-    this.editor.updateOutline();
+    this.editor.previewManager.updatePreview();
+    this.editor.previewManager.updateStatus();
+    this.editor.previewManager.updateOutline();
   }
 
   switchToTab(tabId) {

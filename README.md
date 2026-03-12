@@ -30,17 +30,14 @@ An opinionated, keyboard-centric markdown editor for presentations and notes wit
 |----------|:---------------------:|:--------------------:|
 | macOS    | ✅ Full support       | ✅ Full support      |
 | Linux    | ✅ Full support       | ✅ Full support      |
-| Windows  | ✅ Full support       | ❌ Not available     |
-
-**Note:** Windows builds include full markdown editing and presentation features, but AI features (Ollama terminal, RAG, pseudonymization) are only available on macOS and Linux.
 
 ## Features
 
 - **Markdown Editor** - Live preview, syntax highlighting, outline sidebar
 - **Presenter View** - Current slide, next slide preview, speaker notes, timer
-- **Local AI (Privacy First)** - Built-in AI terminal powered by Ollama - your data stays on your machine *(macOS/Linux only)*
-- **RAG Search** - Index your documents and ask AI questions with context from your files *(macOS/Linux only)*
-- **Pseudonymization** - Anonymize sensitive data (names, emails, IPs) with AI, reversible with `/depseudo` *(macOS/Linux only)*
+- **Local AI (Privacy First)** - Built-in AI terminal powered by Ollama - your data stays on your machine
+- **RAG Search** - Index your documents and ask AI questions with context from your files
+- **Pseudonymization** - Anonymize sensitive data (names, emails, IPs) with AI, reversible with `/depseudo`
 - **LaTeX Math** - Render formulas with KaTeX (`$inline$` and `$$display$$`)
 - **PlantUML Diagrams** - Render sequence diagrams, flowcharts, and more
 - **Emoji Shortcodes** - Use `:smile:` syntax like GitHub/Slack
@@ -177,11 +174,9 @@ Renders as: :smile: :rocket: :fire: :heart: :thumbsup: :vomit:
 
 Over 200 shortcodes are supported including smileys, gestures, objects, animals, food, and more.
 
-### Ollama AI Integration (Privacy First) — macOS/Linux Only
+### Ollama AI Integration (Privacy First)
 
 Vomit includes a built-in AI terminal powered by [Ollama](https://ollama.ai). All AI processing happens locally - your data never leaves your machine.
-
-> **Note:** AI features are not available on Windows due to native module dependencies.
 
 **Setup:**
 1. Install Ollama from https://ollama.ai
