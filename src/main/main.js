@@ -6,6 +6,9 @@ const pty = require('node-pty');
 const configStore = require('./services/configStore');
 const { SessionState } = require('./services/sessionState');
 const { RendererBus } = require('./ipc/rendererBus');
+const rag = require('./rag');
+const shellHandlers = require('./ipc/handlers/shell');
+const menuModule = require('./menu');
 
 // Set app name for About dialog
 app.setName('Vomit');
@@ -16,6 +19,9 @@ const bus = new RendererBus();
 // Initialize state from configStore
 state.currentTheme = configStore.getTheme();
 state.autoSaveEnabled = configStore.getAutoSaveEnabled();
+
+// Register extracted IPC handler modules
+shellHandlers.registerHandlers(ipcMain, { state, bus });
 
 let fileWatcher = null; // Watch for external file changes
 
@@ -68,220 +74,6 @@ function getOllamaModels(ollamaPath) {
   }
 }
 
-// ============== RAG (Retrieval Augmented Generation) with SQLite ==============
-const Database = require('better-sqlite3');
-
-// Split text into chunks with overlap
-function chunkText(text, chunkSize = 500, overlap = 50) {
-  const words = text.split(/\s+/);
-  const chunks = [];
-
-  for (let i = 0; i < words.length; i += chunkSize - overlap) {
-    const chunk = words.slice(i, i + chunkSize).join(' ');
-    if (chunk.trim()) {
-      chunks.push(chunk);
-    }
-  }
-
-  return chunks;
-}
-
-// Get embedding from Ollama
-async function getEmbedding(text) {
-  const { execSync } = require('child_process');
-  try {
-    const payload = JSON.stringify({ model: 'nomic-embed-text', prompt: text });
-    const result = execSync(
-      `curl -s http://localhost:11434/api/embeddings -d '${payload.replace(/'/g, "'\\''")}'`,
-      { encoding: 'utf-8', timeout: 30000 }
-    );
-    const json = JSON.parse(result);
-    return json.embedding || null;
-  } catch (e) {
-    return null;
-  }
-}
-
-// Cosine similarity between two vectors
-function cosineSimilarity(a, b) {
-  if (!a || !b || a.length !== b.length) return 0;
-  let dotProduct = 0;
-  let normA = 0;
-  let normB = 0;
-  for (let i = 0; i < a.length; i++) {
-    dotProduct += a[i] * b[i];
-    normA += a[i] * a[i];
-    normB += b[i] * b[i];
-  }
-  return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
-}
-
-// Get or create SQLite database for a folder
-function getRAGDatabase(folderPath) {
-  const crypto = require('crypto');
-  const os = require('os');
-
-  // Store in ~/.config/vomit/rag/ using hash of project path
-  const configDir = path.join(os.homedir(), '.config', 'vomit', 'rag');
-  if (!fs.existsSync(configDir)) {
-    fs.mkdirSync(configDir, { recursive: true });
-  }
-
-  // Create a short hash of the folder path for the db filename
-  const pathHash = crypto.createHash('md5').update(folderPath).digest('hex').substring(0, 12);
-  const folderName = path.basename(folderPath);
-  const dbPath = path.join(configDir, `${folderName}-${pathHash}.db`);
-
-  const db = new Database(dbPath);
-
-  // Create tables if they don't exist
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS chunks (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      file_path TEXT NOT NULL,
-      chunk_index INTEGER NOT NULL,
-      content TEXT NOT NULL,
-      embedding BLOB NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-    CREATE INDEX IF NOT EXISTS idx_file_path ON chunks(file_path);
-  `);
-
-  return db;
-}
-
-// Index all documents in a folder
-async function indexFolder(projectRoot, targetPath, progressCallback) {
-  const extensions = ['.md', '.txt', '.js', '.ts', '.py', '.json', '.yaml', '.yml', '.xml', '.html', '.css', '.tf', '.sh', '.tpl'];
-  // Always store database in project root
-  const db = getRAGDatabase(projectRoot);
-
-  // Check if targetPath is a single file or a directory
-  const targetStat = fs.statSync(targetPath);
-  const isSingleFile = targetStat.isFile();
-
-  if (isSingleFile) {
-    // For single file, only clear chunks for that file
-    const relativePath = path.relative(projectRoot, targetPath);
-    db.prepare('DELETE FROM chunks WHERE file_path = ?').run(relativePath);
-  } else {
-    // If indexing a subfolder, only clear chunks from that subfolder
-    const isSubfolder = targetPath !== projectRoot;
-    if (isSubfolder) {
-      const subfolderPrefix = path.relative(projectRoot, targetPath);
-      db.prepare('DELETE FROM chunks WHERE file_path LIKE ?').run(`${subfolderPrefix}%`);
-    } else {
-      // Clear entire index when indexing full project
-      db.exec('DELETE FROM chunks');
-    }
-  }
-
-  // Get files to index
-  let files = [];
-
-  if (isSingleFile) {
-    // Single file - just use it directly
-    files = [targetPath];
-  } else {
-    // Recursively find all files in directory
-    const findFiles = (dir) => {
-      const found = [];
-      try {
-        const items = fs.readdirSync(dir);
-        for (const item of items) {
-          if (item.startsWith('.') || item === 'node_modules' || item === 'pseudonymized') continue;
-          const fullPath = path.join(dir, item);
-          const stat = fs.statSync(fullPath);
-          if (stat.isDirectory()) {
-            found.push(...findFiles(fullPath));
-          } else {
-            const ext = path.extname(item).toLowerCase();
-            if (extensions.includes(ext)) {
-              found.push(fullPath);
-            }
-          }
-        }
-      } catch (e) {}
-      return found;
-    };
-    files = findFiles(targetPath);
-  }
-  let processed = 0;
-  let chunksIndexed = 0;
-
-  const insertStmt = db.prepare(
-    'INSERT INTO chunks (file_path, chunk_index, content, embedding) VALUES (?, ?, ?, ?)'
-  );
-
-  for (const file of files) {
-    try {
-      const content = fs.readFileSync(file, 'utf-8');
-      const relativePath = path.relative(projectRoot, file);
-      const chunks = chunkText(content);
-
-      for (let i = 0; i < chunks.length; i++) {
-        const chunk = chunks[i];
-        const embedding = await getEmbedding(chunk);
-
-        if (embedding) {
-          // Store embedding as JSON blob
-          insertStmt.run(relativePath, i, chunk, JSON.stringify(embedding));
-          chunksIndexed++;
-        }
-      }
-
-      processed++;
-      if (progressCallback) {
-        progressCallback({ status: 'indexing', current: processed, total: files.length, file: relativePath });
-      }
-    } catch (e) {
-      // Skip files that can't be read
-    }
-  }
-
-  db.close();
-  return { chunksIndexed, filesProcessed: processed };
-}
-
-// Search for similar chunks
-async function searchIndex(query, folderPath, topK = 5) {
-  const crypto = require('crypto');
-  const os = require('os');
-
-  // Check if db exists in ~/.config/vomit/rag/
-  const configDir = path.join(os.homedir(), '.config', 'vomit', 'rag');
-  const pathHash = crypto.createHash('md5').update(folderPath).digest('hex').substring(0, 12);
-  const folderName = path.basename(folderPath);
-  const dbPath = path.join(configDir, `${folderName}-${pathHash}.db`);
-
-  if (!fs.existsSync(dbPath)) {
-    return { error: 'not_indexed' };
-  }
-
-  const queryEmbedding = await getEmbedding(query);
-  if (!queryEmbedding) {
-    return { error: 'Failed to embed query.' };
-  }
-
-  const db = getRAGDatabase(folderPath);
-  const rows = db.prepare('SELECT file_path, chunk_index, content, embedding FROM chunks').all();
-
-  // Calculate similarities
-  const similarities = rows.map(row => ({
-    similarity: cosineSimilarity(queryEmbedding, JSON.parse(row.embedding)),
-    chunk: row.content,
-    metadata: { file: row.file_path, chunkIndex: row.chunk_index }
-  }));
-
-  db.close();
-
-  // Sort by similarity and take top K
-  similarities.sort((a, b) => b.similarity - a.similarity);
-  return similarities.slice(0, topK);
-}
-
-// ============== End RAG ==============
-
 // Detect available Ollama installation and models
 function detectAITools() {
   state.availableAITools.ollama = findExecutable('ollama');
@@ -291,61 +83,6 @@ function detectAITools() {
 }
 
 // Build AI submenu dynamically based on available Ollama models
-function buildAISubmenu() {
-  const submenu = [
-    {
-      label: 'Toggle AI Terminal',
-      accelerator: 'CmdOrCtrl+J',
-      click: () => {
-        bus.send('toggle-terminal');
-      }
-    },
-    { type: 'separator' }
-  ];
-
-  // Add Ollama models if available
-  if (state.availableAITools.ollamaModels.length > 0) {
-    for (const model of state.availableAITools.ollamaModels) {
-      submenu.push({
-        label: model,
-        type: 'radio',
-        checked: configStore.getOllamaModel() === model,
-        click: () => setOllamaModel(model)
-      });
-    }
-  } else if (state.availableAITools.ollama) {
-    submenu.push({
-      label: 'No models installed',
-      enabled: false
-    });
-    submenu.push({
-      label: 'Run: ollama pull llama3.2',
-      enabled: false
-    });
-  } else {
-    submenu.push({
-      label: 'Ollama not installed',
-      enabled: false
-    });
-    submenu.push({
-      label: 'Install from https://ollama.ai',
-      enabled: false
-    });
-  }
-
-  return submenu;
-}
-
-// Set Ollama model and show terminal
-function setOllamaModel(model) {
-  configStore.setOllamaModel(model);
-  createMenu();
-
-  // Notify renderer and show terminal
-  bus.send('ai-provider-changed', { provider: 'ollama', model });
-  bus.send('show-terminal');
-}
-
 function createMainWindow() {
   const iconPath = path.join(__dirname, '../icon.png');
 
@@ -494,443 +231,8 @@ function createPresenterWindow() {
   return bus.getPresenterWindow();
 }
 
-function buildRecentFilesMenu() {
-  const recentFiles = configStore.getRecentFiles();
-
-  if (recentFiles.length === 0) {
-    return [{ label: 'No Recent Files', enabled: false }];
-  }
-
-  const items = recentFiles
-    .filter(f => fs.existsSync(f)) // Only show files that still exist
-    .map((filePath, index) => ({
-      label: `${index + 1}. ${path.basename(filePath)}`,
-      sublabel: filePath,
-      click: () => loadFile(filePath)
-    }));
-
-  if (items.length === 0) {
-    return [{ label: 'No Recent Files', enabled: false }];
-  }
-
-  // Add clear option
-  items.push({ type: 'separator' });
-  items.push({
-    label: 'Clear Recent Files',
-    click: () => {
-      configStore.clearRecentFiles();
-      createMenu();
-    }
-  });
-
-  return items;
-}
-
 function createMenu() {
-  const template = [
-    {
-      label: 'Vomit',
-      submenu: [
-        { role: 'about' },
-        { type: 'separator' },
-        { role: 'services' },
-        { type: 'separator' },
-        { role: 'hide' },
-        { role: 'hideOthers' },
-        { role: 'unhide' },
-        { type: 'separator' },
-        { role: 'quit' }
-      ]
-    },
-    {
-      label: 'File',
-      submenu: [
-        {
-          label: 'New Tab',
-          accelerator: 'CmdOrCtrl+T',
-          click: () => {
-            bus.send('new-tab');
-          }
-        },
-        {
-          label: 'New Window',
-          accelerator: 'CmdOrCtrl+Shift+N',
-          click: () => createNewEditorWindow()
-        },
-        {
-          label: 'New File',
-          accelerator: 'CmdOrCtrl+N',
-          click: () => newFile()
-        },
-        {
-          label: 'New Presentation',
-          accelerator: 'CmdOrCtrl+Alt+N',
-          click: () => newPresentation()
-        },
-        {
-          label: 'New Folder',
-          accelerator: 'CmdOrCtrl+Shift+F',
-          click: () => {
-            bus.send('new-folder');
-          }
-        },
-        { type: 'separator' },
-        {
-          label: 'Open File...',
-          accelerator: 'CmdOrCtrl+O',
-          click: () => openFile()
-        },
-        {
-          label: 'Open Folder...',
-          accelerator: 'CmdOrCtrl+Alt+O',
-          click: () => openFolder()
-        },
-        {
-          label: 'Open Recent',
-          submenu: buildRecentFilesMenu()
-        },
-        { type: 'separator' },
-        {
-          label: 'Close Tab',
-          accelerator: 'CmdOrCtrl+W',
-          click: () => {
-            bus.send('close-tab');
-          }
-        },
-        { type: 'separator' },
-        {
-          label: 'Save',
-          accelerator: 'CmdOrCtrl+S',
-          click: () => saveFile()
-        },
-        {
-          label: 'Save As...',
-          accelerator: 'CmdOrCtrl+Shift+S',
-          click: () => saveFileAs()
-        },
-        { type: 'separator' },
-        {
-          label: 'Export to PDF...',
-          accelerator: 'CmdOrCtrl+E',
-          click: () => exportToPDF()
-        },
-        { type: 'separator' },
-        {
-          label: 'Auto Save',
-          type: 'checkbox',
-          checked: state.autoSaveEnabled,
-          click: (menuItem) => {
-            state.autoSaveEnabled = menuItem.checked;
-            configStore.setAutoSaveEnabled(state.autoSaveEnabled);
-            bus.send('auto-save-changed', state.autoSaveEnabled);
-          }
-        }
-      ]
-    },
-    {
-      label: 'Edit',
-      submenu: [
-        { role: 'undo' },
-        { role: 'redo' },
-        { type: 'separator' },
-        { role: 'cut' },
-        { role: 'copy' },
-        { role: 'paste' },
-        { role: 'selectAll' }
-      ]
-    },
-    {
-      label: 'Format',
-      submenu: [
-        {
-          label: 'Bold',
-          accelerator: 'CmdOrCtrl+B',
-          click: () => sendFormatCommand('bold')
-        },
-        {
-          label: 'Italic',
-          accelerator: 'CmdOrCtrl+I',
-          click: () => sendFormatCommand('italic')
-        },
-        {
-          label: 'Code',
-          accelerator: 'CmdOrCtrl+J',
-          click: () => sendFormatCommand('code')
-        },
-        {
-          label: 'Link',
-          accelerator: 'CmdOrCtrl+K',
-          click: () => sendFormatCommand('link')
-        },
-        {
-          label: 'Insert Table',
-          click: () => sendFormatCommand('table')
-        },
-        {
-          label: 'Format Table',
-          accelerator: 'CmdOrCtrl+Shift+T',
-          click: () => sendFormatCommand('formatTable')
-        },
-        { type: 'separator' },
-        {
-          label: 'Heading 1',
-          accelerator: 'CmdOrCtrl+Shift+1',
-          click: () => sendFormatCommand('h1')
-        },
-        {
-          label: 'Heading 2',
-          accelerator: 'CmdOrCtrl+Shift+2',
-          click: () => sendFormatCommand('h2')
-        },
-        {
-          label: 'Heading 3',
-          accelerator: 'CmdOrCtrl+Shift+3',
-          click: () => sendFormatCommand('h3')
-        },
-        { type: 'separator' },
-        {
-          label: 'Bullet List',
-          accelerator: 'CmdOrCtrl+Shift+8',
-          click: () => sendFormatCommand('bullet')
-        },
-        {
-          label: 'Numbered List',
-          accelerator: 'CmdOrCtrl+Shift+9',
-          click: () => sendFormatCommand('numbered')
-        },
-        {
-          label: 'Quote',
-          accelerator: "CmdOrCtrl+'",
-          click: () => sendFormatCommand('quote')
-        },
-        {
-          label: 'Horizontal Rule',
-          accelerator: 'CmdOrCtrl+-',
-          click: () => sendFormatCommand('hr')
-        },
-        { type: 'separator' },
-        {
-          label: 'Insert Slide',
-          accelerator: 'CmdOrCtrl+Enter',
-          click: () => sendFormatCommand('slide')
-        }
-      ]
-    },
-    {
-      label: 'View',
-      submenu: [
-        {
-          label: 'Command Palette...',
-          accelerator: 'CmdOrCtrl+.',
-          click: () => {
-            bus.send('show-command-palette');
-          }
-        },
-        { type: 'separator' },
-        {
-          label: 'Toggle Preview',
-          accelerator: 'CmdOrCtrl+P',
-          click: () => {
-            bus.send('toggle-preview');
-          }
-        },
-        {
-          label: 'Toggle Outline',
-          accelerator: 'CmdOrCtrl+Shift+O',
-          click: () => {
-            bus.send('toggle-outline');
-          }
-        },
-        {
-          label: 'Toggle Files',
-          accelerator: 'CmdOrCtrl+E',
-          click: () => {
-            bus.send('toggle-files');
-          }
-        },
-        {
-          label: 'Refresh File Tree',
-          accelerator: 'CmdOrCtrl+Shift+R',
-          click: () => {
-            bus.send('refresh-file-tree');
-          }
-        },
-        {
-          label: 'Toggle Word Wrap',
-          accelerator: 'Alt+Z',
-          click: () => {
-            bus.send('toggle-word-wrap');
-          }
-        },
-        { type: 'separator' },
-        {
-          label: 'Find in File',
-          accelerator: 'CmdOrCtrl+F',
-          click: () => {
-            bus.send('find-in-file');
-          }
-        },
-        {
-          label: 'Find and Replace',
-          accelerator: 'CmdOrCtrl+Alt+F',
-          click: () => {
-            bus.send('find-and-replace');
-          }
-        },
-        {
-          label: 'Search in Files',
-          accelerator: 'CmdOrCtrl+Shift+F',
-          click: () => {
-            bus.send('toggle-search');
-          }
-        },
-        { type: 'separator' },
-        {
-          label: 'Toggle Line Numbers',
-          accelerator: 'CmdOrCtrl+L',
-          click: () => {
-            bus.send('toggle-line-numbers');
-          }
-        },
-        { type: 'separator' },
-        {
-          label: 'Go to Parent Folder',
-          accelerator: 'CmdOrCtrl+Up',
-          click: () => {
-            bus.send('navigate-parent');
-          }
-        },
-        { type: 'separator' },
-        {
-          label: 'Toggle Shell Terminal',
-          accelerator: 'CmdOrCtrl+`',
-          click: () => {
-            bus.send('toggle-shell-terminal');
-          }
-        },
-        { type: 'separator' },
-        {
-          label: 'Next Tab',
-          accelerator: 'CmdOrCtrl+Shift+]',
-          click: () => {
-            bus.send('next-tab');
-          }
-        },
-        {
-          label: 'Previous Tab',
-          accelerator: 'CmdOrCtrl+Shift+[',
-          click: () => {
-            bus.send('prev-tab');
-          }
-        },
-        { type: 'separator' },
-        ...[1,2,3,4,5,6,7,8].map(n => ({
-          label: `Go to Tab ${n}`,
-          accelerator: `CmdOrCtrl+${n}`,
-          click: () => {
-            bus.send('go-to-tab', n);
-          }
-        })),
-        {
-          label: 'Go to Last Tab',
-          accelerator: 'CmdOrCtrl+9',
-          click: () => {
-            bus.send('go-to-tab', 9);
-          }
-        },
-        { type: 'separator' },
-        { role: 'reload' },
-        { role: 'toggleDevTools' },
-        { type: 'separator' },
-        { role: 'resetZoom' },
-        { role: 'zoomIn' },
-        { role: 'zoomOut' },
-        { type: 'separator' },
-        { role: 'togglefullscreen' }
-      ]
-    },
-    {
-      label: 'Presentation',
-      submenu: [
-        {
-          label: 'Start Presentation',
-          accelerator: 'CmdOrCtrl+Shift+P',
-          click: () => startPresentation()
-        },
-        {
-          label: 'Start with Presenter View',
-          accelerator: 'CmdOrCtrl+Alt+P',
-          click: () => startPresentationWithPresenter()
-        },
-        { type: 'separator' },
-        {
-          label: 'End Presentation',
-          accelerator: 'Escape',
-          click: () => endPresentation()
-        }
-      ]
-    },
-    {
-      label: 'Theme',
-      submenu: [
-        { label: 'Default', click: () => setTheme('default') },
-        { label: 'Dark', click: () => setTheme('dark') },
-        { label: 'Catppuccin', click: () => setTheme('catppuccin') },
-        { label: 'Nord', click: () => setTheme('nord') },
-        { label: 'Tokyo Night', click: () => setTheme('tokyo-night') },
-        { label: 'Solarized Dark', click: () => setTheme('solarized') }
-      ]
-    },
-    {
-      label: 'AI',
-      submenu: buildAISubmenu()
-    },
-    {
-      label: 'Window',
-      submenu: [
-        { role: 'minimize' },
-        { role: 'zoom' },
-        { type: 'separator' },
-        { role: 'front' }
-      ]
-    },
-    {
-      label: 'Help',
-      submenu: [
-        {
-          label: 'Documentation',
-          accelerator: 'CmdOrCtrl+Shift+/',
-          click: () => {
-            if (bus.getMainWindow()) {
-              // Load manual.md from app root (works for both dev and packaged)
-              const manualPath = path.join(app.getAppPath(), 'manual.md');
-              try {
-                const content = fs.readFileSync(manualPath, 'utf8');
-                bus.send('show-documentation', content, manualPath);
-              } catch (err) {
-                bus.send('show-documentation', '# Documentation\n\nManual not found.', null);
-              }
-            }
-          }
-        },
-        {
-          label: 'Keyboard Shortcuts',
-          accelerator: 'CmdOrCtrl+/',
-          click: () => {
-            bus.send('show-shortcuts');
-          }
-        },
-        { type: 'separator' },
-        {
-          label: 'Vomit on GitHub',
-          click: () => showHelp()
-        }
-      ]
-    }
-  ];
-
-  const menu = Menu.buildFromTemplate(template);
-  Menu.setApplicationMenu(menu);
+  menuModule.createMenu();
 }
 
 async function newFile() {
@@ -1618,52 +920,7 @@ ipcMain.handle('request-save', async () => {
   });
 });
 
-// RAG: Index folder
-ipcMain.handle('rag-index', async (event, projectRoot, targetPath) => {
-  if (!state.availableAITools.ollama) {
-    return { error: 'Ollama not installed' };
-  }
-
-  // Check if nomic-embed-text is available
-  if (!state.availableAITools.ollamaModels.some(m => m.includes('nomic-embed-text'))) {
-    return { error: 'nomic-embed-text model not found. Run: ollama pull nomic-embed-text' };
-  }
-
-  // Send progress updates to renderer
-  const progressCallback = (progress) => {
-    bus.send('rag-progress', progress);
-  };
-
-  try {
-    const result = await indexFolder(projectRoot, targetPath, progressCallback);
-    return { success: true, indexed: result.chunksIndexed, files: result.filesProcessed };
-  } catch (e) {
-    return { error: e.message };
-  }
-});
-
-// RAG: Search
-ipcMain.handle('rag-search', async (event, query, folderPath) => {
-  if (!state.availableAITools.ollama) {
-    return { success: false, error: 'Ollama not installed' };
-  }
-
-  try {
-    const results = await searchIndex(query, folderPath, 5);
-    if (results.error) {
-      return { success: false, error: results.error };
-    }
-    // Format chunks for renderer
-    const chunks = results.map(r => ({
-      file: r.metadata.file,
-      content: r.chunk,
-      similarity: r.similarity
-    }));
-    return { success: true, chunks };
-  } catch (e) {
-    return { success: false, error: e.message };
-  }
-});
+rag.registerHandlers(ipcMain, { state, bus });
 
 // Ollama execution using node-pty for proper TTY support
 ipcMain.handle('claude-execute', async (event, command, cwd) => {
@@ -2045,56 +1302,6 @@ When you need to run commands, read files, write files, or list directories, use
   }
 });
 
-// Shell Terminal IPC handlers
-ipcMain.handle('shell-spawn', async (event, cwd) => {
-  // Kill any existing shell process
-  if (state.shellProcess) {
-    state.shellProcess.kill();
-    state.shellProcess = null;
-  }
-
-  const shell = process.env.SHELL || '/bin/bash';
-  const workingDir = cwd || process.env.HOME;
-
-  state.shellProcess = pty.spawn(shell, [], {
-    name: 'xterm-256color',
-    cols: 120,
-    rows: 30,
-    cwd: workingDir,
-    env: { ...process.env, TERM: 'xterm-256color' }
-  });
-
-  state.shellProcess.onData((data) => {
-    bus.send('shell-output', data);
-  });
-
-  state.shellProcess.onExit(({ exitCode }) => {
-    state.shellProcess = null;
-    bus.send('shell-exit', exitCode);
-  });
-
-  return 0;
-});
-
-ipcMain.on('shell-write', (event, data) => {
-  if (state.shellProcess) {
-    state.shellProcess.write(data);
-  }
-});
-
-ipcMain.on('shell-stop', () => {
-  if (state.shellProcess) {
-    state.shellProcess.kill();
-    state.shellProcess = null;
-    bus.send('shell-exit', -1);
-  }
-});
-
-ipcMain.on('shell-resize', (event, cols, rows) => {
-  if (state.shellProcess && cols && rows) {
-    state.shellProcess.resize(cols, rows);
-  }
-});
 
 ipcMain.handle('get-ai-provider', () => {
   return {
@@ -2123,6 +1330,30 @@ ipcMain.handle('create-directory', async (event, dirPath) => {
     fs.mkdirSync(dirPath, { recursive: true });
   }
   return true;
+});
+
+// Register menu module with dependencies
+menuModule.register({
+  state,
+  bus,
+  configStore,
+  actions: {
+    loadFile,
+    createNewEditorWindow,
+    newFile,
+    newPresentation,
+    openFile,
+    openFolder,
+    saveFile,
+    saveFileAs,
+    exportToPDF,
+    sendFormatCommand,
+    startPresentation,
+    startPresentationWithPresenter,
+    endPresentation,
+    setTheme,
+    showHelp,
+  }
 });
 
 // App lifecycle

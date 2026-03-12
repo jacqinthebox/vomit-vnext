@@ -1,0 +1,513 @@
+// @ts-check
+'use strict';
+
+const { app, Menu, shell } = require('electron');
+const path = require('path');
+const fs = require('fs');
+
+let _state, _bus, _configStore;
+// Store references to functions from main.js that menu items call
+let _actions = {};
+
+function register({ state, bus, configStore, actions }) {
+  _state = state;
+  _bus = bus;
+  _configStore = configStore;
+  _actions = actions;
+}
+
+function buildAISubmenu() {
+  const submenu = [
+    {
+      label: 'Toggle AI Terminal',
+      accelerator: 'CmdOrCtrl+J',
+      click: () => {
+        _bus.send('toggle-terminal');
+      }
+    },
+    { type: 'separator' }
+  ];
+
+  // Add Ollama models if available
+  if (_state.availableAITools.ollamaModels.length > 0) {
+    for (const model of _state.availableAITools.ollamaModels) {
+      submenu.push({
+        label: model,
+        type: 'radio',
+        checked: _configStore.getOllamaModel() === model,
+        click: () => setOllamaModel(model)
+      });
+    }
+  } else if (_state.availableAITools.ollama) {
+    submenu.push({
+      label: 'No models installed',
+      enabled: false
+    });
+    submenu.push({
+      label: 'Run: ollama pull llama3.2',
+      enabled: false
+    });
+  } else {
+    submenu.push({
+      label: 'Ollama not installed',
+      enabled: false
+    });
+    submenu.push({
+      label: 'Install from https://ollama.ai',
+      enabled: false
+    });
+  }
+
+  return submenu;
+}
+
+// Set Ollama model and show terminal
+function setOllamaModel(model) {
+  _configStore.setOllamaModel(model);
+  createMenu();
+
+  // Notify renderer and show terminal
+  _bus.send('ai-provider-changed', { provider: 'ollama', model });
+  _bus.send('show-terminal');
+}
+
+function buildRecentFilesMenu() {
+  const recentFiles = _configStore.getRecentFiles();
+
+  if (recentFiles.length === 0) {
+    return [{ label: 'No Recent Files', enabled: false }];
+  }
+
+  const items = recentFiles
+    .filter(f => fs.existsSync(f)) // Only show files that still exist
+    .map((filePath, index) => ({
+      label: `${index + 1}. ${path.basename(filePath)}`,
+      sublabel: filePath,
+      click: () => _actions.loadFile(filePath)
+    }));
+
+  if (items.length === 0) {
+    return [{ label: 'No Recent Files', enabled: false }];
+  }
+
+  // Add clear option
+  items.push({ type: 'separator' });
+  items.push({
+    label: 'Clear Recent Files',
+    click: () => {
+      _configStore.clearRecentFiles();
+      createMenu();
+    }
+  });
+
+  return items;
+}
+
+function createMenu() {
+  const template = [
+    {
+      label: 'Vomit',
+      submenu: [
+        { role: 'about' },
+        { type: 'separator' },
+        { role: 'services' },
+        { type: 'separator' },
+        { role: 'hide' },
+        { role: 'hideOthers' },
+        { role: 'unhide' },
+        { type: 'separator' },
+        { role: 'quit' }
+      ]
+    },
+    {
+      label: 'File',
+      submenu: [
+        {
+          label: 'New Tab',
+          accelerator: 'CmdOrCtrl+T',
+          click: () => {
+            _bus.send('new-tab');
+          }
+        },
+        {
+          label: 'New Window',
+          accelerator: 'CmdOrCtrl+Shift+N',
+          click: () => _actions.createNewEditorWindow()
+        },
+        {
+          label: 'New File',
+          accelerator: 'CmdOrCtrl+N',
+          click: () => _actions.newFile()
+        },
+        {
+          label: 'New Presentation',
+          accelerator: 'CmdOrCtrl+Alt+N',
+          click: () => _actions.newPresentation()
+        },
+        {
+          label: 'New Folder',
+          accelerator: 'CmdOrCtrl+Shift+F',
+          click: () => {
+            _bus.send('new-folder');
+          }
+        },
+        { type: 'separator' },
+        {
+          label: 'Open File...',
+          accelerator: 'CmdOrCtrl+O',
+          click: () => _actions.openFile()
+        },
+        {
+          label: 'Open Folder...',
+          accelerator: 'CmdOrCtrl+Alt+O',
+          click: () => _actions.openFolder()
+        },
+        {
+          label: 'Open Recent',
+          submenu: buildRecentFilesMenu()
+        },
+        { type: 'separator' },
+        {
+          label: 'Close Tab',
+          accelerator: 'CmdOrCtrl+W',
+          click: () => {
+            _bus.send('close-tab');
+          }
+        },
+        { type: 'separator' },
+        {
+          label: 'Save',
+          accelerator: 'CmdOrCtrl+S',
+          click: () => _actions.saveFile()
+        },
+        {
+          label: 'Save As...',
+          accelerator: 'CmdOrCtrl+Shift+S',
+          click: () => _actions.saveFileAs()
+        },
+        { type: 'separator' },
+        {
+          label: 'Export to PDF...',
+          accelerator: 'CmdOrCtrl+E',
+          click: () => _actions.exportToPDF()
+        },
+        { type: 'separator' },
+        {
+          label: 'Auto Save',
+          type: 'checkbox',
+          checked: _state.autoSaveEnabled,
+          click: (menuItem) => {
+            _state.autoSaveEnabled = menuItem.checked;
+            _configStore.setAutoSaveEnabled(_state.autoSaveEnabled);
+            _bus.send('auto-save-changed', _state.autoSaveEnabled);
+          }
+        }
+      ]
+    },
+    {
+      label: 'Edit',
+      submenu: [
+        { role: 'undo' },
+        { role: 'redo' },
+        { type: 'separator' },
+        { role: 'cut' },
+        { role: 'copy' },
+        { role: 'paste' },
+        { role: 'selectAll' }
+      ]
+    },
+    {
+      label: 'Format',
+      submenu: [
+        {
+          label: 'Bold',
+          accelerator: 'CmdOrCtrl+B',
+          click: () => _actions.sendFormatCommand('bold')
+        },
+        {
+          label: 'Italic',
+          accelerator: 'CmdOrCtrl+I',
+          click: () => _actions.sendFormatCommand('italic')
+        },
+        {
+          label: 'Code',
+          accelerator: 'CmdOrCtrl+J',
+          click: () => _actions.sendFormatCommand('code')
+        },
+        {
+          label: 'Link',
+          accelerator: 'CmdOrCtrl+K',
+          click: () => _actions.sendFormatCommand('link')
+        },
+        {
+          label: 'Insert Table',
+          click: () => _actions.sendFormatCommand('table')
+        },
+        {
+          label: 'Format Table',
+          accelerator: 'CmdOrCtrl+Shift+T',
+          click: () => _actions.sendFormatCommand('formatTable')
+        },
+        { type: 'separator' },
+        {
+          label: 'Heading 1',
+          accelerator: 'CmdOrCtrl+Shift+1',
+          click: () => _actions.sendFormatCommand('h1')
+        },
+        {
+          label: 'Heading 2',
+          accelerator: 'CmdOrCtrl+Shift+2',
+          click: () => _actions.sendFormatCommand('h2')
+        },
+        {
+          label: 'Heading 3',
+          accelerator: 'CmdOrCtrl+Shift+3',
+          click: () => _actions.sendFormatCommand('h3')
+        },
+        { type: 'separator' },
+        {
+          label: 'Bullet List',
+          accelerator: 'CmdOrCtrl+Shift+8',
+          click: () => _actions.sendFormatCommand('bullet')
+        },
+        {
+          label: 'Numbered List',
+          accelerator: 'CmdOrCtrl+Shift+9',
+          click: () => _actions.sendFormatCommand('numbered')
+        },
+        {
+          label: 'Quote',
+          accelerator: "CmdOrCtrl+'",
+          click: () => _actions.sendFormatCommand('quote')
+        },
+        {
+          label: 'Horizontal Rule',
+          accelerator: 'CmdOrCtrl+-',
+          click: () => _actions.sendFormatCommand('hr')
+        },
+        { type: 'separator' },
+        {
+          label: 'Insert Slide',
+          accelerator: 'CmdOrCtrl+Enter',
+          click: () => _actions.sendFormatCommand('slide')
+        }
+      ]
+    },
+    {
+      label: 'View',
+      submenu: [
+        {
+          label: 'Command Palette...',
+          accelerator: 'CmdOrCtrl+.',
+          click: () => {
+            _bus.send('show-command-palette');
+          }
+        },
+        { type: 'separator' },
+        {
+          label: 'Toggle Preview',
+          accelerator: 'CmdOrCtrl+P',
+          click: () => {
+            _bus.send('toggle-preview');
+          }
+        },
+        {
+          label: 'Toggle Outline',
+          accelerator: 'CmdOrCtrl+Shift+O',
+          click: () => {
+            _bus.send('toggle-outline');
+          }
+        },
+        {
+          label: 'Toggle Files',
+          accelerator: 'CmdOrCtrl+E',
+          click: () => {
+            _bus.send('toggle-files');
+          }
+        },
+        {
+          label: 'Refresh File Tree',
+          accelerator: 'CmdOrCtrl+Shift+R',
+          click: () => {
+            _bus.send('refresh-file-tree');
+          }
+        },
+        {
+          label: 'Toggle Word Wrap',
+          accelerator: 'Alt+Z',
+          click: () => {
+            _bus.send('toggle-word-wrap');
+          }
+        },
+        { type: 'separator' },
+        {
+          label: 'Find in File',
+          accelerator: 'CmdOrCtrl+F',
+          click: () => {
+            _bus.send('find-in-file');
+          }
+        },
+        {
+          label: 'Find and Replace',
+          accelerator: 'CmdOrCtrl+Alt+F',
+          click: () => {
+            _bus.send('find-and-replace');
+          }
+        },
+        {
+          label: 'Search in Files',
+          accelerator: 'CmdOrCtrl+Shift+F',
+          click: () => {
+            _bus.send('toggle-search');
+          }
+        },
+        { type: 'separator' },
+        {
+          label: 'Toggle Line Numbers',
+          accelerator: 'CmdOrCtrl+L',
+          click: () => {
+            _bus.send('toggle-line-numbers');
+          }
+        },
+        { type: 'separator' },
+        {
+          label: 'Go to Parent Folder',
+          accelerator: 'CmdOrCtrl+Up',
+          click: () => {
+            _bus.send('navigate-parent');
+          }
+        },
+        { type: 'separator' },
+        {
+          label: 'Toggle Shell Terminal',
+          accelerator: 'CmdOrCtrl+`',
+          click: () => {
+            _bus.send('toggle-shell-terminal');
+          }
+        },
+        { type: 'separator' },
+        {
+          label: 'Next Tab',
+          accelerator: 'CmdOrCtrl+Shift+]',
+          click: () => {
+            _bus.send('next-tab');
+          }
+        },
+        {
+          label: 'Previous Tab',
+          accelerator: 'CmdOrCtrl+Shift+[',
+          click: () => {
+            _bus.send('prev-tab');
+          }
+        },
+        { type: 'separator' },
+        ...[1,2,3,4,5,6,7,8].map(n => ({
+          label: `Go to Tab ${n}`,
+          accelerator: `CmdOrCtrl+${n}`,
+          click: () => {
+            _bus.send('go-to-tab', n);
+          }
+        })),
+        {
+          label: 'Go to Last Tab',
+          accelerator: 'CmdOrCtrl+9',
+          click: () => {
+            _bus.send('go-to-tab', 9);
+          }
+        },
+        { type: 'separator' },
+        { role: 'reload' },
+        { role: 'toggleDevTools' },
+        { type: 'separator' },
+        { role: 'resetZoom' },
+        { role: 'zoomIn' },
+        { role: 'zoomOut' },
+        { type: 'separator' },
+        { role: 'togglefullscreen' }
+      ]
+    },
+    {
+      label: 'Presentation',
+      submenu: [
+        {
+          label: 'Start Presentation',
+          accelerator: 'CmdOrCtrl+Shift+P',
+          click: () => _actions.startPresentation()
+        },
+        {
+          label: 'Start with Presenter View',
+          accelerator: 'CmdOrCtrl+Alt+P',
+          click: () => _actions.startPresentationWithPresenter()
+        },
+        { type: 'separator' },
+        {
+          label: 'End Presentation',
+          accelerator: 'Escape',
+          click: () => _actions.endPresentation()
+        }
+      ]
+    },
+    {
+      label: 'Theme',
+      submenu: [
+        { label: 'Default', click: () => _actions.setTheme('default') },
+        { label: 'Dark', click: () => _actions.setTheme('dark') },
+        { label: 'Catppuccin', click: () => _actions.setTheme('catppuccin') },
+        { label: 'Nord', click: () => _actions.setTheme('nord') },
+        { label: 'Tokyo Night', click: () => _actions.setTheme('tokyo-night') },
+        { label: 'Solarized Dark', click: () => _actions.setTheme('solarized') }
+      ]
+    },
+    {
+      label: 'AI',
+      submenu: buildAISubmenu()
+    },
+    {
+      label: 'Window',
+      submenu: [
+        { role: 'minimize' },
+        { role: 'zoom' },
+        { type: 'separator' },
+        { role: 'front' }
+      ]
+    },
+    {
+      label: 'Help',
+      submenu: [
+        {
+          label: 'Documentation',
+          accelerator: 'CmdOrCtrl+Shift+/',
+          click: () => {
+            if (_bus.getMainWindow()) {
+              // Load manual.md from app root (works for both dev and packaged)
+              const manualPath = path.join(app.getAppPath(), 'manual.md');
+              try {
+                const content = fs.readFileSync(manualPath, 'utf8');
+                _bus.send('show-documentation', content, manualPath);
+              } catch (err) {
+                _bus.send('show-documentation', '# Documentation\n\nManual not found.', null);
+              }
+            }
+          }
+        },
+        {
+          label: 'Keyboard Shortcuts',
+          accelerator: 'CmdOrCtrl+/',
+          click: () => {
+            _bus.send('show-shortcuts');
+          }
+        },
+        { type: 'separator' },
+        {
+          label: 'Vomit on GitHub',
+          click: () => _actions.showHelp()
+        }
+      ]
+    }
+  ];
+
+  const builtMenu = Menu.buildFromTemplate(template);
+  Menu.setApplicationMenu(builtMenu);
+}
+
+module.exports = { register, createMenu, setOllamaModel };
