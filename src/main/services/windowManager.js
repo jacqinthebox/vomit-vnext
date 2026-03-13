@@ -160,7 +160,43 @@ function createWindowManager({ state, bus, getSaveFileAs }) {
     return bus.getPresenterWindow();
   }
 
-  return { createMainWindow, createNewEditorWindow, createPresentationWindow, createPresenterWindow };
+  function createDocumentationWindow(content) {
+    // If already open, just focus and update content
+    if (bus.getDocumentationWindow()) {
+      bus.getDocumentationWindow().focus();
+      bus.sendToDocumentation('load-documentation', content);
+      return bus.getDocumentationWindow();
+    }
+
+    bus.setDocumentationWindow(new BrowserWindow({
+      width: 900,
+      height: 700,
+      title: 'Documentation',
+      webPreferences: {
+        preload: path.join(mainDir, 'preload.js'),
+        contextIsolation: true,
+        nodeIntegration: false
+      },
+      backgroundColor: '#1e1e1e'
+    }));
+
+    bus.getDocumentationWindow().loadFile(path.join(mainDir, '../renderer/documentation.html'));
+
+    bus.getDocumentationWindow().webContents.on('did-finish-load', () => {
+      // Apply current theme
+      bus.sendToDocumentation('set-theme', state.currentTheme);
+      // Load the documentation content
+      bus.sendToDocumentation('load-documentation', content);
+    });
+
+    bus.getDocumentationWindow().on('closed', () => {
+      bus.setDocumentationWindow(null);
+    });
+
+    return bus.getDocumentationWindow();
+  }
+
+  return { createMainWindow, createNewEditorWindow, createPresentationWindow, createPresenterWindow, createDocumentationWindow };
 }
 
 module.exports = { createWindowManager };

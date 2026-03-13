@@ -10,6 +10,9 @@ Press **Cmd+/** to open this help at any time.
 |----------|--------|
 | Cmd+T | New tab |
 | Cmd+N | New file |
+| Cmd+Shift+N | New window |
+| Cmd+Alt+N | New presentation |
+| Cmd+Alt+Shift+N | New folder |
 | Cmd+O | Open file |
 | Cmd+Alt+O | Open folder |
 | Cmd+W | Close tab |
@@ -119,11 +122,13 @@ Press **Cmd+/** to open this help at any time.
 | Shortcut | Action |
 |----------|--------|
 | Cmd+J | Toggle AI terminal |
+| Cmd+K | Clear terminal and conversation history |
 
 ### AI Commands
 
 | Command | Action |
 |---------|--------|
+| `/new` | Start a new conversation (clear history) |
 | `/doc <prompt>` | Include current document in prompt |
 | `/pseudo` | Pseudonymize current document |
 | `/depseudo` | Restore original data from mapping |

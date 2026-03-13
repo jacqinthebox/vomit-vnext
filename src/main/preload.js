@@ -58,6 +58,11 @@ ipcRenderer.on('show-documentation', (event, content, filePath) => {
   window.dispatchEvent(new CustomEvent('vomit:show-documentation', { detail: { content, filePath } }));
 });
 
+// Documentation window events
+ipcRenderer.on('load-documentation', (event, content) => {
+  window.dispatchEvent(new CustomEvent('vomit:load-documentation', { detail: { content } }));
+});
+
 ipcRenderer.on('open-folder', (event, folderPath) => {
   window.dispatchEvent(new CustomEvent('vomit:open-folder', { detail: folderPath }));
 });
@@ -209,6 +214,7 @@ contextBridge.exposeInMainWorld('vomit', {
   // AI CLI methods
   claudeExecute: (command, cwd) => ipcRenderer.invoke('claude-execute', command, cwd),
   claudeStop: () => ipcRenderer.send('claude-stop'),
+  claudeClearHistory: () => ipcRenderer.send('claude-clear-history'),
   getAIProvider: () => ipcRenderer.invoke('get-ai-provider'),
   // Agent mode with tool calling
   agentExecute: (prompt, cwd) => ipcRenderer.invoke('agent-execute', prompt, cwd),

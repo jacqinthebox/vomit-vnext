@@ -22,6 +22,8 @@ class SessionState extends EventEmitter {
     this._lastKnownMtime = null;
     /** @type {import('child_process').ChildProcess|null} */
     this._ollamaProcess = null;
+    /** @type {{ abort: () => void }|null} */
+    this._ollamaAbortController = null;
     /** @type {object|null} */
     this._shellProcess = null;
     /** @type {{ ollama: string|null, ollamaModels: string[] }} */
@@ -30,6 +32,8 @@ class SessionState extends EventEmitter {
     this._agentAborted = false;
     /** @type {Array<object>} */
     this._agentConversationHistory = [];
+    /** @type {Array<{role: 'user'|'assistant', content: string}>} */
+    this._chatHistory = [];
   }
 
   // --- File state ---
@@ -76,6 +80,9 @@ class SessionState extends EventEmitter {
   get ollamaProcess() { return this._ollamaProcess; }
   set ollamaProcess(v) { this._ollamaProcess = v; }
 
+  get ollamaAbortController() { return this._ollamaAbortController; }
+  set ollamaAbortController(v) { this._ollamaAbortController = v; }
+
   get shellProcess() { return this._shellProcess; }
   set shellProcess(v) { this._shellProcess = v; }
 
@@ -89,6 +96,13 @@ class SessionState extends EventEmitter {
 
   get agentConversationHistory() { return this._agentConversationHistory; }
   set agentConversationHistory(v) { this._agentConversationHistory = v; }
+
+  get chatHistory() { return this._chatHistory; }
+  set chatHistory(v) { this._chatHistory = v; }
+
+  clearChatHistory() {
+    this._chatHistory = [];
+  }
 }
 
 module.exports = { SessionState };

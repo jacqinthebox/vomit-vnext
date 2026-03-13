@@ -58,6 +58,7 @@ menuModule.register({
     endPresentation: presentationService.endPresentation,
     setTheme: presentationService.setTheme,
     showHelp: presentationService.showHelp,
+    showDocumentation: windowManager.createDocumentationWindow,
   }
 });
 

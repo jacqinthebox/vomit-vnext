@@ -148,6 +148,8 @@ class TerminalManager {
       } else if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         this.clearTerminal();
+        window.vomit.claudeClearHistory();
+        this.appendTerminalOutput('Conversation cleared.', 'system');
       }
     });
 
@@ -155,6 +157,8 @@ class TerminalManager {
     this.terminalClear.addEventListener('click', () => {
       if (this.state.activeTerminalTab === 'ai') {
         this.clearTerminal();
+        window.vomit.claudeClearHistory();
+        this.appendTerminalOutput('Conversation cleared.', 'system');
       } else {
         this.clearShellTerminal();
       }
@@ -479,6 +483,14 @@ class TerminalManager {
 
     if (!cwd) {
       this.appendTerminalOutput('Error: No project folder open. Open a folder first with Cmd+Alt+O.', 'error');
+      return;
+    }
+
+    // Check for /new command - start a new conversation
+    if (command.trim() === '/new') {
+      window.vomit.claudeClearHistory();
+      this.clearTerminal();
+      this.appendTerminalOutput('New conversation started.', 'system');
       return;
     }
 

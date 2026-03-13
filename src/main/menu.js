@@ -146,7 +146,7 @@ function createMenu() {
         },
         {
           label: 'New Folder',
-          accelerator: 'CmdOrCtrl+Shift+F',
+          accelerator: 'CmdOrCtrl+Alt+Shift+N',
           click: () => {
             _bus.send('new-folder');
           }
@@ -478,15 +478,13 @@ function createMenu() {
           label: 'Documentation',
           accelerator: 'CmdOrCtrl+Shift+/',
           click: () => {
-            if (_bus.getMainWindow()) {
-              // Load manual.md from app root (works for both dev and packaged)
-              const manualPath = path.join(app.getAppPath(), 'manual.md');
-              try {
-                const content = fs.readFileSync(manualPath, 'utf8');
-                _bus.send('show-documentation', content, manualPath);
-              } catch (err) {
-                _bus.send('show-documentation', '# Documentation\n\nManual not found.', null);
-              }
+            // Load manual.md and open in documentation window
+            const manualPath = path.join(app.getAppPath(), 'manual.md');
+            try {
+              const content = fs.readFileSync(manualPath, 'utf8');
+              _actions.showDocumentation(content);
+            } catch (err) {
+              _actions.showDocumentation('# Documentation\n\nManual not found.');
             }
           }
         },

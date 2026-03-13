@@ -1,8 +1,8 @@
 // @ts-check
 'use strict';
 
-const pty = require('node-pty');
 const fs = require('fs');
+const http = require('http');
 const { execSync } = require('child_process');
 
 // Find executable path
@@ -64,88 +64,155 @@ function detectAITools(state) {
  * @param {{ state: import('../../services/sessionState').SessionState, bus: import('../rendererBus').RendererBus, configStore: typeof import('../../services/configStore') }} deps
  */
 function registerHandlers(ipcMain, { state, bus, configStore }) {
-  // Ollama execution using node-pty for proper TTY support
+  // Ollama execution using HTTP API with conversation history
   ipcMain.handle('claude-execute', async (event, command, cwd) => {
     const ollamaModel = configStore.getOllamaModel();
 
-    return new Promise((resolve, reject) => {
-      // Kill any existing process
-      if (state.ollamaProcess) {
-        state.ollamaProcess.kill();
-        state.ollamaProcess = null;
-      }
+    // Abort any existing request
+    if (state.ollamaAbortController) {
+      state.ollamaAbortController.abort();
+      state.ollamaAbortController = null;
+    }
 
-      const execPath = state.availableAITools.ollama;
-      if (!execPath) {
-        bus.send('claude-error', 'Ollama is not installed. Install it from https://ollama.ai\n');
-        bus.send('claude-done', 1);
-        resolve(1);
-        return;
-      }
-      if (state.availableAITools.ollamaModels.length === 0) {
-        bus.send('claude-error', `No Ollama models found. Run: ollama pull llama3.2\n`);
-        bus.send('claude-done', 1);
-        resolve(1);
-        return;
-      }
-      if (!ollamaModel) {
-        bus.send('claude-error', 'No AI model selected. Select one from the AI menu.\n');
-        bus.send('claude-done', 1);
-        resolve(1);
-        return;
-      }
+    const execPath = state.availableAITools.ollama;
+    if (!execPath) {
+      bus.send('claude-error', 'Ollama is not installed. Install it from https://ollama.ai\n');
+      bus.send('claude-done', 1);
+      return 1;
+    }
+    if (state.availableAITools.ollamaModels.length === 0) {
+      bus.send('claude-error', `No Ollama models found. Run: ollama pull llama3.2\n`);
+      bus.send('claude-done', 1);
+      return 1;
+    }
+    if (!ollamaModel) {
+      bus.send('claude-error', 'No AI model selected. Select one from the AI menu.\n');
+      bus.send('claude-done', 1);
+      return 1;
+    }
 
-      const args = ['run', ollamaModel, command];
+    // Add user message to history
+    state.chatHistory.push({ role: 'user', content: command });
 
-      // Spawn Ollama with PTY for proper terminal emulation
-      state.ollamaProcess = pty.spawn(execPath, args, {
-        name: 'xterm-color',
-        cols: 120,
-        rows: 30,
-        cwd: cwd,
-        env: { ...process.env }
-      });
+    // Build request with full conversation history
+    const requestBody = JSON.stringify({
+      model: ollamaModel,
+      messages: state.chatHistory,
+      stream: true
+    });
 
-      state.ollamaProcess.onData((data) => {
-          // Clean ANSI escape codes and spinner characters but preserve newlines and spaces
-          let cleanData = data
-            .replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '')   // ANSI escape codes (colors, cursor, etc.)
-            .replace(/\x1b\[\?[0-9;]*[a-zA-Z]/g, '') // Extended ANSI codes (DEC private modes)
-            .replace(/\x1b\][^\x07]*\x07/g, '')      // OSC sequences (title, etc.)
-            .replace(/\x1b\][^\x1b]*\x1b\\/g, '')    // OSC sequences with ST terminator
-            .replace(/\x1b[PX^_][^\x1b]*\x1b\\/g, '')// DCS, SOS, PM, APC sequences
-            .replace(/\x1b[NOcZ78=>]/g, '')          // Single-character escape sequences
-            .replace(/\x1b\([A-Z0-9]/g, '')          // Character set selection
-            .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '') // Control characters (except \t\n\r)
-            .replace(/[\u2800-\u28FF]/g, '')         // Braille spinner characters
-            .replace(/\[K/g, '')                     // Erase line (orphaned)
-            .replace(/\[1G/g, '')                    // Move cursor (orphaned)
-            .replace(/\[2K/g, '')                    // Clear line (orphaned)
-            .replace(/\r\n/g, '\n')                  // Normalize line endings
-            .replace(/\r/g, '');                     // Remove remaining carriage returns
+    return new Promise((resolve) => {
+      let assistantResponse = '';
+      let aborted = false;
 
-          // Send if there's any content (including just newlines for formatting)
-          if (cleanData.length > 0) {
-            bus.send('claude-output', cleanData);
+      const req = http.request({
+        hostname: '127.0.0.1',
+        port: 11434,
+        path: '/api/chat',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(requestBody)
+        }
+      }, (res) => {
+        res.setEncoding('utf8');
+        let buffer = '';
+
+        res.on('data', (chunk) => {
+          if (aborted) return;
+
+          buffer += chunk;
+          // Process complete JSON lines
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || ''; // Keep incomplete line in buffer
+
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            try {
+              const json = JSON.parse(line);
+              if (json.message && json.message.content) {
+                const content = json.message.content;
+                assistantResponse += content;
+                bus.send('claude-output', content);
+              }
+              if (json.done) {
+                // Save assistant response to history
+                if (assistantResponse) {
+                  state.chatHistory.push({ role: 'assistant', content: assistantResponse });
+                }
+                bus.send('claude-done', 0);
+                resolve(0);
+              }
+            } catch (e) {
+              // Ignore parse errors for incomplete lines
+            }
           }
+        });
+
+        res.on('end', () => {
+          if (!aborted) {
+            // Process any remaining buffer
+            if (buffer.trim()) {
+              try {
+                const json = JSON.parse(buffer);
+                if (json.message && json.message.content) {
+                  assistantResponse += json.message.content;
+                  bus.send('claude-output', json.message.content);
+                }
+              } catch (e) {
+                // Ignore
+              }
+            }
+            // Save assistant response if not already done
+            if (assistantResponse && !state.chatHistory.some(m => m.role === 'assistant' && m.content === assistantResponse)) {
+              state.chatHistory.push({ role: 'assistant', content: assistantResponse });
+            }
+            bus.send('claude-done', 0);
+            resolve(0);
+          }
+        });
       });
 
-      state.ollamaProcess.onExit(({ exitCode }) => {
-        state.ollamaProcess = null;
-        bus.send('claude-done', exitCode);
-        resolve(exitCode);
+      req.on('error', (err) => {
+        if (!aborted) {
+          // Remove the user message if request failed
+          state.chatHistory.pop();
+          bus.send('claude-error', `Connection error: ${err.message}\nMake sure Ollama is running: ollama serve\n`);
+          bus.send('claude-done', 1);
+          resolve(1);
+        }
       });
+
+      // Store abort function
+      state.ollamaAbortController = {
+        abort: () => {
+          aborted = true;
+          req.destroy();
+          // Remove the user message if aborted
+          if (state.chatHistory.length > 0 && state.chatHistory[state.chatHistory.length - 1].role === 'user') {
+            state.chatHistory.pop();
+          }
+        }
+      };
+
+      req.write(requestBody);
+      req.end();
     });
   });
 
   ipcMain.on('claude-stop', () => {
-    if (state.ollamaProcess) {
-      state.ollamaProcess.kill(); // node-pty kill() method
-      state.ollamaProcess = null;
+    if (state.ollamaAbortController) {
+      state.ollamaAbortController.abort();
+      state.ollamaAbortController = null;
       bus.send('claude-done', -1);
     }
     // Also stop agent mode
     state.agentAborted = true;
+  });
+
+  // Clear conversation history
+  ipcMain.on('claude-clear-history', () => {
+    state.clearChatHistory();
   });
 
   ipcMain.handle('get-ai-provider', () => {

@@ -78,7 +78,7 @@ Created foundational modules that every later extraction depends on:
 | Module | Lines | Purpose |
 |--------|-------|---------|
 | `services/configStore.js` | 87 | Typed wrapper around electron-store. `getTheme()` instead of `store.get('theme')` |
-| `services/sessionState.js` | 94 | Centralized state with EventEmitter. Replaced 17 global variables |
+| `services/sessionState.js` | 108 | Centralized state with EventEmitter. Replaced 17 global variables |
 | `ipc/rendererBus.js` | 83 | Centralized `send()`, `broadcast()`. Domains never import `mainWindow` |
 
 Also removed all Windows platform support (user confirmed macOS/Linux only).
@@ -106,7 +106,7 @@ Extracted all remaining domains:
 | Module | Lines | What Moved |
 |--------|-------|------------|
 | `services/windowManager.js` | 166 | 4 window creation functions (main, presentation, presenter, about) |
-| `ipc/handlers/ai.js` | 159 | AI detection, Ollama execution, `claude-execute`/`stop` |
+| `ipc/handlers/ai.js` | 226 | AI detection, Ollama HTTP API with conversation history, `claude-execute`/`stop`/`clear-history` |
 | `ipc/handlers/agent.js` | 308 | Agent tools, tool execution, `agent-execute` handler |
 | `ipc/handlers/file.js` | 557 | All file operations + 20 IPC handlers |
 | `ipc/handlers/presentation.js` | 203 | Presentation, PDF export, themes, format commands |
@@ -144,7 +144,7 @@ Three batches extracted all feature logic from editor.js:
 
 | Module | Lines | Methods Extracted |
 |--------|-------|-------------------|
-| `features/terminal.js` | 1,121 | 32 methods: the entire terminal, shell, AI commands, pseudonymization, RAG UI. Largest single module. Has its own `setupIPC()`. |
+| `features/terminal.js` | 1,133 | 32 methods: the entire terminal, shell, AI commands, pseudonymization, RAG UI. Largest single module. Has its own `setupIPC()`. |
 
 **Bug fixed:** `this.terminalPane` → `this.terminalPanel` in `updateTerminalTitle` (pre-existing silent failure).
 
@@ -181,34 +181,35 @@ Three batches extracted all feature logic from editor.js:
 
 ### Final Architecture
 
-**Main Process** (2,870 lines across 13 files):
+**Main Process** (3,011 lines across 13 files):
 
 ```
 src/main/
 ├── main.js                    # 137 lines — app lifecycle orchestrator
-├── preload.js                 # 227 lines — context bridge (unchanged)
+├── preload.js                 # 233 lines — context bridge
 ├── menu.js                    # 513 lines — application menu
 ├── rag.js                     # 273 lines — RAG pipeline
 ├── services/
 │   ├── configStore.js         #  87 lines — typed preferences
-│   ├── sessionState.js        #  94 lines — centralized state
-│   └── windowManager.js       # 166 lines — window factory
+│   ├── sessionState.js        # 108 lines — centralized state
+│   └── windowManager.js       # 202 lines — window factory
 └── ipc/
-    ├── rendererBus.js         #  83 lines — main→renderer IPC
+    ├── rendererBus.js         # 101 lines — main→renderer IPC
     └── handlers/
         ├── file.js            # 557 lines — file operations
-        ├── ai.js              # 159 lines — AI/Ollama
+        ├── ai.js              # 226 lines — AI/Ollama
         ├── agent.js           # 308 lines — agent mode
         ├── shell.js           #  63 lines — shell PTY
         └── presentation.js    # 203 lines — presentations
 ```
 
-**Renderer Process** (4,274 lines across 11 files):
+**Renderer Process** (4,372 lines across 12 files):
 
 ```
 src/renderer/js/
 ├── editor.js                  # 521 lines — orchestrator
 ├── tabs.js                    # 461 lines — tab management
+├── documentation.js           #  86 lines — documentation window renderer
 ├── hints.js                   # autocomplete (unchanged)
 ├── emoji.js                   # emoji shortcodes (unchanged)
 ├── state/
@@ -216,7 +217,7 @@ src/renderer/js/
 ├── hosts/
 │   └── codemirrorHost.js      # 152 lines — CM5 wrapper
 └── features/
-    ├── terminal.js            # 1,121 lines — terminal/AI/RAG UI
+    ├── terminal.js            # 1,133 lines — terminal/AI/RAG UI
     ├── fileTree.js            #   706 lines — file tree + CRUD
     ├── preview.js             #   352 lines — markdown preview
     ├── settings.js            #   237 lines — auto-save, sidebar
@@ -265,6 +266,26 @@ src/renderer/js/
 2. **Stale method calls in tabs.js** — `updatePreview()`/`updateStatus()`/`updateOutline()` called on Editor instead of PreviewManager after extraction
 3. **Unused `shell` import** in menu.js
 
+### Post-Refactoring Enhancement: AI Conversation History
+
+**Problem:** Each AI question spawned a new `ollama run` CLI process with only the current message — no conversation history was maintained. Follow-up questions had no context.
+
+**Solution:** Replaced CLI-based execution with Ollama's HTTP API (`/api/chat`) which supports a `messages` array for full conversation context:
+- Added `chatHistory` array to `sessionState.js` to store user/assistant message pairs
+- Rewrote `ai.js` to use streaming HTTP API instead of `node-pty`
+- Added `/new` command and `Cmd+K` to clear conversation and start fresh
+- Added `claude-clear-history` IPC handler
+
+### Post-Refactoring Enhancement: Documentation Window
+
+**Change:** Help documentation now opens in a dedicated pop-up window with rendered markdown preview instead of opening in the main editor.
+
+**Implementation:**
+- Added `createDocumentationWindow()` to `windowManager.js`
+- Added `documentation.html` and `documentation.js` for standalone rendering
+- Extended `rendererBus.js` with documentation window support
+- Updated menu.js to use new `showDocumentation` action
+
 ---
 
 ## Part 4: Future Recommendations
@@ -279,4 +300,4 @@ src/renderer/js/
 
 ---
 
-*Report generated March 12, 2026. All 25 todos completed. Branch `refactor` ready for testing and merge.*
+*Report generated March 12, 2026. Updated March 13, 2026 with AI conversation history feature. All 25 todos completed. Branch `refactor` ready for testing and merge.*
