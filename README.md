@@ -74,27 +74,6 @@ xattr -cr /Applications/Vomit\ vNext.app
 
 Then the app will open normally.
 
-### CLI Launcher
-
-To open files from the terminal, create a symlink:
-
-```bash
-mkdir -p ~/.local/bin
-ln -s /Applications/Vomit.app/Contents/Resources/app/bin/vomit ~/.local/bin/vomit
-```
-
-Make sure `~/.local/bin` is in your PATH (add to `~/.zshrc` if needed):
-
-```bash
-export PATH="$HOME/.local/bin:$PATH"
-```
-
-Then use:
-
-```bash
-vomit presentation.md    # Open a file in your bucket
-```
-
 ### Option 2: Build from Source
 
 ```bash

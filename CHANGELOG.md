@@ -60,7 +60,6 @@ All notable changes to Vomit will be documented in this file.
 ### Added
 - **Tabs** - Multiple files in tabs (`Cmd+T` for new tab)
 - **Multiple windows** - Open new editor windows (`Cmd+Shift+N`)
-- **CLI launcher** - Open files/folders from terminal with `vomit` command
 
 ### Changed
 - Improved keyboard navigation in file explorer

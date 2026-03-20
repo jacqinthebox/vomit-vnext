@@ -101,19 +101,6 @@ app.whenReady().then(async () => {
     bus.getMainWindow()?.setTitle(`${path.basename(bucketPath)} - Vomit`);
   });
 
-  // Handle file open from command line or Finder (only within bucket)
-  const args = process.argv.slice(2);
-  if (args.length > 0 && fs.existsSync(args[0])) {
-    const targetPath = path.resolve(args[0]);
-    // Only open if it's within the bucket
-    if (targetPath.startsWith(bucketPath)) {
-      const stats = fs.statSync(targetPath);
-      if (!stats.isDirectory()) {
-        fileService.loadFile(targetPath);
-      }
-    }
-  }
-
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       windowManager.createMainWindow();
