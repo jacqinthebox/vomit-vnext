@@ -14,7 +14,6 @@ Press **Cmd+/** to open this help at any time.
 | Cmd+Alt+N | New presentation |
 | Cmd+Alt+Shift+N | New folder |
 | Cmd+O | Open file |
-| Cmd+Alt+O | Open folder |
 | Cmd+W | Close tab |
 | Cmd+S | Save |
 | Cmd+Shift+S | Save as |
@@ -136,6 +135,7 @@ Press **Cmd+/** to open this help at any time.
 | `/index <subfolder>` | Index specific subfolder |
 | `/index <file>` | Index a single file |
 | `/rag <query>` | Search docs and ask AI |
+| `/presentation <topic>` | Generate a presentation on the topic |
 | `/agent <prompt>` | Agentic mode with tools (bash, file read/write) |
 | `/agent clear` | Clear agent conversation history |
 

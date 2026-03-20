@@ -6,13 +6,22 @@ A keyboard-centric markdown editor for presentations and notes with local AI sup
 
 ## Getting Started
 
-### Opening Files and Folders
+### The Bucket
 
-- **Cmd+O** - Open a file
-- **Cmd+Alt+O** - Open a folder
-- **Cmd+N** - New file
+Vomit uses a single dedicated folder called the "bucket" to store all your notes and presentations. On first launch, you'll be asked to choose a location (default: `~/Documents/Vomit`).
 
-When you open a folder, the file explorer appears on the left (toggle with **Cmd+E**).
+- All your files live in one place
+- New files are automatically created in the bucket
+- Images are saved to `bucket/images/`
+- No need to "open folders" - just launch and write
+
+To change the bucket location, edit `~/Library/Application Support/Vomit/config.json`.
+
+### Basic Operations
+
+- **Cmd+N** - New file (created in current folder within bucket)
+- **Cmd+O** - Open a specific file
+- **Cmd+E** - Toggle file explorer
 
 ### Basic Editing
 
@@ -69,7 +78,6 @@ Notes only you can see while presenting
 |----------|--------|
 | Cmd+N | New file |
 | Cmd+O | Open file |
-| Cmd+Alt+O | Open folder |
 | Cmd+S | Save |
 | Cmd+Shift+S | Save as |
 | Cmd+W | Close tab |
@@ -123,8 +131,7 @@ Vomit includes a built-in AI terminal powered by Ollama. All processing happens 
 
 1. Install Ollama from https://ollama.ai
 2. Pull a model: `ollama pull qwen2.5:14b`
-3. Open a folder in Vomit (Cmd+Alt+O)
-4. Press **Cmd+J** or select a model from the AI menu
+3. Press **Cmd+J** or select a model from the AI menu
 
 ### AI Commands
 
@@ -137,6 +144,7 @@ Vomit includes a built-in AI terminal powered by Ollama. All processing happens 
 | `/index subfolder` | Index only a specific subfolder |
 | `/index file.xml` | Index a single file |
 | `/rag <query>` | Search indexed documents and ask AI with context |
+| `/presentation <topic>` | Generate a presentation with slides and speaker notes |
 | `/agent <prompt>` | Agentic mode with tools (bash, file read/write) |
 | `/agent clear` | Clear agent conversation history |
 
@@ -159,12 +167,10 @@ ollama pull nomic-embed-text
 
 1. `/index` chunks your documents and creates embeddings using `nomic-embed-text`
 2. Embeddings are stored in a SQLite database at `~/.config/vomit/rag/`
-3. The database is **tied to the open folder** - each project has its own index
+3. The database is **tied to your bucket** - the index persists across sessions
 4. `/rag <query>` finds similar chunks and includes them as context for the AI
 
 **Supported file types:** `.md`, `.txt`, `.js`, `.ts`, `.py`, `.json`, `.yaml`, `.yml`, `.xml`, `.html`, `.css`, `.tf`, `.sh`, `.tpl`
-
-**Note:** You must have a folder open (`Cmd+Alt+O`) for RAG to work. The index persists - close and reopen the folder and your index is still there.
 
 ### Agent Mode
 

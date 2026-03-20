@@ -41,13 +41,24 @@ An opinionated, keyboard-centric markdown editor for presentations and notes wit
 - **LaTeX Math** - Render formulas with KaTeX (`$inline$` and `$$display$$`)
 - **PlantUML Diagrams** - Render sequence diagrams, flowcharts, and more
 - **Emoji Shortcodes** - Use `:smile:` syntax like GitHub/Slack
-- **File Tree** - Browse and open files in current directory (Cmd+Shift+E)
+- **File Tree** - Browse and open files in your bucket (Cmd+E)
 - **Search in Files** - Search across all markdown files (Cmd+Shift+F)
 - **Laser Pointer** - Press L during presentation to highlight
 - **PDF Export** - Export slides to PDF for sharing
 - **Image Support** - Paste images directly, resize with simple syntax
 - **Themes** - Default, Dark, Catppuccin, Nord, Solarized Dark
 - **Keyboard Shortcuts** - Full keyboard control for everything
+
+## The Bucket
+
+Vomit uses a single dedicated folder called the "bucket" to store all your notes and presentations. On first launch, you'll be asked to choose a location (default: `~/Documents/Vomit`).
+
+- All your files live in one place
+- New files are automatically created in the bucket
+- Images are saved to `bucket/images/`
+- No need to "open folders" - just launch and write
+
+To change the bucket location, edit `~/Library/Application Support/Vomit/config.json`.
 
 ## Installation
 
@@ -65,7 +76,7 @@ Then the app will open normally.
 
 ### CLI Launcher
 
-To open files or folders from the terminal, create a symlink:
+To open files from the terminal, create a symlink:
 
 ```bash
 mkdir -p ~/.local/bin
@@ -81,9 +92,7 @@ export PATH="$HOME/.local/bin:$PATH"
 Then use:
 
 ```bash
-vomit .                  # Open current directory
-vomit ~/notes            # Open a folder
-vomit presentation.md    # Open a file
+vomit presentation.md    # Open a file in your bucket
 ```
 
 ### Option 2: Build from Source
@@ -181,14 +190,14 @@ Vomit includes a built-in AI terminal powered by [Ollama](https://ollama.ai). Al
 **Setup:**
 1. Install Ollama from https://ollama.ai
 2. Pull a model: `ollama pull qwen2.5:14b` (recommended for best results)
-3. Open a folder in Vomit (Cmd+Alt+O)
-4. Press `Cmd+J` or select a model from the AI menu
+3. Press `Cmd+J` or select a model from the AI menu
 
 **Special commands:**
 - `/doc <prompt>` - Include the current document in your prompt
+- `/presentation <topic>` - Generate a presentation with slides and speaker notes
 - `/pseudo` - Pseudonymize the current document (names, emails, IPs, secrets)
 - `/depseudo` - Restore original data from pseudonymized file using the mapping
-- `/index` - Index all documents in the folder for RAG search
+- `/index` - Index all documents in the bucket for RAG search
 - `/index subfolder` - Index only a specific subfolder
 - `/rag <query>` - Search indexed documents and ask AI with context
 
