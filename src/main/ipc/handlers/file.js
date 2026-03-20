@@ -487,6 +487,9 @@ Questions?
 
         fs.writeFileSync(filepath, buffer);
 
+        // Refresh file tree to show new image
+        bus.send('refresh-file-tree');
+
         // Return relative path if we have a current file, otherwise absolute
         if (state.currentFilePath) {
           return `images/${filename}`;

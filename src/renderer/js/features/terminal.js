@@ -536,6 +536,15 @@ class TerminalManager {
       }
     }
 
+    // Check for /presentation command - generate a presentation
+    if (command.startsWith('/presentation ')) {
+      const topic = command.substring(14).trim();
+      if (topic) {
+        await this.generatePresentation(topic, cwd);
+        return;
+      }
+    }
+
     let finalCommand = command;
 
     // Check for /doc prefix to include document context
@@ -569,6 +578,91 @@ class TerminalManager {
 
     try {
       await window.vomit.agentExecute(prompt, cwd);
+    } catch (err) {
+      this.appendTerminalOutput(`Error: ${err.message}`, 'error');
+      this.state.isClaudeRunning = false;
+      this.terminalStop.classList.add('hidden');
+    }
+  }
+
+  async generatePresentation(topic, cwd) {
+    this.appendTerminalOutput(`❯ /presentation ${topic}`, 'input');
+    this.appendTerminalOutput('Generating presentation...', 'system');
+
+    const presentationPrompt = `Create a presentation about: ${topic}
+
+FORMAT RULES (follow exactly):
+- Separate slides with --- on its own line
+- Add speaker notes after ??? on its own line (optional per slide)
+- Use markdown formatting (# for titles, ## for subtitles, - for bullets)
+- Keep slides concise (3-5 bullet points max per slide)
+- Include a title slide, content slides, and a closing slide
+- Output ONLY the presentation markdown, no explanations
+
+EXAMPLE FORMAT:
+# Presentation Title
+Subtitle or tagline
+
+---
+
+## First Topic
+
+- Key point one
+- Key point two
+- Key point three
+
+???
+These are speaker notes that only the presenter sees.
+Explain the key points in more detail here.
+
+---
+
+## Second Topic
+
+- Another point
+- More content
+
+---
+
+## Conclusion
+
+- Summary point
+- Call to action
+
+???
+Wrap up and thank the audience.
+
+---
+
+Now create the presentation about: ${topic}`;
+
+    this.state.isClaudeRunning = true;
+    this.terminalStop.classList.remove('hidden');
+
+    // Collect the AI output
+    this.state.pseudoOutput = '';
+    this.state.pseudoCollecting = true;
+
+    try {
+      await window.vomit.claudeExecute(presentationPrompt, cwd);
+      await this.waitForAIComplete();
+
+      if (this.state.pseudoOutput.trim()) {
+        const presentation = this.state.pseudoOutput.trim();
+
+        // Insert into editor, replacing current content or at cursor
+        const currentContent = this.host.getContent();
+        if (currentContent.trim() === '') {
+          // Empty document - replace with presentation
+          this.host.setContent(presentation);
+          this.appendTerminalOutput('✓ Presentation inserted into editor', 'output');
+        } else {
+          // Has content - insert at cursor
+          this.host.cm.replaceSelection(presentation);
+          this.appendTerminalOutput('✓ Presentation inserted at cursor', 'output');
+        }
+      }
+      this.markOutputComplete();
     } catch (err) {
       this.appendTerminalOutput(`Error: ${err.message}`, 'error');
       this.state.isClaudeRunning = false;
