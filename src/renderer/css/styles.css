@@ -1497,6 +1497,63 @@ li.CodeMirror-hint-active {
   color: var(--text-muted);
 }
 
+/* Command autocomplete popup */
+.command-popup {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  margin-bottom: 4px;
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 1000;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.command-popup.hidden {
+  display: none;
+}
+
+.command-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.command-item:last-child {
+  border-bottom: none;
+}
+
+.command-item:hover {
+  background: var(--bg-tertiary);
+}
+
+.command-item .command-name {
+  color: var(--accent-color);
+  font-weight: 600;
+  font-family: 'SF Mono', 'Monaco', 'Menlo', monospace;
+  min-width: 100px;
+}
+
+.command-item .command-args {
+  color: var(--text-muted);
+  font-family: 'SF Mono', 'Monaco', 'Menlo', monospace;
+  font-size: 12px;
+  min-width: 80px;
+}
+
+.command-item .command-desc {
+  color: var(--text-secondary);
+  font-size: 12px;
+  flex: 1;
+}
+
 /* Adjust main container when terminal panel is visible */
 body:has(#terminal-panel:not(.hidden)) #main-container {
   height: calc(100vh - 324px); /* 300px terminal + 24px status bar */

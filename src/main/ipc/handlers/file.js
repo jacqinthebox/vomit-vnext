@@ -19,33 +19,17 @@ function createFileService({ state, bus, configStore }) {
       return;
     }
 
-    // Use current directory if within bucket, otherwise bucket root
+    // Determine target directory: current file's directory or bucket root
     let targetDir = bucketPath;
     if (state.currentFilePath && state.currentFilePath.startsWith(bucketPath)) {
       targetDir = path.dirname(state.currentFilePath);
     }
 
-    // Generate unique filename: untitled-1.md, untitled-2.md, etc.
-    let counter = 1;
-    let filePath;
-    do {
-      filePath = path.join(targetDir, `untitled-${counter}.md`);
-      counter++;
-    } while (fs.existsSync(filePath));
-
-    // Create the file immediately
-    fs.writeFileSync(filePath, '', 'utf-8');
-
-    // Load the new file
-    loadFile(filePath);
-
-    // Refresh file tree
-    bus.send('refresh-file-tree');
+    // Send to renderer to show file tree with inline input
+    bus.send('new-file-inline', targetDir);
   }
 
-  async function newPresentation() {
-    const bucketPath = configStore.getBucketPath();
-    const template = `---
+  const presentationTemplate = `---
 theme: catppuccin
 font-size: 16px
 ---
@@ -89,36 +73,40 @@ function greet(name) {
 Questions?
 `;
 
+  async function newPresentation() {
+    const bucketPath = configStore.getBucketPath();
+
     if (!bucketPath) {
       state.currentFilePath = null;
-      state.currentContent = template;
-      bus.send('load-content', template, null);
+      state.currentContent = presentationTemplate;
+      bus.send('load-content', presentationTemplate, null);
       bus.getMainWindow()?.setTitle('Untitled Presentation - Vomit');
       return;
     }
 
-    // Use current directory if within bucket, otherwise bucket root
+    // Determine target directory: current file's directory or bucket root
     let targetDir = bucketPath;
     if (state.currentFilePath && state.currentFilePath.startsWith(bucketPath)) {
       targetDir = path.dirname(state.currentFilePath);
     }
 
-    // Generate unique filename
-    let counter = 1;
-    let filePath;
-    do {
-      filePath = path.join(targetDir, `presentation-${counter}.md`);
-      counter++;
-    } while (fs.existsSync(filePath));
+    // Send to renderer to show file tree with inline input
+    bus.send('new-presentation-inline', targetDir);
+  }
 
-    // Create the file immediately with template
-    fs.writeFileSync(filePath, template, 'utf-8');
-
-    // Load the new file
-    loadFile(filePath);
-
-    // Refresh file tree
-    bus.send('refresh-file-tree');
+  function createPresentationFile(filePath) {
+    try {
+      // Ensure directory exists
+      const dir = path.dirname(filePath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      fs.writeFileSync(filePath, presentationTemplate, 'utf-8');
+      loadFile(filePath);
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
   }
 
   async function openFile() {
@@ -149,6 +137,58 @@ Questions?
       state.watchedFilePath = null;
     }
     state.lastKnownMtime = null;
+  }
+
+  // Directory watcher for file tree auto-refresh
+  let directoryWatcher = null;
+  let watchedDirectory = null;
+  let refreshDebounceTimer = null;
+
+  function stopDirectoryWatcher() {
+    if (directoryWatcher) {
+      try {
+        directoryWatcher.close();
+      } catch (err) {
+        // Ignore errors when closing watcher
+      }
+      directoryWatcher = null;
+      watchedDirectory = null;
+    }
+  }
+
+  function startDirectoryWatcher(dirPath) {
+    if (!dirPath || !fs.existsSync(dirPath)) {
+      return;
+    }
+
+    // Don't restart if already watching this directory
+    if (watchedDirectory === dirPath) {
+      return;
+    }
+
+    stopDirectoryWatcher();
+    watchedDirectory = dirPath;
+
+    try {
+      // Use fs.watch with recursive option for macOS
+      directoryWatcher = fs.watch(dirPath, { recursive: true }, (eventType, filename) => {
+        // Debounce rapid changes
+        if (refreshDebounceTimer) {
+          clearTimeout(refreshDebounceTimer);
+        }
+        refreshDebounceTimer = setTimeout(() => {
+          refreshDebounceTimer = null;
+          bus.send('refresh-file-tree');
+        }, 300);
+      });
+
+      directoryWatcher.on('error', () => {
+        // Silently handle watcher errors
+        stopDirectoryWatcher();
+      });
+    } catch (err) {
+      // Ignore directory watch errors
+    }
   }
 
   function startFileWatcher(filePath) {
@@ -190,6 +230,12 @@ Questions?
 
       // Start watching for external changes
       startFileWatcher(filePath);
+
+      // Start watching bucket directory for file tree auto-refresh
+      const bucketPath = configStore.getBucketPath();
+      if (bucketPath) {
+        startDirectoryWatcher(bucketPath);
+      }
 
       const basePath = path.dirname(filePath);
       bus.send('load-content', content, filePath, basePath);
@@ -328,6 +374,11 @@ Questions?
     ipcMain.on('open-file-dialog', () => openFile());
     ipcMain.on('save-as', () => saveFileAs());
 
+    // Create presentation file with template
+    ipcMain.handle('create-presentation-file', async (event, filePath) => {
+      return createPresentationFile(filePath);
+    });
+
     // Reload file from disk (for external changes)
     ipcMain.handle('reload-file', async (event, filePath) => {
       const pathToReload = filePath || state.currentFilePath;
@@ -357,6 +408,12 @@ Questions?
     // Get directory contents for file tree
     ipcMain.handle('get-directory-contents', async (event, dirPath) => {
       try {
+        // Start watching bucket directory for auto-refresh
+        const bucketPath = configStore.getBucketPath();
+        if (bucketPath) {
+          startDirectoryWatcher(bucketPath);
+        }
+
         const entries = fs.readdirSync(dirPath, { withFileTypes: true });
         const items = entries
           .filter(entry => !entry.name.startsWith('.')) // Hide hidden files

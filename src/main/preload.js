@@ -75,6 +75,14 @@ ipcRenderer.on('new-folder', () => {
   window.dispatchEvent(new CustomEvent('vomit:new-folder'));
 });
 
+ipcRenderer.on('new-file-inline', (event, targetDir) => {
+  window.dispatchEvent(new CustomEvent('vomit:new-file-inline', { detail: targetDir }));
+});
+
+ipcRenderer.on('new-presentation-inline', (event, targetDir) => {
+  window.dispatchEvent(new CustomEvent('vomit:new-presentation-inline', { detail: targetDir }));
+});
+
 ipcRenderer.on('format-command', (event, command) => {
   window.dispatchEvent(new CustomEvent('vomit:format-command', { detail: command }));
 });
@@ -207,6 +215,7 @@ contextBridge.exposeInMainWorld('vomit', {
   getBucketPath: () => ipcRenderer.invoke('get-bucket-path'),
   newFile: () => ipcRenderer.send('new-file'),
   newPresentation: () => ipcRenderer.send('new-presentation'),
+  createPresentationFile: (filePath) => ipcRenderer.invoke('create-presentation-file', filePath),
   openFileDialog: () => ipcRenderer.send('open-file-dialog'),
   saveAs: () => ipcRenderer.send('save-as'),
   // AI CLI methods

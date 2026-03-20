@@ -1,5 +1,22 @@
 // TerminalManager — AI terminal, shell terminal, commands, and output formatting.
 
+// Available commands with descriptions
+const COMMANDS = [
+  { cmd: '/write', args: '<prompt>', desc: 'Insert AI response at cursor position' },
+  { cmd: '/write-new', args: '<prompt>', desc: 'Create new file with AI response' },
+  { cmd: '/rewrite', args: '<prompt>', desc: 'Replace selection with AI response' },
+  { cmd: '/append', args: '<prompt>', desc: 'Add AI response at end of document' },
+  { cmd: '/doc', args: '<prompt>', desc: 'Ask AI about current document' },
+  { cmd: '/presentation', args: '<topic>', desc: 'Generate a presentation' },
+  { cmd: '/rag', args: '<query>', desc: 'Search with RAG context' },
+  { cmd: '/index', args: '[folder]', desc: 'Index folder for RAG search' },
+  { cmd: '/agent', args: '<prompt>', desc: 'Run in agent mode with tools' },
+  { cmd: '/pseudo', args: '', desc: 'Pseudonymize current document' },
+  { cmd: '/pseudo all', args: '', desc: 'Pseudonymize all files' },
+  { cmd: '/depseudo', args: '', desc: 'Restore original document' },
+  { cmd: '/new', args: '', desc: 'Start a new conversation' },
+];
+
 class TerminalManager {
   constructor({ state, host, dom, getTabManager, getPreviewManager, getFileTreeManager }) {
     this.state = state;
@@ -29,6 +46,13 @@ class TerminalManager {
 
     // pseudonymization output path
     this.pseudoOutputPath = null;
+
+    // Command autocomplete state
+    this.commandPopup = null;
+
+    // Write mode state (for streaming to editor)
+    this.writeMode = null; // null, 'cursor', 'new', 'replace', 'append'
+    this.writeBuffer = '';
   }
 
   get tabManager() { return this._getTabManager(); }
@@ -47,9 +71,15 @@ class TerminalManager {
     });
 
     window.addEventListener('vomit:claude-output', (e) => {
+      const cleanOutput = e.detail.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '');
+
       if (this.state.pseudoCollecting) {
-        const cleanOutput = e.detail.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '');
         this.state.pseudoOutput += cleanOutput;
+      } else if (this.writeMode) {
+        // In write mode, stream to editor AND show in terminal
+        this.writeBuffer += cleanOutput;
+        this.streamToEditor(cleanOutput);
+        this.appendTerminalOutput(e.detail, 'output');
       } else {
         this.appendTerminalOutput(e.detail, 'output');
       }
@@ -62,9 +92,14 @@ class TerminalManager {
     window.addEventListener('vomit:claude-done', (e) => {
       this.state.isClaudeRunning = false;
       this.terminalStop.classList.add('hidden');
-      this.markOutputComplete();
-      if (e.detail === -1) {
-        this.appendTerminalOutput('Stopped.', 'system');
+
+      if (this.writeMode) {
+        this.finalizeWriteMode(e.detail === -1);
+      } else {
+        this.markOutputComplete();
+        if (e.detail === -1) {
+          this.appendTerminalOutput('Stopped.', 'system');
+        }
       }
     });
 
@@ -104,10 +139,21 @@ class TerminalManager {
   setupTerminal() {
     if (!this.terminalInput) return;
 
+    // Handle input changes - show command popup when typing /
+    this.terminalInput.addEventListener('input', () => {
+      const value = this.terminalInput.value;
+      if (value.startsWith('/')) {
+        this.showCommandPopup(value);
+      } else {
+        this.hideCommandPopup();
+      }
+    });
+
     // Handle input submission
     this.terminalInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
+        this.hideCommandPopup();
         const command = this.terminalInput.value.trim();
         if (command) {
           this.executeClaudeCommand(command);
@@ -137,7 +183,9 @@ class TerminalManager {
           this.stopAI();
         }
       } else if (e.key === 'Escape') {
-        if (this.state.isClaudeRunning) {
+        if (this.commandPopup && !this.commandPopup.classList.contains('hidden')) {
+          this.hideCommandPopup();
+        } else if (this.state.isClaudeRunning) {
           this.stopAI();
         } else {
           // Close the terminal panel
@@ -205,6 +253,66 @@ class TerminalManager {
         this.stopAI();
       }
     });
+  }
+
+  showAvailableCommands() {
+    this.appendTerminalOutput('Available commands:', 'system');
+    COMMANDS.forEach(c => {
+      const args = c.args ? ` ${c.args}` : '';
+      this.appendTerminalOutput(`  ${c.cmd}${args}  —  ${c.desc}`, 'output');
+    });
+    this.appendTerminalOutput('', 'system');
+  }
+
+  showCommandPopup(filter = '/') {
+    // Create popup if it doesn't exist
+    if (!this.commandPopup) {
+      this.commandPopup = document.createElement('div');
+      this.commandPopup.className = 'command-popup hidden';
+      // Insert popup before the input container
+      const inputContainer = document.getElementById('terminal-input-container');
+      inputContainer.style.position = 'relative';
+      inputContainer.insertBefore(this.commandPopup, inputContainer.firstChild);
+    }
+
+    // Filter commands based on input
+    const filterText = filter.substring(1).toLowerCase(); // Remove leading /
+    const filtered = filterText
+      ? COMMANDS.filter(c => c.cmd.toLowerCase().includes(filterText))
+      : COMMANDS;
+
+    if (filtered.length === 0) {
+      this.hideCommandPopup();
+      return;
+    }
+
+    // Build popup content
+    this.commandPopup.innerHTML = filtered.map(c => {
+      const args = c.args ? c.args : '';
+      return `<div class="command-item" data-cmd="${c.cmd}">
+        <span class="command-name">${c.cmd}</span>
+        <span class="command-args">${args}</span>
+        <span class="command-desc">${c.desc}</span>
+      </div>`;
+    }).join('');
+
+    // Add click handlers
+    this.commandPopup.querySelectorAll('.command-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const cmd = item.dataset.cmd;
+        this.terminalInput.value = cmd + ' ';
+        this.terminalInput.focus();
+        this.hideCommandPopup();
+      });
+    });
+
+    this.commandPopup.classList.remove('hidden');
+  }
+
+  hideCommandPopup() {
+    if (this.commandPopup) {
+      this.commandPopup.classList.add('hidden');
+    }
   }
 
   switchTerminalTab(tabName) {
@@ -478,6 +586,13 @@ class TerminalManager {
   // --- AI commands ---
 
   async executeClaudeCommand(command) {
+    // Check for /help - show available commands (doesn't require cwd)
+    if (command.trim() === '/help') {
+      this.appendTerminalOutput('❯ /help', 'input');
+      this.showAvailableCommands();
+      return;
+    }
+
     // Get working directory - prefer project root, fall back to current file's directory
     const cwd = this.state.projectRoot || this.state.currentDirectory;
 
@@ -492,6 +607,42 @@ class TerminalManager {
       this.clearTerminal();
       this.appendTerminalOutput('New conversation started.', 'system');
       return;
+    }
+
+    // Check for /write command - insert AI response at cursor
+    if (command.startsWith('/write ') && !command.startsWith('/write-new ')) {
+      const prompt = command.substring(7).trim();
+      if (prompt) {
+        await this.executeWriteCommand(prompt, 'cursor', cwd);
+        return;
+      }
+    }
+
+    // Check for /write-new command - create new file with AI response
+    if (command.startsWith('/write-new ')) {
+      const prompt = command.substring(11).trim();
+      if (prompt) {
+        await this.executeWriteCommand(prompt, 'new', cwd);
+        return;
+      }
+    }
+
+    // Check for /rewrite command - replace selection with AI response
+    if (command.startsWith('/rewrite ')) {
+      const prompt = command.substring(9).trim();
+      if (prompt) {
+        await this.executeWriteCommand(prompt, 'replace', cwd);
+        return;
+      }
+    }
+
+    // Check for /append command - add AI response at end of document
+    if (command.startsWith('/append ')) {
+      const prompt = command.substring(8).trim();
+      if (prompt) {
+        await this.executeWriteCommand(prompt, 'append', cwd);
+        return;
+      }
     }
 
     // Check for /pseudo command
@@ -668,6 +819,128 @@ Now create the presentation about: ${topic}`;
       this.state.isClaudeRunning = false;
       this.terminalStop.classList.add('hidden');
     }
+  }
+
+  // --- Write commands (stream AI output to editor) ---
+
+  async executeWriteCommand(prompt, mode, cwd) {
+    const modeLabels = {
+      cursor: 'insert at cursor',
+      new: 'create new file',
+      replace: 'replace selection',
+      append: 'append to document'
+    };
+
+    const cmdName = mode === 'new' ? '/write-new' :
+                    mode === 'replace' ? '/rewrite' :
+                    mode === 'append' ? '/append' : '/write';
+
+    this.appendTerminalOutput(`❯ ${cmdName} ${prompt}`, 'input');
+    this.appendTerminalOutput(`Writing to editor (${modeLabels[mode]})...`, 'system');
+
+    // For replace mode, check if there's a selection
+    if (mode === 'replace') {
+      const selection = this.host.getSelection();
+      if (!selection) {
+        this.appendTerminalOutput('Error: No text selected. Select text first.', 'error');
+        return;
+      }
+    }
+
+    // Set up write mode
+    this.writeMode = mode;
+    this.writeBuffer = '';
+    this.writeStartCursor = null;
+
+    // For new file, create the file first
+    if (mode === 'new') {
+      // Trigger new file creation, wait for it to be ready
+      window.vomit.newFile();
+      // Wait a bit for the file to be created and loaded
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+
+    // Remember cursor position for streaming
+    if (mode === 'cursor') {
+      this.writeStartCursor = this.host.getCursor();
+    } else if (mode === 'replace') {
+      // Get selection range
+      const cm = this.host.raw;
+      this.writeSelectionStart = cm.getCursor('from');
+      this.writeSelectionEnd = cm.getCursor('to');
+      // Delete the selection first
+      this.host.replaceSelection('');
+      this.writeStartCursor = this.host.getCursor();
+    } else if (mode === 'append') {
+      // Move cursor to end of document
+      const cm = this.host.raw;
+      const lastLine = cm.lastLine();
+      const lastLineLength = cm.getLine(lastLine).length;
+      cm.setCursor({ line: lastLine, ch: lastLineLength });
+      // Add newlines before appending
+      this.host.replaceSelection('\n\n');
+      this.writeStartCursor = this.host.getCursor();
+    }
+
+    // Build the prompt with context if needed
+    let finalPrompt = prompt;
+    if (mode === 'replace') {
+      // Include the selected text for context
+      finalPrompt = `Rewrite/improve the following text based on this instruction: "${prompt}"\n\nOriginal text:\n${this.host.getSelection() || ''}\n\nProvide ONLY the rewritten text, no explanations.`;
+    } else if (mode !== 'new') {
+      // For cursor/append, provide document context
+      const docContent = this.host.getContent();
+      if (docContent.trim()) {
+        finalPrompt = `Context - current document:\n---\n${docContent}\n---\n\nTask: ${prompt}\n\nProvide ONLY the content to insert, no explanations or markdown code blocks.`;
+      }
+    }
+
+    this.state.isClaudeRunning = true;
+    this.terminalStop.classList.remove('hidden');
+
+    try {
+      await window.vomit.claudeExecute(finalPrompt, cwd);
+    } catch (err) {
+      this.appendTerminalOutput(`Error: ${err.message}`, 'error');
+      this.writeMode = null;
+      this.state.isClaudeRunning = false;
+      this.terminalStop.classList.add('hidden');
+    }
+  }
+
+  streamToEditor(text) {
+    if (!this.writeMode) return;
+
+    // Insert the new text at current cursor position
+    this.host.replaceSelection(text);
+  }
+
+  finalizeWriteMode(wasStopped) {
+    if (!this.writeMode) return;
+
+    const mode = this.writeMode;
+    this.writeMode = null;
+
+    // Mark terminal output as complete
+    this.markOutputComplete();
+
+    if (wasStopped) {
+      this.appendTerminalOutput('Stopped.', 'system');
+    } else {
+      const modeLabels = {
+        cursor: 'inserted at cursor',
+        new: 'written to new file',
+        replace: 'replaced selection',
+        append: 'appended to document'
+      };
+      this.appendTerminalOutput(`✓ Content ${modeLabels[mode]}`, 'output');
+    }
+
+    this.writeBuffer = '';
+    this.writeStartCursor = null;
+
+    // Focus the editor
+    this.host.focus();
   }
 
   async pseudonymizeCurrentDoc(cwd) {

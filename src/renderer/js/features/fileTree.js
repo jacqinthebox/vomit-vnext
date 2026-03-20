@@ -690,8 +690,104 @@ class FileTreeManager {
             this.state.treeCache.delete(targetDir);
             // Open the new file
             window.vomit.openFile(newFilePath);
+            // Focus editor after file loads
+            setTimeout(() => this.host.focus(), 100);
           } catch (err) {
             alert(`Failed to create file: ${err.message}`);
+          }
+        }
+      }
+      inputContainer.remove();
+      this.loadFileTree();
+    };
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        finishCreate(true);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        finishCreate(false);
+      }
+    });
+
+    input.addEventListener('blur', () => {
+      finishCreate(true);
+    });
+  }
+
+  async createNewPresentation(parentDir) {
+    // Use current directory if no parent specified
+    const targetDir = parentDir || this.state.currentDirectory;
+    if (!targetDir) {
+      alert('No folder open. Open a folder first.');
+      return;
+    }
+
+    // Create inline input in the file tree
+    const inputContainer = document.createElement('div');
+    inputContainer.className = 'file-item new-file-input';
+    inputContainer.innerHTML = `
+      <span class="icon">📄</span>
+      <input type="text" class="rename-input" placeholder="presentation.md" value="presentation.md">
+    `;
+
+    // Find where to insert the input
+    const parentEl = this.fileTree.querySelector(`.file-item[data-path="${CSS.escape(targetDir)}"]`);
+    let insertTarget = this.fileTree;
+
+    if (parentEl && parentEl.dataset.isDir === 'true') {
+      const childContainer = parentEl.nextElementSibling;
+      if (childContainer && childContainer.classList.contains('tree-children')) {
+        insertTarget = childContainer;
+      } else {
+        // Expand folder first if not expanded
+        if (!parentEl.classList.contains('expanded')) {
+          await this.toggleFolder(parentEl, targetDir);
+        }
+        const newChildContainer = parentEl.nextElementSibling;
+        if (newChildContainer && newChildContainer.classList.contains('tree-children')) {
+          insertTarget = newChildContainer;
+        }
+      }
+    }
+
+    // Insert at the beginning of the target container
+    insertTarget.insertBefore(inputContainer, insertTarget.firstChild);
+
+    const input = inputContainer.querySelector('input');
+    input.focus();
+    // Select just the filename part, not the extension
+    const dotIndex = input.value.lastIndexOf('.');
+    if (dotIndex > 0) {
+      input.setSelectionRange(0, dotIndex);
+    } else {
+      input.select();
+    }
+
+    let finished = false;
+    const finishCreate = async (save) => {
+      if (finished) return;
+      finished = true;
+
+      if (save) {
+        const fileName = input.value.trim();
+        if (fileName) {
+          const newFilePath = `${targetDir}/${fileName}`;
+          try {
+            // Create presentation file with template
+            const result = await window.vomit.createPresentationFile(newFilePath);
+            if (!result.success) {
+              throw new Error(result.error);
+            }
+            // Clear tree cache for parent to force refresh
+            this.state.treeCache.delete(targetDir);
+            // Focus editor after file loads
+            setTimeout(() => this.host.focus(), 100);
+          } catch (err) {
+            alert(`Failed to create presentation: ${err.message}`);
           }
         }
       }

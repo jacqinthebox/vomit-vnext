@@ -378,6 +378,38 @@ class Editor {
       this.fileTreeManager.createNewFolder();
     });
 
+    window.addEventListener('vomit:new-file-inline', (e) => {
+      const targetDir = e.detail;
+      // Set current directory if not set
+      if (!this.state.currentDirectory && targetDir) {
+        this.state.currentDirectory = targetDir;
+      }
+      // Show file tree if hidden, then create new file with inline input
+      if (!this.state.isFileTreeVisible) {
+        this.fileTreeManager.toggleFileTree();
+      }
+      // Small delay to ensure file tree is rendered before creating input
+      setTimeout(() => {
+        this.fileTreeManager.createNewFile(targetDir);
+      }, 50);
+    });
+
+    window.addEventListener('vomit:new-presentation-inline', (e) => {
+      const targetDir = e.detail;
+      // Set current directory if not set
+      if (!this.state.currentDirectory && targetDir) {
+        this.state.currentDirectory = targetDir;
+      }
+      // Show file tree if hidden, then create new presentation with inline input
+      if (!this.state.isFileTreeVisible) {
+        this.fileTreeManager.toggleFileTree();
+      }
+      // Small delay to ensure file tree is rendered before creating input
+      setTimeout(() => {
+        this.fileTreeManager.createNewPresentation(targetDir);
+      }, 50);
+    });
+
     window.addEventListener('vomit:format-command', (e) => {
       const command = e.detail;
       switch (command) {
