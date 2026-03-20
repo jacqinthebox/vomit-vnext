@@ -567,24 +567,36 @@ Questions?
 
     // File operations for pseudonymization
     ipcMain.handle('read-file', async (event, filePath) => {
-      return fs.readFileSync(filePath, 'utf-8');
+      try {
+        return fs.readFileSync(filePath, 'utf-8');
+      } catch (err) {
+        throw new Error(`Failed to read file: ${err.message}`);
+      }
     });
 
     ipcMain.handle('write-file', async (event, filePath, content) => {
-      // Ensure directory exists
-      const dir = path.dirname(filePath);
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
+      try {
+        // Ensure directory exists
+        const dir = path.dirname(filePath);
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
+        }
+        fs.writeFileSync(filePath, content, 'utf-8');
+        return true;
+      } catch (err) {
+        throw new Error(`Failed to write file: ${err.message}`);
       }
-      fs.writeFileSync(filePath, content, 'utf-8');
-      return true;
     });
 
     ipcMain.handle('create-directory', async (event, dirPath) => {
-      if (!fs.existsSync(dirPath)) {
-        fs.mkdirSync(dirPath, { recursive: true });
+      try {
+        if (!fs.existsSync(dirPath)) {
+          fs.mkdirSync(dirPath, { recursive: true });
+        }
+        return true;
+      } catch (err) {
+        throw new Error(`Failed to create directory: ${err.message}`);
       }
-      return true;
     });
   }
 

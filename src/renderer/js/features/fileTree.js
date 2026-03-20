@@ -470,7 +470,11 @@ class FileTreeManager {
     input.focus();
     input.select();
 
+    let finished = false;
     const finishRename = async (save) => {
+      if (finished) return;
+      finished = true;
+
       if (save) {
         const newName = input.value.trim();
         if (newName && newName !== currentName) {
@@ -582,7 +586,11 @@ class FileTreeManager {
     input.focus();
     input.select();
 
+    let finished = false;
     const finishCreate = async (save) => {
+      if (finished) return;
+      finished = true;
+
       if (save) {
         const folderName = input.value.trim();
         if (folderName) {
@@ -666,7 +674,11 @@ class FileTreeManager {
       input.select();
     }
 
+    let finished = false;
     const finishCreate = async (save) => {
+      if (finished) return;
+      finished = true;
+
       if (save) {
         const fileName = input.value.trim();
         if (fileName) {
