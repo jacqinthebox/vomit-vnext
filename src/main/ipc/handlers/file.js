@@ -7,19 +7,44 @@ const fs = require('fs');
 
 /**
  * Create file service with all file operations and IPC handlers.
- * @param {{ state: import('../../services/sessionState').SessionState, bus: import('../rendererBus').RendererBus, configStore: typeof import('../../services/configStore'), createMenu: () => void }} deps
+ * @param {{ state: import('../../services/sessionState').SessionState, bus: import('../rendererBus').RendererBus, configStore: typeof import('../../services/configStore') }} deps
  */
-function createFileService({ state, bus, configStore, createMenu }) {
+function createFileService({ state, bus, configStore }) {
 
   async function newFile() {
-    state.currentFilePath = null;
-    state.currentContent = '';
-    bus.send('load-content', '', null);
-    bus.getMainWindow()?.setTitle('Untitled - Vomit');
+    const bucketPath = configStore.getBucketPath();
+    if (!bucketPath) {
+      bus.send('load-content', '', null);
+      bus.getMainWindow()?.setTitle('Untitled - Vomit');
+      return;
+    }
+
+    // Use current directory if within bucket, otherwise bucket root
+    let targetDir = bucketPath;
+    if (state.currentFilePath && state.currentFilePath.startsWith(bucketPath)) {
+      targetDir = path.dirname(state.currentFilePath);
+    }
+
+    // Generate unique filename: untitled-1.md, untitled-2.md, etc.
+    let counter = 1;
+    let filePath;
+    do {
+      filePath = path.join(targetDir, `untitled-${counter}.md`);
+      counter++;
+    } while (fs.existsSync(filePath));
+
+    // Create the file immediately
+    fs.writeFileSync(filePath, '', 'utf-8');
+
+    // Load the new file
+    loadFile(filePath);
+
+    // Refresh file tree
+    bus.send('refresh-file-tree');
   }
 
   async function newPresentation() {
-    state.currentFilePath = null;
+    const bucketPath = configStore.getBucketPath();
     const template = `---
 theme: catppuccin
 font-size: 16px
@@ -63,39 +88,54 @@ function greet(name) {
 
 Questions?
 `;
-    state.currentContent = template;
-    bus.send('load-content', template, null);
-    bus.getMainWindow()?.setTitle('Untitled Presentation - Vomit');
+
+    if (!bucketPath) {
+      state.currentFilePath = null;
+      state.currentContent = template;
+      bus.send('load-content', template, null);
+      bus.getMainWindow()?.setTitle('Untitled Presentation - Vomit');
+      return;
+    }
+
+    // Use current directory if within bucket, otherwise bucket root
+    let targetDir = bucketPath;
+    if (state.currentFilePath && state.currentFilePath.startsWith(bucketPath)) {
+      targetDir = path.dirname(state.currentFilePath);
+    }
+
+    // Generate unique filename
+    let counter = 1;
+    let filePath;
+    do {
+      filePath = path.join(targetDir, `presentation-${counter}.md`);
+      counter++;
+    } while (fs.existsSync(filePath));
+
+    // Create the file immediately with template
+    fs.writeFileSync(filePath, template, 'utf-8');
+
+    // Load the new file
+    loadFile(filePath);
+
+    // Refresh file tree
+    bus.send('refresh-file-tree');
   }
 
   async function openFile() {
+    const bucketPath = configStore.getBucketPath();
     const result = await dialog.showOpenDialog(bus.getMainWindow(), {
       title: 'Open Markdown File',
       filters: [
         { name: 'Markdown Files', extensions: ['md', 'markdown'] },
         { name: 'All Files', extensions: ['*'] }
       ],
-      properties: ['openFile']
+      properties: ['openFile'],
+      defaultPath: bucketPath || undefined
     });
 
     if (!result.canceled && result.filePaths.length > 0) {
       const filePath = result.filePaths[0];
       loadFile(filePath);
-    }
-  }
-
-  async function openFolder() {
-    const result = await dialog.showOpenDialog(bus.getMainWindow(), {
-      title: 'Open Folder',
-      properties: ['openDirectory', 'createDirectory']
-    });
-
-    if (!result.canceled && result.filePaths.length > 0) {
-      const folderPath = result.filePaths[0];
-      state.currentProjectRoot = folderPath;
-      configStore.setLastOpenedFolder(folderPath);
-      bus.send('open-folder', folderPath);
-      bus.getMainWindow()?.setTitle(`${path.basename(folderPath)} - Vomit`);
     }
   }
 
@@ -148,11 +188,6 @@ Questions?
       state.currentFilePath = filePath;
       state.currentContent = content;
 
-      // Save as last opened file and add to recent
-      configStore.setLastOpenedFile(filePath);
-      configStore.addRecentFile(filePath);
-      createMenu();
-
       // Start watching for external changes
       startFileWatcher(filePath);
 
@@ -173,12 +208,13 @@ Questions?
   }
 
   async function saveFileAs() {
-    // Default to project root if available, otherwise use current file's directory
+    const bucketPath = configStore.getBucketPath();
     let defaultPath = 'untitled.md';
+
     if (state.currentFilePath) {
       defaultPath = state.currentFilePath;
-    } else if (state.currentProjectRoot) {
-      defaultPath = path.join(state.currentProjectRoot, 'untitled.md');
+    } else if (bucketPath) {
+      defaultPath = path.join(bucketPath, 'untitled.md');
     }
 
     const result = await dialog.showSaveDialog(bus.getMainWindow(), {
@@ -190,6 +226,17 @@ Questions?
     });
 
     if (!result.canceled && result.filePath) {
+      // Validate file is within bucket if bucket is configured
+      if (bucketPath && !result.filePath.startsWith(bucketPath)) {
+        await dialog.showMessageBox(bus.getMainWindow(), {
+          type: 'error',
+          title: 'Error',
+          message: 'Files must be saved within your bucket folder.',
+          detail: `Bucket location: ${bucketPath}`
+        });
+        return;
+      }
+
       state.currentFilePath = result.filePath;
       // Notify renderer of new file path so tab can update
       bus.send('file-saved-as', result.filePath);
@@ -270,26 +317,15 @@ Questions?
       return state.autoSaveEnabled;
     });
 
-    // Get recent files
-    ipcMain.handle('get-recent-files', () => {
-      const recentFiles = configStore.getRecentFiles();
-      return recentFiles
-        .filter(f => fs.existsSync(f))
-        .map(f => ({ path: f, name: path.basename(f) }));
-    });
-
-    // Check if there's a last session to restore
-    ipcMain.handle('has-last-session', () => {
-      const lastFolder = configStore.getLastOpenedFolder();
-      const lastFile = configStore.getLastOpenedFile();
-      return (lastFolder && fs.existsSync(lastFolder)) || (lastFile && fs.existsSync(lastFile));
+    // Get bucket path
+    ipcMain.handle('get-bucket-path', () => {
+      return configStore.getBucketPath();
     });
 
     // Command palette IPC handlers
     ipcMain.on('new-file', () => newFile());
     ipcMain.on('new-presentation', () => newPresentation());
     ipcMain.on('open-file-dialog', () => openFile());
-    ipcMain.on('open-folder-dialog', () => openFolder());
     ipcMain.on('save-as', () => saveFileAs());
 
     // Reload file from disk (for external changes)
@@ -460,12 +496,15 @@ Questions?
       return results;
     });
 
-    // Image handling
+    // Image handling - save to bucket/images
     ipcMain.handle('save-image', async (event, imageData, suggestedName) => {
       try {
-        // Determine save location - use folder next to current file, or temp
+        const bucketPath = configStore.getBucketPath();
         let imagesDir;
-        if (state.currentFilePath) {
+
+        if (bucketPath) {
+          imagesDir = path.join(bucketPath, 'images');
+        } else if (state.currentFilePath) {
           imagesDir = path.join(path.dirname(state.currentFilePath), 'images');
         } else {
           imagesDir = path.join(app.getPath('temp'), 'vomit-images');
@@ -490,8 +529,8 @@ Questions?
         // Refresh file tree to show new image
         bus.send('refresh-file-tree');
 
-        // Return relative path if we have a current file, otherwise absolute
-        if (state.currentFilePath) {
+        // Return relative path from bucket
+        if (bucketPath) {
           return `images/${filename}`;
         }
         return filepath;
@@ -550,7 +589,7 @@ Questions?
   }
 
   return {
-    newFile, newPresentation, openFile, openFolder,
+    newFile, newPresentation, openFile,
     loadFile, saveFile, saveFileAs, writeFile,
     stopFileWatcher, startFileWatcher,
     registerHandlers

@@ -2,6 +2,7 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const configStore = require('./services/configStore');
+const bucketSetup = require('./services/bucketSetup');
 const { SessionState } = require('./services/sessionState');
 const { RendererBus } = require('./ipc/rendererBus');
 const { createWindowManager } = require('./services/windowManager');
@@ -31,7 +32,7 @@ const windowManager = createWindowManager({
   getSaveFileAs: () => fileService.saveFileAs()
 });
 
-const fileService = createFileService({ state, bus, configStore, createMenu });
+const fileService = createFileService({ state, bus, configStore });
 
 const presentationService = createPresentationService({
   state, bus, configStore, windowManager
@@ -43,12 +44,10 @@ menuModule.register({
   bus,
   configStore,
   actions: {
-    loadFile: fileService.loadFile,
     createNewEditorWindow: windowManager.createNewEditorWindow,
     newFile: fileService.newFile,
     newPresentation: fileService.newPresentation,
     openFile: fileService.openFile,
-    openFolder: fileService.openFolder,
     saveFile: fileService.saveFile,
     saveFileAs: fileService.saveFileAs,
     exportToPDF: presentationService.exportToPDF,
@@ -71,45 +70,47 @@ shellHandlers.registerHandlers(ipcMain, { state, bus });
 rag.registerHandlers(ipcMain, { state, bus });
 
 // App lifecycle
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   aiHandlers.detectAITools(state);
+
+  // Check bucket configuration
+  let bucketPath = configStore.getBucketPath();
+
+  if (!bucketSetup.isBucketValid(bucketPath)) {
+    // First run or bucket deleted - show setup dialog
+    bucketPath = await bucketSetup.showBucketSetupDialog(null);
+
+    if (!bucketPath) {
+      // User cancelled setup - quit app
+      app.quit();
+      return;
+    }
+
+    configStore.setBucketPath(bucketPath);
+  }
+
+  // Set bucket as project root
+  state.currentProjectRoot = bucketPath;
+
   createMenu();
   windowManager.createMainWindow();
 
-  // Handle file/folder open from command line or Finder
+  // Auto-open bucket
+  bus.getMainWindow().webContents.once('did-finish-load', () => {
+    bus.send('open-folder', bucketPath);
+    bus.getMainWindow()?.setTitle(`${path.basename(bucketPath)} - Vomit`);
+  });
+
+  // Handle file open from command line or Finder (only within bucket)
   const args = process.argv.slice(2);
   if (args.length > 0 && fs.existsSync(args[0])) {
     const targetPath = path.resolve(args[0]);
-    const stats = fs.statSync(targetPath);
-    if (stats.isDirectory()) {
-      // Open folder
-      state.currentProjectRoot = targetPath;
-      configStore.setLastOpenedFolder(targetPath);
-      bus.getMainWindow().webContents.once('did-finish-load', () => {
-        bus.send('open-folder', targetPath);
-        bus.getMainWindow()?.setTitle(`${path.basename(targetPath)} - Vomit`);
-      });
-    } else {
-      // Open file
-      fileService.loadFile(targetPath);
-    }
-  } else {
-    // Try to restore last session (folder first, then file)
-    const lastFolder = configStore.getLastOpenedFolder();
-    const lastFile = configStore.getLastOpenedFile();
-
-    if (lastFolder && fs.existsSync(lastFolder)) {
-      state.currentProjectRoot = lastFolder;
-      bus.getMainWindow().webContents.once('did-finish-load', () => {
-        bus.send('open-folder', lastFolder);
-        bus.getMainWindow()?.setTitle(`${path.basename(lastFolder)} - Vomit`);
-        // Also load last file if it's within the folder
-        if (lastFile && fs.existsSync(lastFile) && lastFile.startsWith(lastFolder)) {
-          fileService.loadFile(lastFile);
-        }
-      });
-    } else if (lastFile && fs.existsSync(lastFile)) {
-      fileService.loadFile(lastFile);
+    // Only open if it's within the bucket
+    if (targetPath.startsWith(bucketPath)) {
+      const stats = fs.statSync(targetPath);
+      if (!stats.isDirectory()) {
+        fileService.loadFile(targetPath);
+      }
     }
   }
 
@@ -128,11 +129,15 @@ app.on('window-all-closed', () => {
 
 app.on('open-file', (event, filePath) => {
   event.preventDefault();
-  if (bus.getMainWindow()) {
-    fileService.loadFile(filePath);
-  } else {
-    app.whenReady().then(() => {
+  const bucketPath = configStore.getBucketPath();
+  // Only open if within bucket
+  if (bucketPath && filePath.startsWith(bucketPath)) {
+    if (bus.getMainWindow()) {
       fileService.loadFile(filePath);
-    });
+    } else {
+      app.whenReady().then(() => {
+        fileService.loadFile(filePath);
+      });
+    }
   }
 });

@@ -71,38 +71,6 @@ function setOllamaModel(model) {
   _bus.send('show-terminal');
 }
 
-function buildRecentFilesMenu() {
-  const recentFiles = _configStore.getRecentFiles();
-
-  if (recentFiles.length === 0) {
-    return [{ label: 'No Recent Files', enabled: false }];
-  }
-
-  const items = recentFiles
-    .filter(f => fs.existsSync(f)) // Only show files that still exist
-    .map((filePath, index) => ({
-      label: `${index + 1}. ${path.basename(filePath)}`,
-      sublabel: filePath,
-      click: () => _actions.loadFile(filePath)
-    }));
-
-  if (items.length === 0) {
-    return [{ label: 'No Recent Files', enabled: false }];
-  }
-
-  // Add clear option
-  items.push({ type: 'separator' });
-  items.push({
-    label: 'Clear Recent Files',
-    click: () => {
-      _configStore.clearRecentFiles();
-      createMenu();
-    }
-  });
-
-  return items;
-}
-
 function createMenu() {
   const template = [
     {
@@ -156,15 +124,6 @@ function createMenu() {
           label: 'Open File...',
           accelerator: 'CmdOrCtrl+O',
           click: () => _actions.openFile()
-        },
-        {
-          label: 'Open Folder...',
-          accelerator: 'CmdOrCtrl+Alt+O',
-          click: () => _actions.openFolder()
-        },
-        {
-          label: 'Open Recent',
-          submenu: buildRecentFilesMenu()
         },
         { type: 'separator' },
         {

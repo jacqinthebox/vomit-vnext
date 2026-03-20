@@ -127,15 +127,10 @@ class Editor {
   }
 
   async initializeSession() {
-    // Wait a moment for main process to send session data
-    const hasSession = await window.vomit.hasLastSession();
-
-    // If no session will be restored, create an empty tab after a short delay
-    // (give main process time to send load-content if there is a session)
-    if (!hasSession) {
-      this.tabManager.createTab(null, '');
-    }
-    // If there's a session, the main process will send load-content which creates the tab
+    // Bucket auto-opens from main process via open-folder event
+    // Create an empty tab initially - it will be replaced when bucket loads
+    // or used if no files exist yet
+    this.tabManager.createTab(null, '');
   }
 
   setupEditor() {

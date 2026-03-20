@@ -6,7 +6,7 @@ class CommandPaletteManager {
     this._getEditorActions = getEditorActions;
   }
 
-  async showCommandPalette() {
+  showCommandPalette() {
     // Remove existing palette if any
     const existing = document.querySelector('.command-palette');
     if (existing) {
@@ -24,7 +24,6 @@ class CommandPaletteManager {
       { section: 'File', label: 'New File', shortcut: '⌘N', action: () => window.vomit.newFile() },
       { section: 'File', label: 'New Presentation', shortcut: '⌘⌥N', action: () => window.vomit.newPresentation() },
       { section: 'File', label: 'Open File', shortcut: '⌘O', action: () => window.vomit.openFileDialog() },
-      { section: 'File', label: 'Open Folder', shortcut: '⌘⌥O', action: () => window.vomit.openFolderDialog() },
       { section: 'File', label: 'New Folder', shortcut: '⌘⇧F', action: () => actions.fileTreeManager.createNewFolder() },
       { section: 'File', label: 'New File in Folder', shortcut: '⌘⇧N', action: () => actions.fileTreeManager.createNewFile() },
       { section: 'File', label: 'Save', shortcut: '⌘S', action: () => window.vomit.saveContent(actions.getValue()) },
@@ -69,22 +68,6 @@ class CommandPaletteManager {
       // Help
       { section: 'Help', label: 'Keyboard Shortcuts', shortcut: '⌘/', action: () => actions.settingsManager.showShortcutsModal() },
     ];
-
-    // Get recent files
-    let recentFiles = [];
-    if (window.vomit && window.vomit.getRecentFiles) {
-      recentFiles = await window.vomit.getRecentFiles();
-    }
-
-    // Add recent files as commands
-    recentFiles.forEach(file => {
-      commands.push({
-        section: 'Recent Files',
-        label: file.name,
-        sublabel: file.path,
-        action: () => window.vomit.openFile(file.path)
-      });
-    });
 
     // Create palette UI
     const palette = document.createElement('div');

@@ -204,12 +204,10 @@ contextBridge.exposeInMainWorld('vomit', {
   requestSave: () => ipcRenderer.invoke('request-save'),
   reloadFile: (filePath) => ipcRenderer.invoke('reload-file', filePath),
   getAutoSaveEnabled: () => ipcRenderer.invoke('get-auto-save-enabled'),
-  getRecentFiles: () => ipcRenderer.invoke('get-recent-files'),
-  hasLastSession: () => ipcRenderer.invoke('has-last-session'),
+  getBucketPath: () => ipcRenderer.invoke('get-bucket-path'),
   newFile: () => ipcRenderer.send('new-file'),
   newPresentation: () => ipcRenderer.send('new-presentation'),
   openFileDialog: () => ipcRenderer.send('open-file-dialog'),
-  openFolderDialog: () => ipcRenderer.send('open-folder-dialog'),
   saveAs: () => ipcRenderer.send('save-as'),
   // AI CLI methods
   claudeExecute: (command, cwd) => ipcRenderer.invoke('claude-execute', command, cwd),
