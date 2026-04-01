@@ -189,6 +189,11 @@ ipcRenderer.on('shell-exit', (event, code) => {
   window.dispatchEvent(new CustomEvent('vomit:shell-exit', { detail: code }));
 });
 
+// Bucket management events
+ipcRenderer.on('bucket-switched', (event, bucket) => {
+  window.dispatchEvent(new CustomEvent('vomit:bucket-switched', { detail: bucket }));
+});
+
 // Expose only the send methods (no callbacks needed)
 contextBridge.exposeInMainWorld('vomit', {
   watchFile: (filePath) => ipcRenderer.send('watch-file', filePath),
@@ -236,5 +241,11 @@ contextBridge.exposeInMainWorld('vomit', {
   shellSpawn: (cwd) => ipcRenderer.invoke('shell-spawn', cwd),
   shellWrite: (data) => ipcRenderer.send('shell-write', data),
   shellResize: (cols, rows) => ipcRenderer.send('shell-resize', cols, rows),
-  shellStop: () => ipcRenderer.send('shell-stop')
+  shellStop: () => ipcRenderer.send('shell-stop'),
+  // Bucket management methods
+  getBuckets: () => ipcRenderer.invoke('get-buckets'),
+  getActiveBucket: () => ipcRenderer.invoke('get-active-bucket'),
+  switchBucket: (index) => ipcRenderer.invoke('switch-bucket', index),
+  addBucket: () => ipcRenderer.invoke('add-bucket'),
+  removeBucket: (index) => ipcRenderer.invoke('remove-bucket', index)
 });

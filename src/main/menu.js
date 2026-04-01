@@ -71,6 +71,61 @@ function setOllamaModel(model) {
   _bus.send('show-terminal');
 }
 
+function buildBucketsSubmenu() {
+  const submenu = [];
+  const buckets = _configStore.getBuckets();
+  const activeIndex = _configStore.getActiveBucketIndex();
+
+  // Add bucket radio items
+  buckets.forEach((bucket, index) => {
+    submenu.push({
+      label: bucket.name,
+      type: 'radio',
+      checked: index === activeIndex,
+      click: () => switchBucket(index)
+    });
+  });
+
+  // Separators and actions
+  if (buckets.length > 0) {
+    submenu.push({ type: 'separator' });
+  }
+
+  submenu.push({
+    label: 'Add Bucket...',
+    click: () => addBucket()
+  });
+
+  if (buckets.length > 0) {
+    submenu.push({ type: 'separator' });
+    const activeBucket = buckets[activeIndex];
+    submenu.push({
+      label: `Remove "${activeBucket?.name}"...`,
+      click: () => removeBucket(activeIndex)
+    });
+  }
+
+  return submenu;
+}
+
+async function switchBucket(index) {
+  if (_actions.switchBucket) {
+    _actions.switchBucket(index);
+  }
+}
+
+async function addBucket() {
+  if (_actions.addBucket) {
+    await _actions.addBucket();
+  }
+}
+
+async function removeBucket(index) {
+  if (_actions.removeBucket) {
+    await _actions.removeBucket(index);
+  }
+}
+
 function createMenu() {
   const template = [
     {
@@ -416,6 +471,10 @@ function createMenu() {
         { label: 'Tokyo Night', click: () => _actions.setTheme('tokyo-night') },
         { label: 'Solarized Dark', click: () => _actions.setTheme('solarized') }
       ]
+    },
+    {
+      label: 'Buckets',
+      submenu: buildBucketsSubmenu()
     },
     {
       label: 'AI',

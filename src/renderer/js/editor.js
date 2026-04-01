@@ -458,6 +458,18 @@ class Editor {
       this.commandPalette.showCommandPalette();
     });
 
+    // Bucket switching - clear cache before open-folder arrives
+    window.addEventListener('vomit:bucket-switched', (e) => {
+      // Clear file tree cache so the new bucket loads fresh
+      this.state.expandedFolders.clear();
+      this.state.treeCache.clear();
+
+      // The open-folder event will follow and handle:
+      // - Closing tabs (via fileTreeManager.openFolder)
+      // - Setting projectRoot and currentDirectory
+      // - Loading the file tree
+    });
+
   }
 
   async handleExternalFileChange(tab) {
