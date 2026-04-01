@@ -129,6 +129,10 @@ Press **Cmd+/** to open this help at any time.
 |---------|--------|
 | `/new` | Start a new conversation (clear history) |
 | `/doc <prompt>` | Include current document in prompt |
+| `/write <prompt>` | Insert AI response at cursor |
+| `/write-new <prompt>` | Create new file with AI response |
+| `/rewrite <prompt>` | Replace selection with AI response |
+| `/append <prompt>` | Add AI response at end of document |
 | `/pseudo` | Pseudonymize current document |
 | `/depseudo` | Restore original data from mapping |
 | `/index` | Index folder for RAG |

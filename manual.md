@@ -6,16 +6,19 @@ A keyboard-centric markdown editor for presentations and notes with local AI sup
 
 ## Getting Started
 
-### The Bucket
+### Buckets
 
-Vomit uses a single dedicated folder called the "bucket" to store all your notes and presentations. On first launch, you'll be asked to choose a location (default: `~/Documents/Vomit`).
+Vomit uses "buckets" - dedicated folders to store your notes and presentations. On first launch, you'll be asked to choose a location (default: `~/Documents/Vomit`).
 
-- All your files live in one place
-- New files are automatically created in the bucket
+- **Multiple buckets** - Add as many project folders as you need via the Buckets menu
+- **Quick switching** - Switch between buckets from the menu
+- New files are automatically created in the active bucket
 - Images are saved to `bucket/images/`
-- No need to "open folders" - just launch and write
 
-To change the bucket location, edit `~/Library/Application Support/Vomit/config.json`.
+**Managing buckets:**
+- **Buckets > Add Bucket...** - Add a new folder as a bucket
+- **Buckets > [bucket name]** - Switch to that bucket
+- **Buckets > Remove...** - Remove the active bucket from the list (files are not deleted)
 
 ### Basic Operations
 
@@ -138,6 +141,10 @@ Vomit includes a built-in AI terminal powered by Ollama. All processing happens 
 | Command | Description |
 |---------|-------------|
 | `/doc <prompt>` | Include current document in your prompt |
+| `/write <prompt>` | Insert AI response at cursor position |
+| `/write-new <prompt>` | Create a new file with AI response |
+| `/rewrite <prompt>` | Replace selection with AI response |
+| `/append <prompt>` | Add AI response at end of document |
 | `/pseudo` | Pseudonymize current document (names, emails, IPs) |
 | `/depseudo` | Restore original data from pseudonymized file |
 | `/index` | Index all documents for RAG search |

@@ -49,16 +49,17 @@ An opinionated, keyboard-centric markdown editor for presentations and notes wit
 - **Themes** - Default, Dark, Catppuccin, Nord, Solarized Dark
 - **Keyboard Shortcuts** - Full keyboard control for everything
 
-## The Bucket
+## Buckets
 
-Vomit uses a single dedicated folder called the "bucket" to store all your notes and presentations. On first launch, you'll be asked to choose a location (default: `~/Documents/Vomit`).
+Vomit uses "buckets" - dedicated folders to store your notes and presentations. On first launch, you'll be asked to choose a location (default: `~/Documents/Vomit`).
 
-- All your files live in one place
-- New files are automatically created in the bucket
+- **Multiple buckets** - Add as many project folders as you need via the Buckets menu
+- **Quick switching** - Switch between buckets with a single click
+- New files are automatically created in the active bucket
 - Images are saved to `bucket/images/`
-- No need to "open folders" - just launch and write
+- No need to manually open folders - just select a bucket and write
 
-To change the bucket location, edit `~/Library/Application Support/Vomit/config.json`.
+Manage buckets from the **Buckets** menu: add new buckets, switch between them, or remove ones you no longer need.
 
 ## Installation
 
@@ -173,6 +174,10 @@ Vomit includes a built-in AI terminal powered by [Ollama](https://ollama.ai). Al
 
 **Special commands:**
 - `/doc <prompt>` - Include the current document in your prompt
+- `/write <prompt>` - Insert AI response at cursor position
+- `/write-new <prompt>` - Create a new file with AI response
+- `/rewrite <prompt>` - Replace selection with AI response
+- `/append <prompt>` - Add AI response at end of document
 - `/presentation <topic>` - Generate a presentation with slides and speaker notes
 - `/pseudo` - Pseudonymize the current document (names, emails, IPs, secrets)
 - `/depseudo` - Restore original data from pseudonymized file using the mapping
