@@ -247,5 +247,7 @@ contextBridge.exposeInMainWorld('vomit', {
   getActiveBucket: () => ipcRenderer.invoke('get-active-bucket'),
   switchBucket: (index) => ipcRenderer.invoke('switch-bucket', index),
   addBucket: () => ipcRenderer.invoke('add-bucket'),
-  removeBucket: (index) => ipcRenderer.invoke('remove-bucket', index)
+  removeBucket: (index) => ipcRenderer.invoke('remove-bucket', index),
+  // App info
+  getAppVersion: () => ipcRenderer.invoke('get-app-version')
 });

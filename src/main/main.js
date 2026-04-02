@@ -78,6 +78,9 @@ agentHandlers.registerHandlers(ipcMain, { state, bus, configStore });
 shellHandlers.registerHandlers(ipcMain, { state, bus });
 rag.registerHandlers(ipcMain, { state, bus });
 
+// App info handler
+ipcMain.handle('get-app-version', () => app.getVersion());
+
 // Helper to find first valid bucket
 function findFirstValidBucket() {
   const buckets = configStore.getBuckets();

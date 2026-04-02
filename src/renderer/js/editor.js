@@ -7,6 +7,7 @@ class Editor {
     this.statusFile = document.getElementById('status-file');
     this.statusSlides = document.getElementById('status-slides');
     this.statusWords = document.getElementById('status-words');
+    this.statusVersion = document.getElementById('status-version');
     this.sidebarFiles = document.getElementById('sidebar-files');
     this.sidebarOutline = document.getElementById('sidebar-outline');
     this.sidebarSearch = document.getElementById('sidebar-search');
@@ -118,6 +119,9 @@ class Editor {
     this.terminalManager.setupShellTerminal();
     this.terminalManager.setupIPC();
     this.setupIPC();
+
+    // Display app version in status bar
+    this.displayVersion();
 
     // Initialize TabManager
     this.tabManager = new TabManager(this);
@@ -551,6 +555,17 @@ class Editor {
       }
 
       this.state.isRestoringTab = false;
+    }
+  }
+
+  async displayVersion() {
+    try {
+      const version = await window.vomit.getAppVersion();
+      if (this.statusVersion) {
+        this.statusVersion.textContent = `v${version}`;
+      }
+    } catch (err) {
+      console.error('Failed to get app version:', err);
     }
   }
 
