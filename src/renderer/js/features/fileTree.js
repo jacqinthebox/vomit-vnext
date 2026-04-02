@@ -1,143 +1,343 @@
-// FileTreeManager — File tree sidebar, folder navigation, context menus, and file operations.
+// FileTreeManager - Orchestrator for file tree
+// Coordinates TreeState, TreeDataModel, and TreeView
+// Handles user interactions, IPC, and sidebar visibility
 
 class FileTreeManager {
   constructor({ state, host, dom, getTabManager, getPreviewManager }) {
-    this.state = state;
+    this.editorState = state;
     this.host = host;
 
     // DOM refs
     this.sidebarFiles = dom.sidebarFiles;
     this.sidebarOutline = dom.sidebarOutline;
     this.sidebarSearch = dom.sidebarSearch;
-    this.fileTree = dom.fileTree;
+    this.fileTreeContainer = dom.fileTree;
     this.sidebarResize = dom.sidebarResize;
 
-    // Lazy getters for cross-module deps
+    // Lazy getters
     this._getTabManager = getTabManager;
     this._getPreviewManager = getPreviewManager;
+
+    // Create the three core components
+    this.treeState = new TreeState();
+    this.dataModel = new TreeDataModel();
+    this.treeView = new TreeView(this.fileTreeContainer, this.dataModel, this.treeState);
+
+    // Set up event handling
+    this._setupEventDelegation();
+    this._setupKeyboardNavigation();
   }
 
   get tabManager() { return this._getTabManager(); }
   get previewManager() { return this._getPreviewManager(); }
 
+  // ─────────────────────────────────────────────────────────────
+  // Sidebar visibility (independent of file operations)
+  // ─────────────────────────────────────────────────────────────
+
   toggleFileTree() {
-    this.state.isFileTreeVisible = !this.state.isFileTreeVisible;
-    this.sidebarFiles.classList.toggle('hidden', !this.state.isFileTreeVisible);
+    this.editorState.isFileTreeVisible = !this.editorState.isFileTreeVisible;
+    this.sidebarFiles.classList.toggle('hidden', !this.editorState.isFileTreeVisible);
     this.updateResizeHandle();
-    if (this.state.isFileTreeVisible) {
-      // Close other sidebars
-      this.state.isOutlineVisible = false;
-      this.state.isSearchVisible = false;
+
+    if (this.editorState.isFileTreeVisible) {
+      // Hide other sidebars
+      this.editorState.isOutlineVisible = false;
+      this.editorState.isSearchVisible = false;
       this.sidebarOutline.classList.add('hidden');
       this.sidebarSearch.classList.add('hidden');
-      this.state.focusedPane = 'sidebar';
-      this.loadFileTree().then(() => {
-        const firstItem = this.fileTree.querySelector('.file-item');
-        if (firstItem) firstItem.focus();
+      this.editorState.focusedPane = 'sidebar';
+
+      // Load tree if needed
+      this._ensureTreeLoaded().then(() => {
+        this._focusFirstOrSelected();
       });
     } else {
-      // Return focus to editor when hiding
-      this.state.focusedPane = 'editor';
+      this.editorState.focusedPane = 'editor';
       this.host.focus();
     }
   }
 
   toggleOutline() {
-    this.state.isOutlineVisible = !this.state.isOutlineVisible;
-    this.sidebarOutline.classList.toggle('hidden', !this.state.isOutlineVisible);
+    this.editorState.isOutlineVisible = !this.editorState.isOutlineVisible;
+    this.sidebarOutline.classList.toggle('hidden', !this.editorState.isOutlineVisible);
     this.updateResizeHandle();
-    if (this.state.isOutlineVisible) {
-      // Close other sidebars
-      this.state.isFileTreeVisible = false;
-      this.state.isSearchVisible = false;
+
+    if (this.editorState.isOutlineVisible) {
+      this.editorState.isFileTreeVisible = false;
+      this.editorState.isSearchVisible = false;
       this.sidebarFiles.classList.add('hidden');
       this.sidebarSearch.classList.add('hidden');
       this.previewManager.updateOutline();
     }
   }
 
-  navigateToParent() {
-    if (!this.state.currentDirectory) return;
-    // Don't navigate above project root
-    if (this.state.projectRoot && this.state.currentDirectory === this.state.projectRoot) return;
-
-    const parts = this.state.currentDirectory.split('/');
-    if (parts.length > 2) {
-      const newDir = parts.slice(0, -1).join('/');
-      // Extra check: don't go above project root
-      if (this.state.projectRoot && !newDir.startsWith(this.state.projectRoot)) return;
-
-      this.state.currentDirectory = newDir;
-      this.loadFileTree().then(() => {
-        // Focus first item after navigating up
-        const firstItem = this.fileTree.querySelector('.file-item');
-        if (firstItem) firstItem.focus();
-      });
-    }
+  updateResizeHandle() {
+    const anySidebarVisible = this.editorState.isFileTreeVisible ||
+                               this.editorState.isOutlineVisible ||
+                               this.editorState.isSearchVisible;
+    this.sidebarResize.classList.toggle('hidden', !anySidebarVisible);
   }
 
-  openFolder(folderPath) {
-    // Close all existing tabs when opening/switching projects
+  // ─────────────────────────────────────────────────────────────
+  // Tree loading
+  // ─────────────────────────────────────────────────────────────
+
+  async openFolder(folderPath) {
+    // Close tabs when switching projects
     if (this.tabManager) {
-      // If switching projects OR first time opening a folder with only an empty untitled tab
       const hasOnlyEmptyUntitled = this.tabManager.tabs.size === 1 &&
         !this.tabManager.tabs.values().next().value.filePath &&
         !this.tabManager.tabs.values().next().value.content.trim();
-
-      const isSwitchingProjects = this.state.projectRoot && this.state.projectRoot !== folderPath;
+      const isSwitchingProjects = this.treeState.rootPath && this.treeState.rootPath !== folderPath;
 
       if (isSwitchingProjects || hasOnlyEmptyUntitled) {
         this.tabManager.closeAllTabs(true, false);
-        // Create empty tab after switching projects
         if (isSwitchingProjects) {
           this.tabManager.createTab(null, '');
         }
       }
     }
 
-    this.state.currentDirectory = folderPath;
-    this.state.projectRoot = folderPath; // Set as project root - can't navigate above this
+    // Update editor state
+    this.editorState.currentDirectory = folderPath;
+    this.editorState.projectRoot = folderPath;
 
-    // Update sidebar header with folder name
+    // Update tree state and data model
+    this.treeState.setRoot(folderPath);
+    this.dataModel.setRoot(folderPath);
+
+    // Update sidebar header
     const folderName = folderPath.split('/').pop().toUpperCase();
     const sidebarFolderName = document.getElementById('sidebar-folder-name');
     if (sidebarFolderName) {
       sidebarFolderName.textContent = folderName;
     }
 
-    // Load file tree data (but don't show sidebar - user can toggle with Cmd+E)
-    this.loadFileTree();
+    // Load root children
+    await this.dataModel.loadChildren(folderPath);
   }
 
-  setupFileTreeContextMenu() {
-    // Context menu for sidebar header (create folder at project root)
-    const sidebarHeader = this.sidebarFiles.querySelector('.sidebar-header');
-    if (sidebarHeader) {
-      sidebarHeader.addEventListener('contextmenu', (e) => {
-        e.preventDefault();
-        if (this.state.projectRoot) {
-          this.showRootContextMenu(e.clientX, e.clientY);
-        }
-      });
+  async refresh() {
+    await this._ensureTreeLoaded();
+  }
+
+  async loadFileTree() {
+    await this._ensureTreeLoaded();
+  }
+
+  async _ensureTreeLoaded() {
+    // Use projectRoot as the stable tree root (not currentDirectory which follows open file)
+    const rootDir = this.editorState.projectRoot || this.editorState.currentDirectory;
+
+    if (!rootDir) {
+      const dir = await window.vomit.getCurrentDirectory();
+      if (dir) {
+        this.editorState.currentDirectory = dir;
+        this.editorState.projectRoot = dir;
+      }
     }
 
-    // Context menu for file tree empty space (create folder at current directory)
-    this.fileTree.addEventListener('contextmenu', (e) => {
-      // Only trigger if clicking on the file tree itself, not on file items
-      if (e.target === this.fileTree || e.target.classList.contains('empty-message')) {
+    const effectiveRoot = this.editorState.projectRoot || this.editorState.currentDirectory;
+
+    if (!effectiveRoot) {
+      this.fileTreeContainer.innerHTML = '<div class="file-item empty-message" style="color: var(--text-muted); padding: 16px;">Open a file to see its directory</div>';
+      return;
+    }
+
+    // Only set root if not already set OR if projectRoot changed
+    if (!this.treeState.rootPath || this.treeState.rootPath !== effectiveRoot) {
+      this.treeState.setRoot(effectiveRoot);
+      this.dataModel.setRoot(effectiveRoot);
+    }
+
+    // Load root children if not loaded
+    if (!this.dataModel.hasChildren(this.treeState.rootPath)) {
+      await this.dataModel.loadChildren(this.treeState.rootPath);
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Event delegation
+  // ─────────────────────────────────────────────────────────────
+
+  _setupEventDelegation() {
+    // Click handler
+    this.fileTreeContainer.addEventListener('click', async (e) => {
+      const el = e.target.closest('.file-item');
+      if (!el || !el.dataset.path) return;
+
+      const path = el.dataset.path;
+      const isDir = el.dataset.isDir === 'true';
+
+      if (isDir) {
+        await this._toggleFolder(path);
+      } else {
+        this._selectAndOpenFile(path);
+      }
+    });
+
+    // Context menu
+    this.fileTreeContainer.addEventListener('contextmenu', (e) => {
+      const el = e.target.closest('.file-item');
+      if (el && el.dataset.path) {
         e.preventDefault();
-        if (this.state.currentDirectory) {
-          this.showRootContextMenu(e.clientX, e.clientY);
+        this._showContextMenu(el, e.clientX, e.clientY);
+      } else if (e.target === this.fileTreeContainer || e.target.classList.contains('empty-message')) {
+        e.preventDefault();
+        if (this.editorState.currentDirectory) {
+          this._showRootContextMenu(e.clientX, e.clientY);
         }
       }
     });
   }
 
-  showRootContextMenu(x, y) {
-    // Remove any existing context menu
-    const existingMenu = document.querySelector('.file-context-menu');
-    if (existingMenu) existingMenu.remove();
+  _setupKeyboardNavigation() {
+    this.fileTreeContainer.addEventListener('keydown', async (e) => {
+      const el = e.target.closest('.file-item');
+      if (!el || !el.dataset.path) return;
 
+      const path = el.dataset.path;
+      const isDir = el.dataset.isDir === 'true';
+
+      switch (e.key) {
+        case 'Enter':
+          e.preventDefault();
+          if (isDir) {
+            await this._toggleFolder(path);
+          } else {
+            this._selectAndOpenFile(path);
+          }
+          break;
+
+        case 'ArrowDown':
+          e.preventDefault();
+          this._focusNext(path);
+          break;
+
+        case 'ArrowUp':
+          e.preventDefault();
+          this._focusPrev(path);
+          break;
+
+        case 'ArrowRight':
+          e.preventDefault();
+          if (isDir) {
+            if (!this.treeState.isExpanded(path)) {
+              await this._expandFolder(path);
+            } else {
+              this._focusNext(path);
+            }
+          }
+          break;
+
+        case 'ArrowLeft':
+          e.preventDefault();
+          if (isDir && this.treeState.isExpanded(path)) {
+            this.treeState.collapse(path);
+          } else {
+            this._focusParent(path);
+          }
+          break;
+
+        case 'Escape':
+          e.preventDefault();
+          this.host.focus();
+          this.editorState.focusedPane = 'editor';
+          break;
+      }
+    });
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Folder operations
+  // ─────────────────────────────────────────────────────────────
+
+  async _toggleFolder(path) {
+    if (this.treeState.isExpanded(path)) {
+      this.treeState.collapse(path);
+    } else {
+      await this._expandFolder(path);
+    }
+    this.treeState.focusedPath = path;
+  }
+
+  async _expandFolder(path) {
+    this.treeState.expand(path);
+
+    // Load children if not loaded
+    if (!this.dataModel.hasChildren(path)) {
+      await this.dataModel.loadChildren(path);
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // File selection
+  // ─────────────────────────────────────────────────────────────
+
+  _selectAndOpenFile(path) {
+    this.treeState.focusAndSelect(path);
+    this.editorState.focusedPane = 'sidebar';
+    window.vomit.openFile(path);
+    // Note: Tree stays visible. User must explicitly toggle to hide.
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Focus navigation
+  // ─────────────────────────────────────────────────────────────
+
+  _focusFirstOrSelected() {
+    if (this.treeState.selectedPath) {
+      this.treeState.focusedPath = this.treeState.selectedPath;
+    } else {
+      const visiblePaths = this.dataModel.getVisiblePaths(this.treeState.getExpandedPaths());
+      if (visiblePaths.length > 0) {
+        this.treeState.focusedPath = visiblePaths[0];
+      }
+    }
+  }
+
+  _focusNext(currentPath) {
+    const visiblePaths = this.dataModel.getVisiblePaths(this.treeState.getExpandedPaths());
+    const idx = visiblePaths.indexOf(currentPath);
+    if (idx >= 0 && idx < visiblePaths.length - 1) {
+      this.treeState.focusedPath = visiblePaths[idx + 1];
+    }
+  }
+
+  _focusPrev(currentPath) {
+    const visiblePaths = this.dataModel.getVisiblePaths(this.treeState.getExpandedPaths());
+    const idx = visiblePaths.indexOf(currentPath);
+    if (idx > 0) {
+      this.treeState.focusedPath = visiblePaths[idx - 1];
+    }
+  }
+
+  _focusParent(path) {
+    const parentPath = this.dataModel.getParentPath(path);
+    if (parentPath && parentPath !== this.treeState.rootPath) {
+      this.treeState.focusedPath = parentPath;
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Context menus
+  // ─────────────────────────────────────────────────────────────
+
+  setupFileTreeContextMenu() {
+    const sidebarHeader = this.sidebarFiles.querySelector('.sidebar-header');
+    if (sidebarHeader) {
+      sidebarHeader.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        if (this.treeState.rootPath) {
+          this._showRootContextMenu(e.clientX, e.clientY);
+        }
+      });
+    }
+  }
+
+  _showRootContextMenu(x, y) {
+    this._removeContextMenu();
     const menu = document.createElement('div');
     menu.className = 'file-context-menu';
     menu.innerHTML = `
@@ -148,273 +348,26 @@ class FileTreeManager {
     menu.style.top = `${y}px`;
     document.body.appendChild(menu);
 
-    // Handle menu item clicks
     menu.addEventListener('click', (e) => {
       const action = e.target.dataset.action;
+      // Use treeState.rootPath for root context menu (not currentDirectory which may be a subdirectory)
+      const rootPath = this.treeState.rootPath;
       if (action === 'new-file') {
-        this.createNewFile(this.state.currentDirectory);
+        this.createNewFile(rootPath);
       } else if (action === 'new-folder') {
-        this.createNewFolder(this.state.currentDirectory);
+        this.createNewFolder(rootPath);
       }
       menu.remove();
     });
 
-    // Close menu on outside click
-    const closeMenu = (e) => {
-      if (!menu.contains(e.target)) {
-        menu.remove();
-        document.removeEventListener('click', closeMenu);
-      }
-    };
-    setTimeout(() => document.addEventListener('click', closeMenu), 0);
+    this._closeMenuOnOutsideClick(menu);
   }
 
-  updateResizeHandle() {
-    const anySidebarVisible = this.state.isFileTreeVisible || this.state.isOutlineVisible || this.state.isSearchVisible;
-    this.sidebarResize.classList.toggle('hidden', !anySidebarVisible);
-  }
-
-  async loadFileTree() {
-    if (!this.state.currentDirectory) {
-      // Try to get current directory from main process
-      this.state.currentDirectory = await window.vomit.getCurrentDirectory();
-    }
-
-    if (!this.state.currentDirectory) {
-      this.fileTree.innerHTML = '<div class="file-item" style="color: var(--text-muted); padding: 16px;">Open a file to see its directory</div>';
-      return;
-    }
-
-    const items = await window.vomit.getDirectoryContents(this.state.currentDirectory);
-    this.renderFileTree(items);
-  }
-
-  renderFileTree(items) {
-    if (!items || items.length === 0) {
-      this.fileTree.innerHTML = '<div class="file-item empty-message" style="color: var(--text-muted);">Empty folder</div>';
-      return;
-    }
-
-    // Cache items for the current directory
-    this.state.treeCache.set(this.state.currentDirectory, items);
-
-    // Render tree starting from root
-    this.fileTree.innerHTML = '';
-
-    // Add ".." parent item if not at project root
-    const isAtProjectRoot = this.state.projectRoot && this.state.currentDirectory === this.state.projectRoot;
-    if (!isAtProjectRoot && this.state.currentDirectory) {
-      const parentItem = document.createElement('div');
-      parentItem.className = 'file-item directory parent-dir';
-      parentItem.dataset.path = this.state.currentDirectory.split('/').slice(0, -1).join('/');
-      parentItem.dataset.isDir = 'true';
-      parentItem.dataset.depth = '0';
-      parentItem.tabIndex = 0;
-      parentItem.style.paddingLeft = '8px';
-      parentItem.innerHTML = `
-        <span class="chevron"></span>
-        <span class="icon"></span>
-        <span class="name">..</span>
-      `;
-      parentItem.addEventListener('click', () => this.navigateToParent());
-      parentItem.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          this.navigateToParent();
-        } else if (e.key === 'ArrowDown') {
-          e.preventDefault();
-          this.focusNextTreeItem(parentItem);
-        }
-      });
-      this.fileTree.appendChild(parentItem);
-    }
-
-    this.renderTreeItems(items, this.fileTree, 0);
-    this.attachTreeHandlers();
-  }
-
-  renderTreeItems(items, container, depth) {
-    const chevronSvg = `<svg viewBox="0 0 16 16" fill="currentColor"><path d="M6 4l4 4-4 4"/></svg>`;
-
-    items.forEach(item => {
-      const isActive = item.path === this.state.currentFilePath;
-      const isExpanded = this.state.expandedFolders.has(item.path);
-      const typeClass = item.isDirectory ? 'directory' : (item.isMarkdown ? 'markdown' : 'file');
-      const activeClass = isActive ? 'active' : '';
-      const expandedClass = isExpanded ? 'expanded' : '';
-      const indent = depth * 16;
-
-      const itemEl = document.createElement('div');
-      itemEl.className = `file-item ${typeClass} ${activeClass} ${expandedClass}`.trim();
-      itemEl.dataset.path = item.path;
-      itemEl.dataset.isDir = item.isDirectory;
-      itemEl.dataset.depth = depth;
-      itemEl.tabIndex = 0;
-      itemEl.style.paddingLeft = `${8 + indent}px`;
-      itemEl.innerHTML = `
-        <span class="chevron">${chevronSvg}</span>
-        <span class="icon"></span>
-        <span class="name">${item.name}</span>
-      `;
-      container.appendChild(itemEl);
-
-      // If directory is expanded and we have cached children, render them
-      if (item.isDirectory && isExpanded) {
-        const childContainer = document.createElement('div');
-        childContainer.className = 'tree-children expanded';
-        childContainer.dataset.parentPath = item.path;
-        container.appendChild(childContainer);
-
-        const cachedChildren = this.state.treeCache.get(item.path);
-        if (cachedChildren) {
-          this.renderTreeItems(cachedChildren, childContainer, depth + 1);
-        }
-      }
-    });
-  }
-
-  attachTreeHandlers() {
-    this.fileTree.querySelectorAll('.file-item').forEach(el => {
-      const handleToggle = async () => {
-        const filePath = el.dataset.path;
-        const isDir = el.dataset.isDir === 'true';
-
-        if (isDir) {
-          await this.toggleFolder(el, filePath);
-        } else {
-          // Update active state
-          this.fileTree.querySelectorAll('.file-item.active').forEach(item => item.classList.remove('active'));
-          el.classList.add('active');
-          this.state.focusedPane = 'sidebar';
-          window.vomit.openFile(filePath);
-        }
-      };
-
-      el.addEventListener('click', handleToggle);
-      el.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          handleToggle();
-        } else if (e.key === 'ArrowDown') {
-          e.preventDefault();
-          this.focusNextTreeItem(el);
-        } else if (e.key === 'ArrowUp') {
-          e.preventDefault();
-          this.focusPrevTreeItem(el);
-        } else if (e.key === 'ArrowRight') {
-          e.preventDefault();
-          const isDir = el.dataset.isDir === 'true';
-          const isExpanded = el.classList.contains('expanded');
-          if (isDir && !isExpanded) {
-            handleToggle();
-          } else if (isDir && isExpanded) {
-            this.focusNextTreeItem(el);
-          }
-        } else if (e.key === 'ArrowLeft') {
-          e.preventDefault();
-          const isDir = el.dataset.isDir === 'true';
-          const isExpanded = el.classList.contains('expanded');
-          if (isDir && isExpanded) {
-            handleToggle();
-          } else {
-            this.focusParentFolder(el);
-          }
-        } else if (e.key === 'Escape') {
-          this.host.focus();
-          this.state.focusedPane = 'editor';
-        }
-      });
-
-      el.addEventListener('contextmenu', (e) => {
-        e.preventDefault();
-        this.showFileContextMenu(el, e.clientX, e.clientY);
-      });
-    });
-  }
-
-  async toggleFolder(el, folderPath) {
-    const isExpanded = el.classList.contains('expanded');
-
-    if (isExpanded) {
-      // Collapse: remove expanded class and children container
-      el.classList.remove('expanded');
-      this.state.expandedFolders.delete(folderPath);
-      const childContainer = el.nextElementSibling;
-      if (childContainer && childContainer.classList.contains('tree-children')) {
-        childContainer.remove();
-      }
-    } else {
-      // Expand: add expanded class and load children
-      el.classList.add('expanded');
-      this.state.expandedFolders.add(folderPath);
-
-      // Check cache first
-      let children = this.state.treeCache.get(folderPath);
-      if (!children) {
-        children = await window.vomit.getDirectoryContents(folderPath);
-        this.state.treeCache.set(folderPath, children);
-      }
-
-      if (children && children.length > 0) {
-        const childContainer = document.createElement('div');
-        childContainer.className = 'tree-children expanded';
-        childContainer.dataset.parentPath = folderPath;
-        el.after(childContainer);
-
-        const depth = parseInt(el.dataset.depth) + 1;
-        this.renderTreeItems(children, childContainer, depth);
-        this.attachTreeHandlers();
-      }
-    }
-  }
-
-  focusNextTreeItem(el) {
-    // Get all visible file items
-    const allItems = Array.from(this.fileTree.querySelectorAll('.file-item'));
-    const currentIndex = allItems.indexOf(el);
-    if (currentIndex < allItems.length - 1) {
-      allItems[currentIndex + 1].focus();
-    }
-  }
-
-  focusPrevTreeItem(el) {
-    const allItems = Array.from(this.fileTree.querySelectorAll('.file-item'));
-    const currentIndex = allItems.indexOf(el);
-    if (currentIndex > 0) {
-      allItems[currentIndex - 1].focus();
-    }
-  }
-
-  focusParentFolder(el) {
-    // Find the parent folder by looking at depth
-    const depth = parseInt(el.dataset.depth);
-    if (depth === 0) return;
-
-    const allItems = Array.from(this.fileTree.querySelectorAll('.file-item'));
-    const currentIndex = allItems.indexOf(el);
-
-    // Search backwards for an item with lower depth
-    for (let i = currentIndex - 1; i >= 0; i--) {
-      const itemDepth = parseInt(allItems[i].dataset.depth);
-      if (itemDepth < depth) {
-        allItems[i].focus();
-        return;
-      }
-    }
-  }
-
-  showFileContextMenu(el, x, y) {
-    // Remove any existing context menu
-    const existingMenu = document.querySelector('.file-context-menu');
-    if (existingMenu) existingMenu.remove();
-
-    const filePath = el.dataset.path;
-    const isParentDir = el.classList.contains('parent-dir');
-
-    // Don't show menu for parent directory (..)
-    if (isParentDir) return;
-
+  _showContextMenu(el, x, y) {
+    this._removeContextMenu();
+    const path = el.dataset.path;
     const isDir = el.dataset.isDir === 'true';
+
     const menu = document.createElement('div');
     menu.className = 'file-context-menu';
     menu.innerHTML = `
@@ -430,26 +383,39 @@ class FileTreeManager {
     menu.style.top = `${y}px`;
     document.body.appendChild(menu);
 
-    // Handle menu item clicks
-    menu.addEventListener('click', (e) => {
+    menu.addEventListener('click', async (e) => {
       const action = e.target.dataset.action;
-      if (action === 'new-file') {
-        const targetDir = isDir ? filePath : this.state.currentDirectory;
-        this.createNewFile(targetDir);
-      } else if (action === 'new-folder') {
-        const targetDir = isDir ? filePath : this.state.currentDirectory;
-        this.createNewFolder(targetDir);
-      } else if (action === 'rename') {
-        this.startRename(el);
-      } else if (action === 'delete') {
-        this.deleteItem(filePath);
-      } else if (action === 'finder') {
-        window.vomit.showInFinder(filePath);
+      const targetDir = isDir ? path : this._getParentPath(path);
+
+      switch (action) {
+        case 'new-file':
+          this.createNewFile(targetDir);
+          break;
+        case 'new-folder':
+          this.createNewFolder(targetDir);
+          break;
+        case 'rename':
+          this._startRename(path);
+          break;
+        case 'delete':
+          await this._deleteItem(path);
+          break;
+        case 'finder':
+          window.vomit.showInFinder(path);
+          break;
       }
       menu.remove();
     });
 
-    // Close menu on outside click
+    this._closeMenuOnOutsideClick(menu);
+  }
+
+  _removeContextMenu() {
+    const existing = document.querySelector('.file-context-menu');
+    if (existing) existing.remove();
+  }
+
+  _closeMenuOnOutsideClick(menu) {
     const closeMenu = (e) => {
       if (!menu.contains(e.target)) {
         menu.remove();
@@ -459,71 +425,376 @@ class FileTreeManager {
     setTimeout(() => document.addEventListener('click', closeMenu), 0);
   }
 
-  startRename(el) {
-    const filePath = el.dataset.path;
-    const nameSpan = el.querySelector('.name');
-    const currentName = nameSpan.textContent;
+  _getParentPath(path) {
+    return path.substring(0, path.lastIndexOf('/'));
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Create new folder
+  // ─────────────────────────────────────────────────────────────
+
+  async createNewFolder(parentPath) {
+    // Determine target: explicit path > focused item > root
+    let targetDir = parentPath;
+
+    if (!targetDir && this.treeState.focusedPath) {
+      const focusedNode = this.dataModel.getNode(this.treeState.focusedPath);
+      if (focusedNode) {
+        // If focused on a directory, create inside it; otherwise create in parent
+        targetDir = focusedNode.isDirectory ? focusedNode.path : focusedNode.parentPath;
+      }
+    }
+
+    targetDir = targetDir || this.treeState.rootPath || this.editorState.currentDirectory;
+
+    if (!targetDir) {
+      alert('No folder open. Open a folder first.');
+      return;
+    }
+
+    // Ensure parent is expanded and loaded
+    if (targetDir !== this.treeState.rootPath) {
+      await this._expandFolder(targetDir);
+    }
+
+    // Get container for inline input
+    const container = this.treeView.ensureChildContainer(targetDir);
 
     // Create inline input
+    const inputContainer = document.createElement('div');
+    inputContainer.className = 'file-item new-folder-input';
+    inputContainer.innerHTML = `
+      <span class="icon">📁</span>
+      <input type="text" class="rename-input" placeholder="folder name" value="New Folder">
+    `;
+    container.insertBefore(inputContainer, container.firstChild);
+
+    const input = inputContainer.querySelector('input');
+    input.focus();
+    input.select();
+
+    const finish = async (save) => {
+      input.removeEventListener('blur', onBlur);
+      input.removeEventListener('keydown', onKeydown);
+
+      if (save) {
+        const name = input.value.trim();
+        if (name) {
+          const newPath = `${targetDir}/${name}`;
+          try {
+            await window.vomit.createDirectory(newPath);
+
+            // Add to data model
+            this.dataModel.addNode(newPath, {
+              name,
+              isDirectory: true,
+              parentPath: targetDir
+            });
+
+            // Expand and focus the new folder
+            this.treeState.expand(newPath);
+            this.treeState.focusedPath = newPath;
+          } catch (err) {
+            console.error('Failed to create folder:', err);
+            alert(`Failed to create folder: ${err.message || err}`);
+          }
+        }
+      }
+
+      inputContainer.remove();
+    };
+
+    const onBlur = () => finish(true);
+    const onKeydown = (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        finish(true);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        finish(false);
+      }
+    };
+
+    input.addEventListener('blur', onBlur);
+    input.addEventListener('keydown', onKeydown);
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Create new file
+  // ─────────────────────────────────────────────────────────────
+
+  async createNewFile(parentPath) {
+    // Determine target: explicit path > focused item > root
+    let targetDir = parentPath;
+
+    if (!targetDir && this.treeState.focusedPath) {
+      const focusedNode = this.dataModel.getNode(this.treeState.focusedPath);
+      if (focusedNode) {
+        // If focused on a directory, create inside it; otherwise create in parent
+        targetDir = focusedNode.isDirectory ? focusedNode.path : focusedNode.parentPath;
+      }
+    }
+
+    targetDir = targetDir || this.treeState.rootPath || this.editorState.currentDirectory;
+
+    if (!targetDir) {
+      alert('No folder open. Open a folder first.');
+      return;
+    }
+
+    // Ensure parent is expanded and loaded
+    if (targetDir !== this.treeState.rootPath) {
+      await this._expandFolder(targetDir);
+    }
+
+    // Get container for inline input
+    const container = this.treeView.ensureChildContainer(targetDir);
+
+    // Create inline input
+    const inputContainer = document.createElement('div');
+    inputContainer.className = 'file-item new-file-input';
+    inputContainer.innerHTML = `
+      <span class="icon">📄</span>
+      <input type="text" class="rename-input" placeholder="filename.md" value="untitled.md">
+    `;
+    container.insertBefore(inputContainer, container.firstChild);
+
+    const input = inputContainer.querySelector('input');
+    input.focus();
+    const dotIdx = input.value.lastIndexOf('.');
+    if (dotIdx > 0) {
+      input.setSelectionRange(0, dotIdx);
+    } else {
+      input.select();
+    }
+
+    const finish = async (save) => {
+      input.removeEventListener('blur', onBlur);
+      input.removeEventListener('keydown', onKeydown);
+
+      let newPath = null;
+
+      if (save) {
+        const name = input.value.trim();
+        if (name) {
+          newPath = `${targetDir}/${name}`;
+          try {
+            await window.vomit.writeFile(newPath, '');
+
+            // Add to data model
+            this.dataModel.addNode(newPath, {
+              name,
+              isDirectory: false,
+              parentPath: targetDir
+            });
+
+            // Select and open the file
+            this.treeState.focusAndSelect(newPath);
+            window.vomit.openFile(newPath);
+          } catch (err) {
+            console.error('Failed to create file:', err);
+            alert(`Failed to create file: ${err.message || err}`);
+            newPath = null;
+          }
+        }
+      }
+
+      inputContainer.remove();
+
+      // Focus editor for new file (tree stays visible)
+      if (newPath) {
+        this.host.focus();
+      }
+    };
+
+    const onBlur = () => finish(true);
+    const onKeydown = (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        finish(true);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        finish(false);
+      }
+    };
+
+    input.addEventListener('blur', onBlur);
+    input.addEventListener('keydown', onKeydown);
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Create new presentation
+  // ─────────────────────────────────────────────────────────────
+
+  async createNewPresentation(parentPath) {
+    // Determine target: explicit path > focused item > root
+    let targetDir = parentPath;
+
+    if (!targetDir && this.treeState.focusedPath) {
+      const focusedNode = this.dataModel.getNode(this.treeState.focusedPath);
+      if (focusedNode) {
+        // If focused on a directory, create inside it; otherwise create in parent
+        targetDir = focusedNode.isDirectory ? focusedNode.path : focusedNode.parentPath;
+      }
+    }
+
+    targetDir = targetDir || this.treeState.rootPath || this.editorState.currentDirectory;
+
+    if (!targetDir) {
+      alert('No folder open. Open a folder first.');
+      return;
+    }
+
+    // Ensure parent is expanded and loaded
+    if (targetDir !== this.treeState.rootPath) {
+      await this._expandFolder(targetDir);
+    }
+
+    // Get container for inline input
+    const container = this.treeView.ensureChildContainer(targetDir);
+
+    // Create inline input
+    const inputContainer = document.createElement('div');
+    inputContainer.className = 'file-item new-file-input';
+    inputContainer.innerHTML = `
+      <span class="icon">📄</span>
+      <input type="text" class="rename-input" placeholder="presentation.md" value="presentation.md">
+    `;
+    container.insertBefore(inputContainer, container.firstChild);
+
+    const input = inputContainer.querySelector('input');
+    input.focus();
+    const dotIdx = input.value.lastIndexOf('.');
+    if (dotIdx > 0) {
+      input.setSelectionRange(0, dotIdx);
+    }
+
+    const finish = async (save) => {
+      input.removeEventListener('blur', onBlur);
+      input.removeEventListener('keydown', onKeydown);
+
+      if (save) {
+        const name = input.value.trim();
+        if (name) {
+          const newPath = `${targetDir}/${name}`;
+          try {
+            const result = await window.vomit.createPresentationFile(newPath);
+            if (!result.success) throw new Error(result.error);
+
+            // Add to data model
+            this.dataModel.addNode(newPath, {
+              name,
+              isDirectory: false,
+              parentPath: targetDir
+            });
+
+            this.treeState.focusAndSelect(newPath);
+          } catch (err) {
+            console.error('Failed to create presentation:', err);
+            alert(`Failed to create presentation: ${err.message || err}`);
+          }
+        }
+      }
+
+      inputContainer.remove();
+      this.host.focus();
+    };
+
+    const onBlur = () => finish(true);
+    const onKeydown = (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        finish(true);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        finish(false);
+      }
+    };
+
+    input.addEventListener('blur', onBlur);
+    input.addEventListener('keydown', onKeydown);
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Rename
+  // ─────────────────────────────────────────────────────────────
+
+  _startRename(path) {
+    const el = this.treeView.getElement(path);
+    if (!el) return;
+
+    const node = this.dataModel.getNode(path);
+    if (!node) return;
+
+    const nameSpan = el.querySelector('.name');
+    const currentName = node.name;
+
     const input = document.createElement('input');
     input.type = 'text';
     input.className = 'rename-input';
     input.value = currentName;
 
-    // Replace name span with input
     nameSpan.style.display = 'none';
     el.appendChild(input);
     input.focus();
     input.select();
 
-    let finished = false;
-    const finishRename = async (save) => {
-      if (finished) return;
-      finished = true;
+    const finish = async (save) => {
+      input.removeEventListener('blur', onBlur);
+      input.removeEventListener('keydown', onKeydown);
 
       if (save) {
         const newName = input.value.trim();
         if (newName && newName !== currentName) {
-          const result = await window.vomit.renameItem(filePath, newName);
-          if (!result.success) {
-            alert(result.error || 'Failed to rename');
+          const result = await window.vomit.renameItem(path, newName);
+          if (result.success && result.newPath) {
+            this.dataModel.renameNode(path, result.newPath, newName);
+            this.treeState.focusedPath = result.newPath;
+            if (this.treeState.selectedPath === path) {
+              this.treeState.selectedPath = result.newPath;
+            }
+          } else if (result.error) {
+            alert(result.error);
           }
         }
       }
+
       input.remove();
       nameSpan.style.display = '';
-      this.loadFileTree();
     };
 
-    input.addEventListener('keydown', (e) => {
+    const onBlur = () => finish(true);
+    const onKeydown = (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
         e.stopPropagation();
-        finishRename(true);
+        finish(true);
       } else if (e.key === 'Escape') {
         e.preventDefault();
         e.stopPropagation();
-        finishRename(false);
+        finish(false);
       }
-    });
+    };
 
-    input.addEventListener('blur', () => {
-      finishRename(true);
-    });
+    input.addEventListener('blur', onBlur);
+    input.addEventListener('keydown', onKeydown);
   }
 
-  async deleteItem(itemPath) {
-    const result = await window.vomit.deleteItem(itemPath);
+  // ─────────────────────────────────────────────────────────────
+  // Delete
+  // ─────────────────────────────────────────────────────────────
+
+  async _deleteItem(path) {
+    const result = await window.vomit.deleteItem(path);
+
     if (result.success) {
-      // Close tab if the deleted file was open
+      // Close tab if file was open
       if (this.tabManager) {
-        const tab = this.tabManager.getTabByPath(itemPath);
+        const tab = this.tabManager.getTabByPath(path);
         if (tab) {
-          // Force close without prompting for save (file is already deleted)
           this.tabManager.tabs.delete(tab.id);
           this.tabManager.tabOrder = this.tabManager.tabOrder.filter(id => id !== tab.id);
 
-          // If it was the active tab, switch to another
           if (tab.id === this.tabManager.activeTabId) {
             if (this.tabManager.tabOrder.length === 0) {
               this.tabManager.activeTabId = null;
@@ -537,284 +808,47 @@ class FileTreeManager {
           }
         }
       }
-      // Clear tree cache for parent directory to force refresh
-      const parentDir = itemPath.substring(0, itemPath.lastIndexOf('/'));
-      this.state.treeCache.delete(parentDir);
-      // Also remove from expanded folders if it was a folder
-      this.state.expandedFolders.delete(itemPath);
-      this.loadFileTree();
+
+      // Get sibling or parent for focus
+      const siblingPath = this.dataModel.getSibling(path, 'next') ||
+                          this.dataModel.getSibling(path, 'prev') ||
+                          this.dataModel.getParentPath(path);
+
+      // Remove from data model
+      this.dataModel.removeNode(path);
+
+      // Update focus
+      if (this.treeState.focusedPath === path) {
+        this.treeState.focusedPath = siblingPath;
+      }
+      if (this.treeState.selectedPath === path) {
+        this.treeState.selectedPath = null;
+      }
     } else if (result.error) {
       alert(result.error);
     }
   }
 
-  async createNewFolder(parentDir) {
-    // Use current directory if no parent specified
-    const targetDir = parentDir || this.state.currentDirectory;
-    if (!targetDir) {
-      alert('No folder open. Open a folder first.');
-      return;
+  // ─────────────────────────────────────────────────────────────
+  // Navigation
+  // ─────────────────────────────────────────────────────────────
+
+  navigateToParent() {
+    if (!this.editorState.currentDirectory) return;
+    if (this.editorState.projectRoot && this.editorState.currentDirectory === this.editorState.projectRoot) return;
+
+    const parts = this.editorState.currentDirectory.split('/');
+    if (parts.length > 2) {
+      const newDir = parts.slice(0, -1).join('/');
+      if (this.editorState.projectRoot && !newDir.startsWith(this.editorState.projectRoot)) return;
+
+      this.editorState.currentDirectory = newDir;
+      this._ensureTreeLoaded().then(() => this._focusFirstOrSelected());
     }
-
-    // Create inline input in the file tree
-    const inputContainer = document.createElement('div');
-    inputContainer.className = 'file-item new-folder-input';
-    inputContainer.innerHTML = `
-      <span class="icon">📁</span>
-      <input type="text" class="rename-input" placeholder="folder name" value="New Folder">
-    `;
-
-    // Find where to insert the input
-    // If the parent folder is expanded, insert at the start of its children
-    const parentEl = this.fileTree.querySelector(`.file-item[data-path="${CSS.escape(targetDir)}"]`);
-    let insertTarget = this.fileTree;
-
-    if (parentEl && parentEl.dataset.isDir === 'true') {
-      const childContainer = parentEl.nextElementSibling;
-      if (childContainer && childContainer.classList.contains('tree-children')) {
-        insertTarget = childContainer;
-      } else {
-        // Expand folder first if not expanded
-        if (!parentEl.classList.contains('expanded')) {
-          await this.toggleFolder(parentEl, targetDir);
-        }
-        const newChildContainer = parentEl.nextElementSibling;
-        if (newChildContainer && newChildContainer.classList.contains('tree-children')) {
-          insertTarget = newChildContainer;
-        }
-      }
-    }
-
-    // Insert at the beginning of the target container
-    insertTarget.insertBefore(inputContainer, insertTarget.firstChild);
-
-    const input = inputContainer.querySelector('input');
-    input.focus();
-    input.select();
-
-    let finished = false;
-    const finishCreate = async (save) => {
-      if (finished) return;
-      finished = true;
-
-      if (save) {
-        const folderName = input.value.trim();
-        if (folderName) {
-          const newFolderPath = `${targetDir}/${folderName}`;
-          try {
-            await window.vomit.createDirectory(newFolderPath);
-            // Clear tree cache for parent to force refresh
-            this.state.treeCache.delete(targetDir);
-          } catch (err) {
-            alert(`Failed to create folder: ${err.message}`);
-          }
-        }
-      }
-      inputContainer.remove();
-      this.loadFileTree();
-    };
-
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        e.stopPropagation();
-        finishCreate(true);
-      } else if (e.key === 'Escape') {
-        e.preventDefault();
-        e.stopPropagation();
-        finishCreate(false);
-      }
-    });
-
-    input.addEventListener('blur', () => {
-      finishCreate(true);
-    });
   }
+}
 
-  async createNewFile(parentDir) {
-    // Use current directory if no parent specified
-    const targetDir = parentDir || this.state.currentDirectory;
-    if (!targetDir) {
-      alert('No folder open. Open a folder first.');
-      return;
-    }
-
-    // Create inline input in the file tree
-    const inputContainer = document.createElement('div');
-    inputContainer.className = 'file-item new-file-input';
-    inputContainer.innerHTML = `
-      <span class="icon">📄</span>
-      <input type="text" class="rename-input" placeholder="filename.md" value="untitled.md">
-    `;
-
-    // Find where to insert the input
-    const parentEl = this.fileTree.querySelector(`.file-item[data-path="${CSS.escape(targetDir)}"]`);
-    let insertTarget = this.fileTree;
-
-    if (parentEl && parentEl.dataset.isDir === 'true') {
-      const childContainer = parentEl.nextElementSibling;
-      if (childContainer && childContainer.classList.contains('tree-children')) {
-        insertTarget = childContainer;
-      } else {
-        // Expand folder first if not expanded
-        if (!parentEl.classList.contains('expanded')) {
-          await this.toggleFolder(parentEl, targetDir);
-        }
-        const newChildContainer = parentEl.nextElementSibling;
-        if (newChildContainer && newChildContainer.classList.contains('tree-children')) {
-          insertTarget = newChildContainer;
-        }
-      }
-    }
-
-    // Insert at the beginning of the target container
-    insertTarget.insertBefore(inputContainer, insertTarget.firstChild);
-
-    const input = inputContainer.querySelector('input');
-    input.focus();
-    // Select just the filename part, not the extension
-    const dotIndex = input.value.lastIndexOf('.');
-    if (dotIndex > 0) {
-      input.setSelectionRange(0, dotIndex);
-    } else {
-      input.select();
-    }
-
-    let finished = false;
-    const finishCreate = async (save) => {
-      if (finished) return;
-      finished = true;
-
-      if (save) {
-        const fileName = input.value.trim();
-        if (fileName) {
-          const newFilePath = `${targetDir}/${fileName}`;
-          try {
-            // Create empty file
-            await window.vomit.writeFile(newFilePath, '');
-            // Clear tree cache for parent to force refresh
-            this.state.treeCache.delete(targetDir);
-            // Open the new file
-            window.vomit.openFile(newFilePath);
-            // Focus editor after file loads
-            setTimeout(() => this.host.focus(), 100);
-          } catch (err) {
-            alert(`Failed to create file: ${err.message}`);
-          }
-        }
-      }
-      inputContainer.remove();
-      this.loadFileTree();
-    };
-
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        e.stopPropagation();
-        finishCreate(true);
-      } else if (e.key === 'Escape') {
-        e.preventDefault();
-        e.stopPropagation();
-        finishCreate(false);
-      }
-    });
-
-    input.addEventListener('blur', () => {
-      finishCreate(true);
-    });
-  }
-
-  async createNewPresentation(parentDir) {
-    // Use current directory if no parent specified
-    const targetDir = parentDir || this.state.currentDirectory;
-    if (!targetDir) {
-      alert('No folder open. Open a folder first.');
-      return;
-    }
-
-    // Create inline input in the file tree
-    const inputContainer = document.createElement('div');
-    inputContainer.className = 'file-item new-file-input';
-    inputContainer.innerHTML = `
-      <span class="icon">📄</span>
-      <input type="text" class="rename-input" placeholder="presentation.md" value="presentation.md">
-    `;
-
-    // Find where to insert the input
-    const parentEl = this.fileTree.querySelector(`.file-item[data-path="${CSS.escape(targetDir)}"]`);
-    let insertTarget = this.fileTree;
-
-    if (parentEl && parentEl.dataset.isDir === 'true') {
-      const childContainer = parentEl.nextElementSibling;
-      if (childContainer && childContainer.classList.contains('tree-children')) {
-        insertTarget = childContainer;
-      } else {
-        // Expand folder first if not expanded
-        if (!parentEl.classList.contains('expanded')) {
-          await this.toggleFolder(parentEl, targetDir);
-        }
-        const newChildContainer = parentEl.nextElementSibling;
-        if (newChildContainer && newChildContainer.classList.contains('tree-children')) {
-          insertTarget = newChildContainer;
-        }
-      }
-    }
-
-    // Insert at the beginning of the target container
-    insertTarget.insertBefore(inputContainer, insertTarget.firstChild);
-
-    const input = inputContainer.querySelector('input');
-    input.focus();
-    // Select just the filename part, not the extension
-    const dotIndex = input.value.lastIndexOf('.');
-    if (dotIndex > 0) {
-      input.setSelectionRange(0, dotIndex);
-    } else {
-      input.select();
-    }
-
-    let finished = false;
-    const finishCreate = async (save) => {
-      if (finished) return;
-      finished = true;
-
-      if (save) {
-        const fileName = input.value.trim();
-        if (fileName) {
-          const newFilePath = `${targetDir}/${fileName}`;
-          try {
-            // Create presentation file with template
-            const result = await window.vomit.createPresentationFile(newFilePath);
-            if (!result.success) {
-              throw new Error(result.error);
-            }
-            // Clear tree cache for parent to force refresh
-            this.state.treeCache.delete(targetDir);
-            // Focus editor after file loads
-            setTimeout(() => this.host.focus(), 100);
-          } catch (err) {
-            alert(`Failed to create presentation: ${err.message}`);
-          }
-        }
-      }
-      inputContainer.remove();
-      this.loadFileTree();
-    };
-
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        e.stopPropagation();
-        finishCreate(true);
-      } else if (e.key === 'Escape') {
-        e.preventDefault();
-        e.stopPropagation();
-        finishCreate(false);
-      }
-    });
-
-    input.addEventListener('blur', () => {
-      finishCreate(true);
-    });
-  }
+// Export for use in renderer
+if (typeof window !== 'undefined') {
+  window.FileTreeManager = FileTreeManager;
 }

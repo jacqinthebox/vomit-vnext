@@ -389,8 +389,9 @@ class Editor {
         this.fileTreeManager.toggleFileTree();
       }
       // Small delay to ensure file tree is rendered before creating input
+      // Pass null to let createNewFile use focused folder logic
       setTimeout(() => {
-        this.fileTreeManager.createNewFile(targetDir);
+        this.fileTreeManager.createNewFile(null);
       }, 50);
     });
 
@@ -405,8 +406,9 @@ class Editor {
         this.fileTreeManager.toggleFileTree();
       }
       // Small delay to ensure file tree is rendered before creating input
+      // Pass null to let createNewPresentation use focused folder logic
       setTimeout(() => {
-        this.fileTreeManager.createNewPresentation(targetDir);
+        this.fileTreeManager.createNewPresentation(null);
       }, 50);
     });
 

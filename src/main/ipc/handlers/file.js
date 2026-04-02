@@ -172,14 +172,14 @@ Questions?
     try {
       // Use fs.watch with recursive option for macOS
       directoryWatcher = fs.watch(dirPath, { recursive: true }, (eventType, filename) => {
-        // Debounce rapid changes
+        // Debounce rapid changes - longer delay to avoid conflicts with manual refreshes
         if (refreshDebounceTimer) {
           clearTimeout(refreshDebounceTimer);
         }
         refreshDebounceTimer = setTimeout(() => {
           refreshDebounceTimer = null;
           bus.send('refresh-file-tree');
-        }, 300);
+        }, 1000);
       });
 
       directoryWatcher.on('error', () => {
