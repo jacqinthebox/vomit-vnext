@@ -368,6 +368,11 @@ Questions?
       return configStore.getBucketPath();
     });
 
+    // Get mermaid curve setting
+    ipcMain.handle('get-mermaid-curve', () => {
+      return configStore.getMermaidCurve();
+    });
+
     // Command palette IPC handlers
     ipcMain.on('new-file', () => newFile());
     ipcMain.on('new-presentation', () => newPresentation());

@@ -12,7 +12,8 @@ const store = new Store({
     aiProvider: null,
     bucketPath: null,
     buckets: [],
-    activeBucketIndex: 0
+    activeBucketIndex: 0,
+    mermaidCurve: 'linear'
   }
 });
 
@@ -54,6 +55,11 @@ function setAutoSaveEnabled(enabled) { store.set('autoSaveEnabled', enabled); }
 function getOllamaModel() { return store.get('ollamaModel'); }
 /** @param {string} model */
 function setOllamaModel(model) { store.set('ollamaModel', model); }
+
+/** @returns {string} */
+function getMermaidCurve() { return store.get('mermaidCurve'); }
+/** @param {string} curve */
+function setMermaidCurve(curve) { store.set('mermaidCurve', curve); }
 
 /** @returns {string|null} */
 function getAIProvider() { return store.get('aiProvider'); }
@@ -131,6 +137,8 @@ module.exports = {
   setAutoSaveEnabled,
   getOllamaModel,
   setOllamaModel,
+  getMermaidCurve,
+  setMermaidCurve,
   getAIProvider,
   getBucketPath,
   setBucketPath,

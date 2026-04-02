@@ -1,5 +1,35 @@
 // PreviewManager — Preview rendering, status bar, outline, frontmatter, and editor mode.
 
+// Initialize Mermaid with configurable curve style
+let mermaidCurve = 'linear';
+
+function initMermaid(curve) {
+  if (window.mermaid) {
+    mermaidCurve = curve || 'linear';
+    window.mermaid.initialize({
+      startOnLoad: false,
+      flowchart: { curve: mermaidCurve },
+      theme: 'dark'
+    });
+  }
+}
+
+// Load initial setting
+if (window.vomit && window.vomit.getMermaidCurve) {
+  window.vomit.getMermaidCurve().then(curve => initMermaid(curve));
+} else {
+  initMermaid('linear');
+}
+
+// Listen for curve changes
+window.addEventListener('vomit:mermaid-curve-changed', (e) => {
+  initMermaid(e.detail);
+  // Trigger re-render if editor exists
+  if (window.editor && window.editor.previewManager) {
+    window.editor.previewManager.updatePreview();
+  }
+});
+
 class PreviewManager {
   constructor({ state, host, dom }) {
     this.state = state;
@@ -173,6 +203,22 @@ class PreviewManager {
         img.className = 'plantuml-diagram';
         block.parentElement.replaceWith(img);
       });
+    }
+
+    // Render Mermaid diagrams
+    if (window.mermaid) {
+      const mermaidBlocks = this.dom.preview.querySelectorAll('pre code.language-mermaid');
+      if (mermaidBlocks.length > 0) {
+        mermaidBlocks.forEach((block, index) => {
+          const code = block.textContent;
+          const div = document.createElement('div');
+          div.className = 'mermaid';
+          div.id = `mermaid-preview-${Date.now()}-${index}`;
+          div.textContent = code;
+          block.parentElement.replaceWith(div);
+        });
+        window.mermaid.run({ querySelector: '.mermaid' });
+      }
     }
   }
 

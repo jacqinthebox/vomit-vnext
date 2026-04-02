@@ -172,6 +172,10 @@ ipcRenderer.on('ai-provider-changed', (event, data) => {
   window.dispatchEvent(new CustomEvent('vomit:ai-provider-changed', { detail: data }));
 });
 
+ipcRenderer.on('mermaid-curve-changed', (event, curve) => {
+  window.dispatchEvent(new CustomEvent('vomit:mermaid-curve-changed', { detail: curve }));
+});
+
 ipcRenderer.on('file-saved-as', (event, filePath) => {
   window.dispatchEvent(new CustomEvent('vomit:file-saved-as', { detail: filePath }));
 });
@@ -228,6 +232,7 @@ contextBridge.exposeInMainWorld('vomit', {
   claudeStop: () => ipcRenderer.send('claude-stop'),
   claudeClearHistory: () => ipcRenderer.send('claude-clear-history'),
   getAIProvider: () => ipcRenderer.invoke('get-ai-provider'),
+  getMermaidCurve: () => ipcRenderer.invoke('get-mermaid-curve'),
   // Agent mode with tool calling
   agentExecute: (prompt, cwd) => ipcRenderer.invoke('agent-execute', prompt, cwd),
   // File operations for pseudonymization

@@ -1,5 +1,29 @@
 // Presentation View - Simple functional approach (no classes, no 'this' issues)
 (function() {
+  // Initialize Mermaid with configurable curve style
+  function initMermaid(curve) {
+    if (window.mermaid) {
+      window.mermaid.initialize({
+        startOnLoad: false,
+        flowchart: { curve: curve || 'linear' },
+        theme: 'dark'
+      });
+    }
+  }
+
+  // Load initial setting
+  if (window.vomit && window.vomit.getMermaidCurve) {
+    window.vomit.getMermaidCurve().then(curve => initMermaid(curve));
+  } else {
+    initMermaid('linear');
+  }
+
+  // Listen for curve changes
+  window.addEventListener('vomit:mermaid-curve-changed', (e) => {
+    initMermaid(e.detail);
+    render();
+  });
+
   let slides = [];
   let currentIndex = 0;
   let basePath = null;
@@ -115,6 +139,22 @@
         img.className = 'plantuml-diagram';
         block.parentElement.replaceWith(img);
       });
+    }
+
+    // Render Mermaid diagrams
+    if (window.mermaid) {
+      const mermaidBlocks = slideContent.querySelectorAll('pre code.language-mermaid');
+      if (mermaidBlocks.length > 0) {
+        mermaidBlocks.forEach((block, index) => {
+          const code = block.textContent;
+          const div = document.createElement('div');
+          div.className = 'mermaid';
+          div.id = `mermaid-presentation-${Date.now()}-${index}`;
+          div.textContent = code;
+          block.parentElement.replaceWith(div);
+        });
+        window.mermaid.run({ querySelector: '.mermaid' });
+      }
     }
 
     // Check if title slide

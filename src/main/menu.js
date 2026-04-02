@@ -71,6 +71,13 @@ function setOllamaModel(model) {
   _bus.send('show-terminal');
 }
 
+// Set Mermaid curve style
+function setMermaidCurve(curve) {
+  _configStore.setMermaidCurve(curve);
+  createMenu();
+  _bus.send('mermaid-curve-changed', curve);
+}
+
 function buildBucketsSubmenu() {
   const submenu = [];
   const buckets = _configStore.getBuckets();
@@ -352,6 +359,30 @@ function createMenu() {
           click: () => {
             _bus.send('toggle-word-wrap');
           }
+        },
+        { type: 'separator' },
+        {
+          label: 'Mermaid Arrows',
+          submenu: [
+            {
+              label: 'Straight (Linear)',
+              type: 'radio',
+              checked: _configStore.getMermaidCurve() === 'linear',
+              click: () => setMermaidCurve('linear')
+            },
+            {
+              label: 'Right Angles (Step)',
+              type: 'radio',
+              checked: _configStore.getMermaidCurve() === 'stepBefore',
+              click: () => setMermaidCurve('stepBefore')
+            },
+            {
+              label: 'Curved (Basis)',
+              type: 'radio',
+              checked: _configStore.getMermaidCurve() === 'basis',
+              click: () => setMermaidCurve('basis')
+            }
+          ]
         },
         { type: 'separator' },
         {

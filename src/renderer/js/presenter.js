@@ -1,5 +1,29 @@
 // Presenter View - Simple functional approach (no classes, no 'this' issues)
 (function() {
+  // Initialize Mermaid with configurable curve style
+  function initMermaid(curve) {
+    if (window.mermaid) {
+      window.mermaid.initialize({
+        startOnLoad: false,
+        flowchart: { curve: curve || 'linear' },
+        theme: 'dark'
+      });
+    }
+  }
+
+  // Load initial setting
+  if (window.vomit && window.vomit.getMermaidCurve) {
+    window.vomit.getMermaidCurve().then(curve => initMermaid(curve));
+  } else {
+    initMermaid('linear');
+  }
+
+  // Listen for curve changes
+  window.addEventListener('vomit:mermaid-curve-changed', (e) => {
+    initMermaid(e.detail);
+    render();
+  });
+
   let slides = [];
   let currentIndex = 0;
   let startTime = null;
@@ -114,6 +138,23 @@
     }
   }
 
+  function renderMermaid(container, prefix) {
+    if (window.mermaid) {
+      const mermaidBlocks = container.querySelectorAll('pre code.language-mermaid');
+      if (mermaidBlocks.length > 0) {
+        mermaidBlocks.forEach((block, index) => {
+          const code = block.textContent;
+          const div = document.createElement('div');
+          div.className = 'mermaid';
+          div.id = `mermaid-${prefix}-${Date.now()}-${index}`;
+          div.textContent = code;
+          block.parentElement.replaceWith(div);
+        });
+        window.mermaid.run({ querySelector: '.mermaid' });
+      }
+    }
+  }
+
   function render() {
     // Current slide
     if (slides.length === 0) {
@@ -130,6 +171,7 @@
     highlightCode(currentSlideEl);
     renderMath(currentSlideEl);
     renderPlantUML(currentSlideEl);
+    renderMermaid(currentSlideEl, 'current');
 
     // Next slide
     const nextIndex = currentIndex + 1;
@@ -140,12 +182,14 @@
       highlightCode(nextSlideEl);
       renderMath(nextSlideEl);
       renderPlantUML(nextSlideEl);
+      renderMermaid(nextSlideEl, 'next');
     }
 
     // Notes
     notesContent.innerHTML = slide.notes ? renderMarkdown(slide.notes) : '';
     renderMath(notesContent);
     renderPlantUML(notesContent);
+    renderMermaid(notesContent, 'notes');
 
     // Counter
     currentNum.textContent = currentIndex + 1;
