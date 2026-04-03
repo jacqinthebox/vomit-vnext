@@ -94,7 +94,7 @@ class SettingsManager {
             <div class="shortcut-row"><kbd>↑↓</kbd> Navigate files</div>
             <div class="shortcut-row"><kbd>←→</kbd> Navigate folders</div>
             <div class="shortcut-row"><kbd>Enter</kbd> Open file/folder</div>
-            <div class="shortcut-row"><kbd>Ctrl+Tab</kbd> Switch to editor</div>
+            <div class="shortcut-row"><kbd>Cmd+1</kbd> / <kbd>Ctrl+Tab</kbd> Toggle sidebar focus</div>
             <div class="shortcut-row"><kbd>Escape</kbd> Return to editor</div>
           </div>
           <div class="shortcuts-section">
@@ -143,12 +143,18 @@ class SettingsManager {
   }
 
   setupKeyboardNavigation() {
-    // Ctrl+W or Ctrl+Tab to toggle focus between editor and sidebar
+    // Ctrl+W, Ctrl+Tab, or Ctrl+Esc to toggle focus between editor and sidebar
     document.addEventListener('keydown', (e) => {
-      if (e.ctrlKey && (e.key === 'w' || e.key === 'Tab')) {
+      if (e.ctrlKey && (e.key === 'w' || e.key === 'Tab' || e.key === 'Escape')) {
         e.preventDefault();
+        e.stopPropagation();
         this.searchManager.togglePaneFocus();
       }
+    }, true);  // capture phase
+
+    // Cmd+1 from menu
+    window.addEventListener('vomit:toggle-pane-focus', () => {
+      this.searchManager.togglePaneFocus();
     });
   }
 

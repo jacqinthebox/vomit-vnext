@@ -8,6 +8,7 @@
   --accent-color: #4a90d9;
   --border-color: #ddd;
   --code-bg: #f4f4f4;
+  --selection-bg: rgba(74, 144, 217, 0.3);
   /* Syntax highlighting */
   --syntax-header: #0550ae;
   --syntax-bold: #333333;
@@ -36,6 +37,7 @@
   --code-bg: #2d2d2d;
   --scrollbar-track: #1e1e1e;
   --scrollbar-thumb: #424242;
+  --selection-bg: rgba(86, 156, 214, 0.4);
   /* Syntax highlighting */
   --syntax-header: #569cd6;
   --syntax-bold: #d4d4d4;
@@ -109,6 +111,7 @@
   --syntax-code: #a6da95;     /* Green */
   --syntax-quote: #7dc4e4;    /* Sapphire */
   --syntax-hr: #c6a0f6;       /* Mauve */
+  --selection-bg: rgba(198, 160, 246, 0.3);
 }
 
 /* Nord Theme */
@@ -137,6 +140,7 @@
   --syntax-code: #a3be8c;
   --syntax-quote: #5e81ac;
   --syntax-hr: #d8dee9;
+  --selection-bg: rgba(136, 192, 208, 0.3);
 }
 
 /* Nord Theme CodeMirror syntax */
@@ -201,6 +205,7 @@
   --syntax-code: #9ece6a;     /* Green */
   --syntax-quote: #565f89;    /* Comment */
   --syntax-hr: #3b4261;       /* Dark3 */
+  --selection-bg: rgba(122, 162, 247, 0.3);
 }
 
 /* Solarized Dark Theme */
@@ -229,6 +234,7 @@
   --syntax-code: #859900;
   --syntax-quote: #6c71c4;
   --syntax-hr: #657b83;
+  --selection-bg: rgba(38, 139, 210, 0.3);
 }
 
 /* Solarized Theme CodeMirror syntax */

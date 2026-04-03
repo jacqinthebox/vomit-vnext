@@ -128,6 +128,10 @@ ipcRenderer.on('go-to-tab', (event, tabNumber) => {
   window.dispatchEvent(new CustomEvent('vomit:go-to-tab', { detail: tabNumber }));
 });
 
+ipcRenderer.on('toggle-pane-focus', () => {
+  window.dispatchEvent(new CustomEvent('vomit:toggle-pane-focus'));
+});
+
 // File watching events
 ipcRenderer.on('file-changed-externally', (event, filePath) => {
   window.dispatchEvent(new CustomEvent('vomit:file-changed-externally', { detail: filePath }));
@@ -174,6 +178,10 @@ ipcRenderer.on('ai-provider-changed', (event, data) => {
 
 ipcRenderer.on('mermaid-curve-changed', (event, curve) => {
   window.dispatchEvent(new CustomEvent('vomit:mermaid-curve-changed', { detail: curve }));
+});
+
+ipcRenderer.on('font-size-changed', (event, size) => {
+  window.dispatchEvent(new CustomEvent('vomit:font-size-changed', { detail: size }));
 });
 
 ipcRenderer.on('file-saved-as', (event, filePath) => {
@@ -233,6 +241,7 @@ contextBridge.exposeInMainWorld('vomit', {
   claudeClearHistory: () => ipcRenderer.send('claude-clear-history'),
   getAIProvider: () => ipcRenderer.invoke('get-ai-provider'),
   getMermaidCurve: () => ipcRenderer.invoke('get-mermaid-curve'),
+  getFontSize: () => ipcRenderer.invoke('get-font-size'),
   // Agent mode with tool calling
   agentExecute: (prompt, cwd) => ipcRenderer.invoke('agent-execute', prompt, cwd),
   // File operations for pseudonymization

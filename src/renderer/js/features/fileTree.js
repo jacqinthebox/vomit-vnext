@@ -460,11 +460,23 @@ class FileTreeManager {
     // Get container for inline input
     const container = this.treeView.ensureChildContainer(targetDir);
 
-    // Create inline input
+    // Get padding from sibling, or calculate if no siblings exist
+    const sibling = container.querySelector('.file-item');
+    let paddingLeft;
+    if (sibling && sibling.style.paddingLeft) {
+      paddingLeft = sibling.style.paddingLeft;
+    } else {
+      const depth = this._calculateDepth(targetDir) + 1;
+      paddingLeft = `${8 + (depth * 16)}px`;
+    }
+
+    // Create inline input (match exact structure of real file-items)
     const inputContainer = document.createElement('div');
-    inputContainer.className = 'file-item new-folder-input';
+    inputContainer.className = 'file-item directory new-folder-input';
+    inputContainer.style.paddingLeft = paddingLeft;
     inputContainer.innerHTML = `
-      <span class="icon">📁</span>
+      <span class="chevron" style="visibility: hidden;"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M6 4l4 4-4 4"/></svg></span>
+      <span class="icon"></span>
       <input type="text" class="rename-input" placeholder="folder name" value="New Folder">
     `;
     container.insertBefore(inputContainer, container.firstChild);
@@ -550,11 +562,17 @@ class FileTreeManager {
     // Get container for inline input
     const container = this.treeView.ensureChildContainer(targetDir);
 
-    // Create inline input
+    // Calculate indentation (child of targetDir)
+    const depth = this._calculateDepth(targetDir) + 1;
+    const indent = depth * 16;
+
+    // Create inline input (match exact structure of real file-items)
     const inputContainer = document.createElement('div');
-    inputContainer.className = 'file-item new-file-input';
+    inputContainer.className = 'file-item markdown new-file-input';
+    inputContainer.style.paddingLeft = `${8 + indent}px`;
     inputContainer.innerHTML = `
-      <span class="icon">📄</span>
+      <span class="chevron" style="visibility: hidden;"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M6 4l4 4-4 4"/></svg></span>
+      <span class="icon"></span>
       <input type="text" class="rename-input" placeholder="filename.md" value="untitled.md">
     `;
     container.insertBefore(inputContainer, container.firstChild);
@@ -653,11 +671,17 @@ class FileTreeManager {
     // Get container for inline input
     const container = this.treeView.ensureChildContainer(targetDir);
 
-    // Create inline input
+    // Calculate indentation (child of targetDir)
+    const depth = this._calculateDepth(targetDir) + 1;
+    const indent = depth * 16;
+
+    // Create inline input (match exact structure of real file-items)
     const inputContainer = document.createElement('div');
-    inputContainer.className = 'file-item new-file-input';
+    inputContainer.className = 'file-item markdown new-file-input';
+    inputContainer.style.paddingLeft = `${8 + indent}px`;
     inputContainer.innerHTML = `
-      <span class="icon">📄</span>
+      <span class="chevron" style="visibility: hidden;"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M6 4l4 4-4 4"/></svg></span>
+      <span class="icon"></span>
       <input type="text" class="rename-input" placeholder="presentation.md" value="presentation.md">
     `;
     container.insertBefore(inputContainer, container.firstChild);
@@ -845,6 +869,16 @@ class FileTreeManager {
       this.editorState.currentDirectory = newDir;
       this._ensureTreeLoaded().then(() => this._focusFirstOrSelected());
     }
+  }
+
+  // Calculate depth of a path relative to root (for indentation)
+  _calculateDepth(path) {
+    const rootPath = this.treeState.rootPath;
+    if (!path || path === rootPath) return -1;
+    if (!rootPath || !path.startsWith(rootPath)) return 0;
+
+    const relativePath = path.slice(rootPath.length);
+    return relativePath.split('/').filter(Boolean).length - 1;
   }
 }
 

@@ -131,10 +131,32 @@ class Editor {
   }
 
   async initializeSession() {
+    // Load and apply saved font size
+    await this.loadFontSize();
+
     // Bucket auto-opens from main process via open-folder event
     // Create an empty tab initially - it will be replaced when bucket loads
     // or used if no files exist yet
     this.tabManager.createTab(null, '');
+  }
+
+  async loadFontSize() {
+    try {
+      const fontSize = await window.vomit.getFontSize();
+      if (fontSize) {
+        this.applyFontSize(fontSize);
+      }
+    } catch (err) {
+      // Ignore errors, use default
+    }
+  }
+
+  applyFontSize(size) {
+    // Set CSS variable
+    document.documentElement.style.setProperty('--editor-font-size', `${size}px`);
+
+    // Refresh CodeMirror to pick up the new size
+    this.cm.refresh();
   }
 
   setupEditor() {
@@ -150,6 +172,8 @@ class Editor {
         'Ctrl-I': () => this.formatting.wrapSelection('*', '*'),
         'Cmd-`': () => this.formatting.wrapSelection('`', '`'),
         'Ctrl-`': () => this.formatting.wrapSelection('`', '`'),
+        'Cmd-M': () => this.formatting.wrapCodeBlock(),
+        'Ctrl-M': () => this.formatting.wrapCodeBlock(),
         'Cmd-K': () => this.formatting.insertLink(),
         'Ctrl-K': () => this.formatting.insertLink(),
         'Shift-Cmd-T': () => this.formatting.formatTable(),
@@ -422,6 +446,7 @@ class Editor {
         case 'bold': this.formatting.wrapSelection('**', '**'); break;
         case 'italic': this.formatting.wrapSelection('*', '*'); break;
         case 'code': this.formatting.wrapSelection('`', '`'); break;
+        case 'codeBlock': this.formatting.wrapCodeBlock(); break;
         case 'link': this.formatting.insertLink(); break;
         case 'table': this.formatting.insertTable(); break;
         case 'formatTable': this.formatting.formatTable(); break;
@@ -443,6 +468,10 @@ class Editor {
       }
       // Update xterm theme to match
       this.terminalManager.updateXtermTheme();
+    });
+
+    window.addEventListener('vomit:font-size-changed', (e) => {
+      this.applyFontSize(e.detail);
     });
 
     // Handle external file changes

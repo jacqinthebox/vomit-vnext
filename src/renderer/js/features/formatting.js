@@ -18,6 +18,22 @@ class FormattingManager {
     cm.focus();
   }
 
+  wrapCodeBlock() {
+    const cm = this.host.cm;
+    const selection = cm.getSelection();
+
+    if (selection) {
+      // Wrap selected text in code block
+      cm.replaceSelection('```\n' + selection + '\n```');
+    } else {
+      // Insert empty code block and position cursor inside
+      const cursor = cm.getCursor();
+      cm.replaceSelection('```\n\n```');
+      cm.setCursor({ line: cursor.line + 1, ch: 0 });
+    }
+    cm.focus();
+  }
+
   insertAtLineStart(prefix) {
     const cm = this.host.cm;
     const cursor = cm.getCursor();

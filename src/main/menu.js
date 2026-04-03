@@ -78,6 +78,13 @@ function setMermaidCurve(curve) {
   _bus.send('mermaid-curve-changed', curve);
 }
 
+// Set font size
+function setFontSize(size) {
+  _configStore.setFontSize(size);
+  createMenu();
+  _bus.send('font-size-changed', size);
+}
+
 function buildBucketsSubmenu() {
   const submenu = [];
   const buckets = _configStore.getBuckets();
@@ -256,6 +263,11 @@ function createMenu() {
           click: () => _actions.sendFormatCommand('code')
         },
         {
+          label: 'Code Block',
+          accelerator: 'CmdOrCtrl+M',
+          click: () => _actions.sendFormatCommand('codeBlock')
+        },
+        {
           label: 'Link',
           accelerator: 'CmdOrCtrl+K',
           click: () => _actions.sendFormatCommand('link')
@@ -384,6 +396,47 @@ function createMenu() {
             }
           ]
         },
+        {
+          label: 'Font Size',
+          submenu: [
+            {
+              label: '11px (Compact)',
+              type: 'radio',
+              checked: _configStore.getFontSize() === 11,
+              click: () => setFontSize(11)
+            },
+            {
+              label: '12px (Dense)',
+              type: 'radio',
+              checked: _configStore.getFontSize() === 12,
+              click: () => setFontSize(12)
+            },
+            {
+              label: '13px (Small)',
+              type: 'radio',
+              checked: _configStore.getFontSize() === 13,
+              click: () => setFontSize(13)
+            },
+            {
+              label: '14px (Default)',
+              type: 'radio',
+              checked: _configStore.getFontSize() === 14,
+              click: () => setFontSize(14)
+            },
+            {
+              label: '16px (Large)',
+              type: 'radio',
+              checked: _configStore.getFontSize() === 16,
+              click: () => setFontSize(16)
+            },
+            {
+              label: '18px (Extra Large)',
+              type: 'radio',
+              checked: _configStore.getFontSize() === 18,
+              click: () => setFontSize(18)
+            }
+          ]
+        },
         { type: 'separator' },
         {
           label: 'Find in File',
@@ -446,11 +499,18 @@ function createMenu() {
           }
         },
         { type: 'separator' },
-        ...[1,2,3,4,5,6,7,8].map(n => ({
-          label: `Go to Tab ${n}`,
+        {
+          label: 'Toggle Sidebar Focus',
+          accelerator: 'CmdOrCtrl+1',
+          click: () => {
+            _bus.send('toggle-pane-focus');
+          }
+        },
+        ...[2,3,4,5,6,7,8].map(n => ({
+          label: `Go to Tab ${n - 1}`,
           accelerator: `CmdOrCtrl+${n}`,
           click: () => {
-            _bus.send('go-to-tab', n);
+            _bus.send('go-to-tab', n - 1);
           }
         })),
         {

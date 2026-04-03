@@ -373,6 +373,11 @@ Questions?
       return configStore.getMermaidCurve();
     });
 
+    // Get font size setting
+    ipcMain.handle('get-font-size', () => {
+      return configStore.getFontSize();
+    });
+
     // Command palette IPC handlers
     ipcMain.on('new-file', () => newFile());
     ipcMain.on('new-presentation', () => newPresentation());

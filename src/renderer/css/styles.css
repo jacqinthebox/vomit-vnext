@@ -496,6 +496,12 @@ html, body {
   border-left: 2px solid var(--accent-color) !important;
 }
 
+/* Selection styling */
+#editor .CodeMirror-selected,
+#editor .CodeMirror-focused .CodeMirror-selected {
+  background: var(--selection-bg, rgba(0, 122, 255, 0.3)) !important;
+}
+
 /* Line number gutter */
 #editor .CodeMirror-gutters {
   background: var(--bg-secondary);

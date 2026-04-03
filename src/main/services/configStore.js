@@ -13,7 +13,8 @@ const store = new Store({
     bucketPath: null,
     buckets: [],
     activeBucketIndex: 0,
-    mermaidCurve: 'linear'
+    mermaidCurve: 'linear',
+    fontSize: 14
   }
 });
 
@@ -60,6 +61,11 @@ function setOllamaModel(model) { store.set('ollamaModel', model); }
 function getMermaidCurve() { return store.get('mermaidCurve'); }
 /** @param {string} curve */
 function setMermaidCurve(curve) { store.set('mermaidCurve', curve); }
+
+/** @returns {number} */
+function getFontSize() { return store.get('fontSize'); }
+/** @param {number} size */
+function setFontSize(size) { store.set('fontSize', size); }
 
 /** @returns {string|null} */
 function getAIProvider() { return store.get('aiProvider'); }
@@ -139,6 +145,8 @@ module.exports = {
   setOllamaModel,
   getMermaidCurve,
   setMermaidCurve,
+  getFontSize,
+  setFontSize,
   getAIProvider,
   getBucketPath,
   setBucketPath,

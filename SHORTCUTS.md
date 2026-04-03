@@ -29,7 +29,7 @@ Press **Cmd+/** to open this help at any time.
 | Cmd+W | Close tab |
 | Cmd+Shift+] | Next tab |
 | Cmd+Shift+[ | Previous tab |
-| Cmd+1-8 | Go to tab 1-8 |
+| Cmd+2-8 | Go to tab 1-7 |
 | Cmd+9 | Go to last tab |
 
 ---
@@ -58,6 +58,7 @@ Press **Cmd+/** to open this help at any time.
 | Cmd+B | Bold |
 | Cmd+I | Italic |
 | Cmd+` | Inline code |
+| Cmd+M | Code block |
 | Cmd+K | Insert link |
 | Cmd+Shift+T | Insert table |
 | Cmd+Shift+1 | Heading 1 |
@@ -88,7 +89,7 @@ Press **Cmd+/** to open this help at any time.
 | → | Enter folder |
 | ← | Go to parent folder |
 | Enter | Open file / Enter folder |
-| Ctrl+Tab | Switch focus to editor |
+| Cmd+1 / Ctrl+Tab | Toggle sidebar focus |
 | Ctrl+W | Switch focus to editor |
 | Escape | Return focus to editor |
 
