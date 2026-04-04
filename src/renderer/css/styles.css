@@ -508,6 +508,11 @@ html, body {
   border-right: 1px solid var(--border-color);
 }
 
+/* Remove left padding when line numbers are visible */
+#editor.has-line-numbers .CodeMirror {
+  padding-left: 0;
+}
+
 #editor .CodeMirror-linenumber {
   color: var(--text-muted);
   padding: 0 8px 0 12px;

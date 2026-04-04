@@ -23,7 +23,9 @@ class SettingsManager {
 
   toggleLineNumbers() {
     const current = this.host.cm.getOption('lineNumbers');
-    this.host.cm.setOption('lineNumbers', !current);
+    const newValue = !current;
+    this.host.cm.setOption('lineNumbers', newValue);
+    document.getElementById('editor').classList.toggle('has-line-numbers', newValue);
   }
 
   showShortcutsModal() {
