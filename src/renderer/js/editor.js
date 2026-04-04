@@ -119,6 +119,7 @@ class Editor {
     this.terminalManager.setupShellTerminal();
     this.terminalManager.setupIPC();
     this.setupIPC();
+    this.setupMultiCursor();
 
     // Display app version in status bar
     this.displayVersion();
@@ -596,6 +597,63 @@ class Editor {
     } catch (err) {
       console.error('Failed to get app version:', err);
     }
+  }
+
+  setupMultiCursor() {
+    // PyCharm-style multi-cursor: double-tap Option + arrow keys
+    const DOUBLE_TAP_MS = 300;
+    let lastOptionTime = 0;
+    let multiCursorMode = false;
+
+    document.addEventListener('keydown', (e) => {
+      // Detect double-tap of Option (Alt) key
+      if (e.key === 'Alt' && !e.repeat) {
+        const now = Date.now();
+        if (now - lastOptionTime < DOUBLE_TAP_MS) {
+          multiCursorMode = true;
+        }
+        lastOptionTime = now;
+        return;
+      }
+
+      // Handle arrow keys when in multi-cursor mode with Option held
+      if (multiCursorMode && e.altKey && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
+        if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          e.stopPropagation();
+          this.host.addCursorAbove();
+          return;
+        }
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          e.stopPropagation();
+          this.host.addCursorBelow();
+          return;
+        }
+      }
+
+      // Escape clears extra cursors
+      if (e.key === 'Escape') {
+        const selections = this.host.listSelections();
+        if (selections.length > 1) {
+          e.preventDefault();
+          this.host.clearExtraCursors();
+          multiCursorMode = false;
+        }
+      }
+
+      // Any non-modifier key exits multi-cursor mode (but keeps cursors)
+      if (!['Alt', 'Control', 'Shift', 'Meta', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+        multiCursorMode = false;
+      }
+    });
+
+    document.addEventListener('keyup', (e) => {
+      // Exit multi-cursor mode when Option is released
+      if (e.key === 'Alt') {
+        multiCursorMode = false;
+      }
+    });
   }
 
 }

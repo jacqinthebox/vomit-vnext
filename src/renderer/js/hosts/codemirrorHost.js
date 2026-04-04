@@ -68,6 +68,62 @@ class CodemirrorHost {
     return this.cm.somethingSelected();
   }
 
+  // --- Multi-cursor support ---
+  listSelections() {
+    return this.cm.listSelections();
+  }
+
+  setSelections(ranges, primary) {
+    this.cm.setSelections(ranges, primary);
+  }
+
+  addCursorAbove() {
+    const selections = this.cm.listSelections();
+    const first = selections[0];
+    // Find next non-empty line above
+    let newLine = first.head.line - 1;
+    while (newLine >= 0 && this.cm.getLine(newLine).trim() === '') {
+      newLine--;
+    }
+    if (newLine >= 0) {
+      const lineLen = this.cm.getLine(newLine).length;
+      const ch = Math.min(first.head.ch, lineLen);
+      const newSelections = [
+        { anchor: { line: newLine, ch }, head: { line: newLine, ch } },
+        ...selections
+      ];
+      this.cm.setSelections(newSelections);
+    }
+  }
+
+  addCursorBelow() {
+    const selections = this.cm.listSelections();
+    const last = selections[selections.length - 1];
+    const lineCount = this.cm.lineCount();
+    // Find next non-empty line below
+    let newLine = last.head.line + 1;
+    while (newLine < lineCount && this.cm.getLine(newLine).trim() === '') {
+      newLine++;
+    }
+    if (newLine < lineCount) {
+      const lineLen = this.cm.getLine(newLine).length;
+      const ch = Math.min(last.head.ch, lineLen);
+      const newSelections = [
+        ...selections,
+        { anchor: { line: newLine, ch }, head: { line: newLine, ch } }
+      ];
+      this.cm.setSelections(newSelections);
+    }
+  }
+
+  clearExtraCursors() {
+    const selections = this.cm.listSelections();
+    if (selections.length > 1) {
+      // Keep only the primary (first) selection
+      this.cm.setSelection(selections[0].anchor, selections[0].head);
+    }
+  }
+
   // --- Editor state ---
   getHistory() {
     return this.cm.getHistory();

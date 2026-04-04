@@ -81,6 +81,16 @@ Press **Cmd+/** to open this help at any time.
 
 ---
 
+## Multi-Cursor
+
+| Shortcut | Action |
+|----------|--------|
+| Option Option ↑ | Add cursor above (double-tap Option, then arrow) |
+| Option Option ↓ | Add cursor below (double-tap Option, then arrow) |
+| Escape | Clear extra cursors |
+
+---
+
 ## File Explorer Navigation
 
 | Shortcut | Action |
