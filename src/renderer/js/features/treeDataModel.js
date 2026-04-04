@@ -194,6 +194,94 @@ class TreeDataModel extends EventTarget {
     this.dispatchEvent(new CustomEvent('childrenInvalidated', { detail: path }));
   }
 
+  // Move a node to a new parent directory
+  moveNode(oldPath, newPath, newParentPath) {
+    const node = this.#nodes.get(oldPath);
+    if (!node) return;
+
+    const oldParentPath = node.parentPath;
+
+    // Remove from old parent's children list
+    if (oldParentPath) {
+      const oldSiblings = this.#children.get(oldParentPath) || [];
+      const idx = oldSiblings.indexOf(oldPath);
+      if (idx !== -1) {
+        oldSiblings.splice(idx, 1);
+        this.#children.set(oldParentPath, oldSiblings);
+      }
+    }
+
+    // Update node with new path and parent
+    const updatedNode = {
+      ...node,
+      path: newPath,
+      parentPath: newParentPath
+    };
+
+    // Remove old, add new
+    this.#nodes.delete(oldPath);
+    this.#nodes.set(newPath, updatedNode);
+
+    // Add to new parent's children list
+    const newSiblings = this.#children.get(newParentPath) || [];
+    if (!newSiblings.includes(newPath)) {
+      newSiblings.push(newPath);
+      // Sort: directories first, then alphabetically
+      newSiblings.sort((a, b) => {
+        const aNode = this.#nodes.get(a);
+        const bNode = this.#nodes.get(b);
+        if (aNode?.isDirectory && !bNode?.isDirectory) return -1;
+        if (!aNode?.isDirectory && bNode?.isDirectory) return 1;
+        return (aNode?.name || '').localeCompare(bNode?.name || '');
+      });
+      this.#children.set(newParentPath, newSiblings);
+    }
+
+    // If this is a directory, update all descendants' paths
+    if (node.isDirectory) {
+      this.#updateDescendantPaths(oldPath, newPath);
+    }
+
+    this.dispatchEvent(new CustomEvent('nodeMoved', {
+      detail: { oldPath, newPath, oldParentPath, newParentPath }
+    }));
+  }
+
+  #updateDescendantPaths(oldBasePath, newBasePath) {
+    // Update children paths for this node
+    const oldChildPaths = this.#children.get(oldBasePath);
+    if (oldChildPaths) {
+      const newChildPaths = oldChildPaths.map(childPath => {
+        const relativePath = childPath.slice(oldBasePath.length);
+        return newBasePath + relativePath;
+      });
+
+      this.#children.delete(oldBasePath);
+      this.#children.set(newBasePath, newChildPaths);
+
+      // Update each child node
+      for (let i = 0; i < oldChildPaths.length; i++) {
+        const oldChildPath = oldChildPaths[i];
+        const newChildPath = newChildPaths[i];
+
+        const childNode = this.#nodes.get(oldChildPath);
+        if (childNode) {
+          this.#nodes.delete(oldChildPath);
+          this.#nodes.set(newChildPath, {
+            ...childNode,
+            path: newChildPath,
+            parentPath: newBasePath
+          });
+
+          // Recursively update if this child is also a directory
+          if (childNode.isDirectory) {
+            this.#updateDescendantPaths(oldChildPath, newChildPath);
+          }
+        }
+      }
+    }
+  }
+
   // ─────────────────────────────────────────────────────────────
   // Navigation helpers
   // ─────────────────────────────────────────────────────────────

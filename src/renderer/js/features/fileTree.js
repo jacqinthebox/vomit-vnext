@@ -26,6 +26,7 @@ class FileTreeManager {
     // Set up event handling
     this._setupEventDelegation();
     this._setupKeyboardNavigation();
+    this._setupDragAndDrop();
   }
 
   get tabManager() { return this._getTabManager(); }
@@ -246,6 +247,143 @@ class FileTreeManager {
           this.editorState.focusedPane = 'editor';
           break;
       }
+    });
+  }
+
+  _setupDragAndDrop() {
+    let draggedPath = null;
+    let draggedIsDir = false;
+
+    // Make items draggable
+    this.fileTreeContainer.addEventListener('dragstart', (e) => {
+      const el = e.target.closest('.file-item');
+      if (!el || !el.dataset.path) return;
+
+      draggedPath = el.dataset.path;
+      draggedIsDir = el.dataset.isDir === 'true';
+
+      // Set drag data
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', draggedPath);
+
+      // Add dragging class
+      el.classList.add('dragging');
+
+      // Set drag image
+      const dragImage = el.cloneNode(true);
+      dragImage.style.position = 'absolute';
+      dragImage.style.top = '-1000px';
+      dragImage.style.opacity = '0.8';
+      document.body.appendChild(dragImage);
+      e.dataTransfer.setDragImage(dragImage, 0, 0);
+      setTimeout(() => dragImage.remove(), 0);
+    });
+
+    this.fileTreeContainer.addEventListener('dragend', (e) => {
+      const el = e.target.closest('.file-item');
+      if (el) {
+        el.classList.remove('dragging');
+      }
+      draggedPath = null;
+      draggedIsDir = false;
+
+      // Remove all drop indicators
+      this.fileTreeContainer.querySelectorAll('.drop-target').forEach(el => {
+        el.classList.remove('drop-target');
+      });
+    });
+
+    this.fileTreeContainer.addEventListener('dragover', (e) => {
+      if (!draggedPath) return;
+
+      const el = e.target.closest('.file-item');
+      if (!el) return;
+
+      const targetPath = el.dataset.path;
+      const targetIsDir = el.dataset.isDir === 'true';
+
+      // Can only drop on directories
+      if (!targetIsDir) return;
+
+      // Can't drop on self or into own children
+      if (targetPath === draggedPath) return;
+      if (draggedIsDir && targetPath.startsWith(draggedPath + '/')) return;
+
+      // Can't drop into same parent (no-op)
+      const draggedParent = draggedPath.substring(0, draggedPath.lastIndexOf('/'));
+      if (targetPath === draggedParent) return;
+
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+
+      // Add drop target indicator
+      this.fileTreeContainer.querySelectorAll('.drop-target').forEach(el => {
+        el.classList.remove('drop-target');
+      });
+      el.classList.add('drop-target');
+    });
+
+    this.fileTreeContainer.addEventListener('dragleave', (e) => {
+      const el = e.target.closest('.file-item');
+      if (el) {
+        el.classList.remove('drop-target');
+      }
+    });
+
+    this.fileTreeContainer.addEventListener('drop', async (e) => {
+      e.preventDefault();
+
+      const el = e.target.closest('.file-item');
+      if (!el) return;
+
+      el.classList.remove('drop-target');
+
+      const targetPath = el.dataset.path;
+      const targetIsDir = el.dataset.isDir === 'true';
+
+      if (!targetIsDir || !draggedPath) return;
+
+      // Perform the move
+      const result = await window.vomit.moveItem(draggedPath, targetPath);
+
+      if (result.success && result.newPath) {
+        // Update data model
+        this.dataModel.moveNode(draggedPath, result.newPath, targetPath);
+
+        // Expand target folder to show moved item
+        if (!this.treeState.isExpanded(targetPath)) {
+          await this._expandFolder(targetPath);
+        }
+
+        // Focus the moved item
+        this.treeState.focusedPath = result.newPath;
+      } else if (result.error) {
+        alert(result.error);
+      }
+    });
+
+    // Make file-items draggable when created (using MutationObserver)
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        mutation.addedNodes.forEach((node) => {
+          if (node.nodeType === 1 && node.classList?.contains('file-item')) {
+            node.draggable = true;
+          }
+          // Also check children if it's a container
+          if (node.nodeType === 1) {
+            node.querySelectorAll?.('.file-item')?.forEach(item => {
+              item.draggable = true;
+            });
+          }
+        });
+      });
+    });
+
+    observer.observe(this.fileTreeContainer, { childList: true, subtree: true });
+
+    // Make existing items draggable
+    this.fileTreeContainer.querySelectorAll('.file-item').forEach(item => {
+      item.draggable = true;
     });
   }
 

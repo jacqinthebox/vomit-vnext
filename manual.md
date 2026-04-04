@@ -91,7 +91,8 @@ Notes only you can see while presenting
 |----------|--------|
 | Cmd+P | Toggle preview |
 | Cmd+E | Toggle file explorer |
-| Cmd+Shift+O | Toggle outline |
+| Cmd+Shift+O | Toggle outline (left sidebar) |
+| Cmd+Alt+O | Toggle right outline |
 | Cmd+Shift+F | Search in files |
 | Cmd+L | Toggle line numbers |
 | Cmd+/ | Show all shortcuts |
@@ -273,9 +274,47 @@ Change themes from the **View** menu:
 
 ---
 
+## Multi-Cursor Editing
+
+Vomit supports PyCharm-style multi-cursor editing:
+
+| Shortcut | Action |
+|----------|--------|
+| Option Option ↑ | Add cursor above (double-tap Option, then arrow) |
+| Option Option ↓ | Add cursor below (double-tap Option, then arrow) |
+| Escape | Clear all extra cursors |
+
+This allows you to edit multiple lines simultaneously - great for renaming variables or adding/removing text on multiple lines at once.
+
+---
+
+## File Tree
+
+### Drag & Drop
+
+You can drag files and folders in the file tree to reorganize them:
+
+- Drag any file or folder onto a folder to move it there
+- The target folder highlights when you hover over it
+- Cannot drop a folder into itself or its children
+
+### Keyboard Navigation
+
+| Shortcut | Action |
+|----------|--------|
+| ↑ / ↓ | Navigate between files |
+| → | Expand folder / Enter |
+| ← | Collapse folder / Go to parent |
+| Enter | Open file or toggle folder |
+| Escape | Return focus to editor |
+
+---
+
 ## Tips
 
 - Use **Cmd+.** to open the command palette for quick access to all commands
 - The outline sidebar (**Cmd+Shift+O**) shows document headings for navigation
+- The right outline (**Cmd+Alt+O**) provides an always-visible document structure
 - Auto-save is enabled by default - your work is saved automatically
 - Use **Ctrl+J** in the editor for autocomplete suggestions
+- Drag and drop files/folders in the file tree to reorganize

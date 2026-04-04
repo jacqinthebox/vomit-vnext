@@ -352,6 +352,13 @@ function createMenu() {
           }
         },
         {
+          label: 'Toggle Right Outline',
+          accelerator: 'CmdOrCtrl+Alt+O',
+          click: () => {
+            _bus.send('toggle-right-outline');
+          }
+        },
+        {
           label: 'Toggle Files',
           accelerator: 'CmdOrCtrl+E',
           click: () => {

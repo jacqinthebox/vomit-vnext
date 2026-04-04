@@ -22,6 +22,10 @@ ipcRenderer.on('toggle-outline', () => {
   window.dispatchEvent(new CustomEvent('vomit:toggle-outline'));
 });
 
+ipcRenderer.on('toggle-right-outline', () => {
+  window.dispatchEvent(new CustomEvent('vomit:toggle-right-outline'));
+});
+
 ipcRenderer.on('toggle-files', () => {
   window.dispatchEvent(new CustomEvent('vomit:toggle-files'));
 });
@@ -216,6 +220,7 @@ contextBridge.exposeInMainWorld('vomit', {
   searchInFiles: (dirPath, query) => ipcRenderer.invoke('search-in-files', dirPath, query),
   renameItem: (oldPath, newName) => ipcRenderer.invoke('rename-item', oldPath, newName),
   deleteItem: (itemPath) => ipcRenderer.invoke('delete-item', itemPath),
+  moveItem: (sourcePath, targetDir) => ipcRenderer.invoke('move-item', sourcePath, targetDir),
   showInFinder: (itemPath) => ipcRenderer.invoke('show-in-finder', itemPath),
   openFile: (filePath) => ipcRenderer.send('open-file-path', filePath),
   saveContent: (content) => ipcRenderer.send('save-content', content),

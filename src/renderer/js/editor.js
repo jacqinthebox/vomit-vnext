@@ -12,6 +12,8 @@ class Editor {
     this.sidebarOutline = document.getElementById('sidebar-outline');
     this.sidebarSearch = document.getElementById('sidebar-search');
     this.outlineList = document.getElementById('outline-list');
+    this.rightOutline = document.getElementById('right-outline');
+    this.rightOutlineList = document.getElementById('right-outline-list');
     this.fileTree = document.getElementById('file-tree');
     this.searchInput = document.getElementById('search-input');
     this.searchResults = document.getElementById('search-results');
@@ -48,7 +50,9 @@ class Editor {
         statusFile: this.statusFile,
         statusSlides: this.statusSlides,
         statusWords: this.statusWords,
-        outlineList: this.outlineList
+        outlineList: this.outlineList,
+        rightOutline: this.rightOutline,
+        rightOutlineList: this.rightOutlineList
       }
     });
     this.terminalManager = new TerminalManager({
@@ -192,6 +196,7 @@ class Editor {
       this.previewManager.updatePreview();
       this.previewManager.updateStatus();
       this.previewManager.updateOutline();
+      this.previewManager.updateRightOutline();
 
       // Skip dirty marking if we're restoring a tab
       if (this.state.isRestoringTab) return;
@@ -284,6 +289,9 @@ class Editor {
       if (this.state.isOutlineVisible) {
         this.previewManager.updateOutline();
       }
+      if (this.state.isRightOutlineVisible) {
+        this.previewManager.updateRightOutline();
+      }
       if (this.state.isFileTreeVisible) {
         const preserveFocus = this.state.focusedPane === 'sidebar';
         this.fileTreeManager.loadFileTree().then(() => {
@@ -355,6 +363,10 @@ class Editor {
 
     window.addEventListener('vomit:toggle-outline', () => {
       this.fileTreeManager.toggleOutline();
+    });
+
+    window.addEventListener('vomit:toggle-right-outline', () => {
+      this.previewManager.toggleRightOutline();
     });
 
     window.addEventListener('vomit:toggle-files', () => {

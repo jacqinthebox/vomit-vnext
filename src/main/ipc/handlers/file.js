@@ -665,6 +665,52 @@ Questions?
         throw new Error(`Failed to create directory: ${err.message}`);
       }
     });
+
+    // Move file or folder to a new location
+    ipcMain.handle('move-item', async (event, sourcePath, targetDir) => {
+      try {
+        const itemName = path.basename(sourcePath);
+        const newPath = path.join(targetDir, itemName);
+
+        // Check if source exists
+        if (!fs.existsSync(sourcePath)) {
+          return { success: false, error: 'Source item does not exist' };
+        }
+
+        // Check if target directory exists
+        if (!fs.existsSync(targetDir)) {
+          return { success: false, error: 'Target directory does not exist' };
+        }
+
+        // Check if target already has an item with the same name
+        if (fs.existsSync(newPath)) {
+          return { success: false, error: 'An item with that name already exists in the target folder' };
+        }
+
+        // Prevent moving a folder into itself or its descendants
+        if (sourcePath === targetDir || targetDir.startsWith(sourcePath + '/')) {
+          return { success: false, error: 'Cannot move a folder into itself' };
+        }
+
+        // Perform the move
+        fs.renameSync(sourcePath, newPath);
+
+        // Update currentFilePath if we moved the open file
+        if (state.currentFilePath === sourcePath) {
+          state.currentFilePath = newPath;
+          bus.getMainWindow()?.setTitle(`${path.basename(newPath)} - Vomit`);
+        } else if (state.currentFilePath && state.currentFilePath.startsWith(sourcePath + '/')) {
+          // File is inside a moved folder
+          const relativePath = state.currentFilePath.slice(sourcePath.length);
+          state.currentFilePath = newPath + relativePath;
+          bus.getMainWindow()?.setTitle(`${path.basename(state.currentFilePath)} - Vomit`);
+        }
+
+        return { success: true, newPath };
+      } catch (err) {
+        return { success: false, error: err.message };
+      }
+    });
   }
 
   return {

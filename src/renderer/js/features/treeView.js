@@ -38,6 +38,7 @@ class TreeView {
     this.#dataModel.addEventListener('nodeAdded', (e) => this.#onNodeAdded(e.detail));
     this.#dataModel.addEventListener('nodeRemoved', (e) => this.#onNodeRemoved(e.detail));
     this.#dataModel.addEventListener('nodeRenamed', (e) => this.#onNodeRenamed(e.detail));
+    this.#dataModel.addEventListener('nodeMoved', (e) => this.#onNodeMoved(e.detail));
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -214,6 +215,73 @@ class TreeView {
       childContainer.dataset.parentPath = newPath;
       this.#childContainers.delete(oldPath);
       this.#childContainers.set(newPath, childContainer);
+    }
+  }
+
+  #onNodeMoved({ oldPath, newPath, oldParentPath, newParentPath }) {
+    // Remove old element and its children from DOM
+    const el = this.#elements.get(oldPath);
+    if (el) {
+      el.remove();
+      this.#elements.delete(oldPath);
+    }
+
+    // Remove old child container if exists
+    const oldChildContainer = this.#childContainers.get(oldPath);
+    if (oldChildContainer) {
+      // Clean up all child elements from maps
+      this.#removeChildElementsFromMaps(oldPath);
+      oldChildContainer.remove();
+      this.#childContainers.delete(oldPath);
+    }
+
+    // Re-render in new location (if new parent is expanded or is root)
+    if (this.#state.isExpanded(newParentPath) || newParentPath === this.#state.rootPath) {
+      const node = this.#dataModel.getNode(newPath);
+      if (node) {
+        // Calculate new depth
+        const depth = this.#calculateDepth(newPath);
+
+        // Create new element
+        const newEl = this.#createNodeElement(node, depth);
+
+        // Find the container to insert into
+        let container;
+        if (newParentPath === this.#state.rootPath || !newParentPath) {
+          container = this.#container;
+        } else {
+          container = this.#childContainers.get(newParentPath);
+        }
+
+        if (container) {
+          // Find correct position (sorted)
+          const siblings = Array.from(container.querySelectorAll(':scope > .file-item'));
+          const insertBefore = siblings.find(sibling => {
+            const siblingPath = sibling.dataset.path;
+            const siblingNode = this.#dataModel.getNode(siblingPath);
+            if (!siblingNode) return false;
+
+            // Directories before files
+            if (node.isDirectory && !siblingNode.isDirectory) return true;
+            if (!node.isDirectory && siblingNode.isDirectory) return false;
+
+            return node.name.localeCompare(siblingNode.name) < 0;
+          });
+
+          if (insertBefore) {
+            container.insertBefore(newEl, insertBefore);
+          } else {
+            const firstChildContainer = container.querySelector(':scope > .tree-children');
+            if (firstChildContainer) {
+              container.insertBefore(newEl, firstChildContainer);
+            } else {
+              container.appendChild(newEl);
+            }
+          }
+
+          this.#elements.set(newPath, newEl);
+        }
+      }
     }
   }
 

@@ -34,7 +34,16 @@ class PreviewManager {
   constructor({ state, host, dom }) {
     this.state = state;
     this.host = host;
-    this.dom = dom;  // { preview, previewPane, editorContainer, statusFile, statusSlides, statusWords, outlineList }
+    this.dom = dom;  // { preview, previewPane, editorContainer, statusFile, statusSlides, statusWords, outlineList, rightOutline, rightOutlineList }
+  }
+
+  toggleRightOutline() {
+    this.state.isRightOutlineVisible = !this.state.isRightOutlineVisible;
+    this.dom.rightOutline.classList.toggle('hidden', !this.state.isRightOutlineVisible);
+
+    if (this.state.isRightOutlineVisible) {
+      this.updateRightOutline();
+    }
   }
 
   togglePreview() {
@@ -383,6 +392,64 @@ class PreviewManager {
     }).join('');
 
     this.dom.outlineList.querySelectorAll('.outline-item').forEach(el => {
+      el.addEventListener('click', () => {
+        const lineNum = parseInt(el.dataset.line, 10);
+        this.goToLine(lineNum);
+      });
+    });
+  }
+
+  updateRightOutline() {
+    if (!this.state.isRightOutlineVisible) return;
+
+    const content = this.host.cm.getValue();
+    const lines = content.split('\n');
+    const items = [];
+    let slideNum = 1;
+    let inFrontmatter = false;
+
+    lines.forEach((line, index) => {
+      if (index === 0 && line.trim() === '---') {
+        inFrontmatter = true;
+        return;
+      }
+      if (inFrontmatter && line.trim() === '---') {
+        inFrontmatter = false;
+        return;
+      }
+      if (inFrontmatter) return;
+
+      if (line.trim() === '---') {
+        slideNum++;
+        items.push({
+          type: 'slide',
+          text: `Slide ${slideNum}`,
+          line: index
+        });
+        return;
+      }
+
+      const h1Match = line.match(/^# (.+)$/);
+      const h2Match = line.match(/^## (.+)$/);
+      const h3Match = line.match(/^### (.+)$/);
+
+      if (h1Match) {
+        items.push({ type: 'h1', text: h1Match[1], line: index });
+      } else if (h2Match) {
+        items.push({ type: 'h2', text: h2Match[1], line: index });
+      } else if (h3Match) {
+        items.push({ type: 'h3', text: h3Match[1], line: index });
+      }
+    });
+
+    this.dom.rightOutlineList.innerHTML = items.map(item => {
+      if (item.type === 'slide') {
+        return `<div class="outline-item slide-marker" data-line="${item.line}">${item.text}</div>`;
+      }
+      return `<div class="outline-item ${item.type}" data-line="${item.line}">${item.text}</div>`;
+    }).join('');
+
+    this.dom.rightOutlineList.querySelectorAll('.outline-item').forEach(el => {
       el.addEventListener('click', () => {
         const lineNum = parseInt(el.dataset.line, 10);
         this.goToLine(lineNum);

@@ -34,19 +34,22 @@ An opinionated, keyboard-centric markdown editor for presentations and notes wit
 ## Features
 
 - **Markdown Editor** - Live preview, syntax highlighting, outline sidebar
+- **Right Outline Bar** - Always-visible document outline on the right (Cmd+Alt+O)
+- **Multi-Cursor Editing** - PyCharm-style multi-cursor with double-tap Option + arrows
+- **Drag & Drop** - Drag files and folders to reorganize your file tree
 - **Presenter View** - Current slide, next slide preview, speaker notes, timer
 - **Local AI (Privacy First)** - Built-in AI terminal powered by Ollama - your data stays on your machine
 - **RAG Search** - Index your documents and ask AI questions with context from your files
 - **Pseudonymization** - Anonymize sensitive data (names, emails, IPs) with AI, reversible with `/depseudo`
 - **LaTeX Math** - Render formulas with KaTeX (`$inline$` and `$$display$$`)
-- **PlantUML Diagrams** - Render sequence diagrams, flowcharts, and more
+- **PlantUML & Mermaid** - Render sequence diagrams, flowcharts, and more
 - **Emoji Shortcodes** - Use `:smile:` syntax like GitHub/Slack
 - **File Tree** - Browse and open files in your bucket (Cmd+E)
 - **Search in Files** - Search across all markdown files (Cmd+Shift+F)
 - **Laser Pointer** - Press L during presentation to highlight
 - **PDF Export** - Export slides to PDF for sharing
 - **Image Support** - Paste images directly, resize with simple syntax
-- **Themes** - Default, Dark, Catppuccin, Nord, Solarized Dark
+- **Themes** - Default, Dark, Catppuccin, Nord, Tokyo Night, Solarized Dark
 - **Keyboard Shortcuts** - Full keyboard control for everything
 
 ## Buckets
@@ -216,16 +219,19 @@ Press **Cmd+/** to view all shortcuts in the app. See [SHORTCUTS.md](SHORTCUTS.m
 | | Cmd+S | Save |
 | **View** | Cmd+P | Toggle preview |
 | | Cmd+E | Toggle file explorer |
+| | Cmd+Alt+O | Toggle right outline |
 | | Cmd+L | Toggle line numbers |
 | | Cmd+/ | Show all shortcuts |
 | **Format** | Cmd+B | Bold |
 | | Cmd+I | Italic |
 | | Cmd+K | Insert link |
-| | Cmd+T | Insert table |
+| | Cmd+M | Code block |
+| **Multi-Cursor** | Option Option ↑/↓ | Add cursor above/below |
+| | Escape | Clear extra cursors |
 | **Code** | Ctrl+J | Autocomplete |
 | **Explorer** | ↑↓ | Navigate files |
 | | ←→ | Navigate folders |
-| | Ctrl+Tab | Switch to editor |
+| | Drag & Drop | Move files/folders |
 | **Present** | Cmd+Shift+P | Start presentation |
 | | Cmd+Alt+P | With presenter view |
 | | L | Laser pointer |

@@ -39,7 +39,8 @@ Press **Cmd+/** to open this help at any time.
 | Shortcut | Action |
 |----------|--------|
 | Cmd+P | Toggle preview pane |
-| Cmd+O | Toggle outline sidebar |
+| Cmd+Shift+O | Toggle outline sidebar (left) |
+| Cmd+Alt+O | Toggle right outline |
 | Cmd+E | Toggle file explorer |
 | Cmd+Shift+R | Refresh file tree |
 | Cmd+L | Toggle line numbers |
@@ -102,6 +103,7 @@ Press **Cmd+/** to open this help at any time.
 | Cmd+1 / Ctrl+Tab | Toggle sidebar focus |
 | Ctrl+W | Switch focus to editor |
 | Escape | Return focus to editor |
+| Drag & Drop | Move files/folders to new location |
 
 ---
 
