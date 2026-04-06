@@ -5,9 +5,8 @@
   "main": "src/main/main.js",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder --mac --win --linux",
+    "build": "electron-builder --mac --linux",
     "build:mac": "electron-builder --mac",
-    "build:win": "electron-builder --win",
     "build:linux": "electron-builder --linux",
     "pack": "electron-builder --dir"
   },
@@ -45,13 +44,6 @@
       "target": "dmg",
       "icon": "build/icon.icns"
     },
-    "win": {
-      "target": [
-        "nsis",
-        "msi"
-      ],
-      "icon": "build/icon.png"
-    },
     "linux": {
       "target": [
         "AppImage",
@@ -59,10 +51,6 @@
       ],
       "icon": "build/icon.png",
       "category": "Office"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true
     },
     "files": [
       "src/**/*",
