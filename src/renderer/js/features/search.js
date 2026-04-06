@@ -5,6 +5,7 @@ class SearchManager {
     this.state = state;
     this.host = host;
     this.dom = dom;  // { searchInput, searchResults, sidebarSearch, sidebarFiles, sidebarOutline, fileTree, outlineList, previewPane }
+    this.currentQuery = '';  // Track current search query for highlighting
   }
 
   setup() {
@@ -47,7 +48,40 @@ class SearchManager {
       item.classList.toggle('selected', i === this.state.selectedSearchIndex);
     });
     if (this.state.selectedSearchIndex >= 0 && items[this.state.selectedSearchIndex]) {
-      items[this.state.selectedSearchIndex].scrollIntoView({ block: 'nearest' });
+      const selectedItem = items[this.state.selectedSearchIndex];
+      selectedItem.scrollIntoView({ block: 'nearest' });
+
+      // Preview the match in the editor
+      const filePath = selectedItem.dataset.path;
+      const line = parseInt(selectedItem.dataset.line, 10);
+      this.previewMatch(filePath, line);
+    }
+  }
+
+  previewMatch(filePath, line) {
+    // Only preview if it's the current file
+    if (filePath !== this.state.currentFilePath) {
+      return;
+    }
+
+    const lineIndex = line - 1; // CM uses 0-based line numbers
+    const lineContent = this.host.getLine(lineIndex);
+    if (!lineContent || !this.currentQuery) return;
+
+    // Find the search term on this line (case-insensitive)
+    const lowerLine = lineContent.toLowerCase();
+    const lowerQuery = this.currentQuery.toLowerCase();
+    const matchStart = lowerLine.indexOf(lowerQuery);
+
+    if (matchStart >= 0) {
+      const matchEnd = matchStart + this.currentQuery.length;
+      // Select the match to highlight it
+      this.host.setSelection(
+        { line: lineIndex, ch: matchStart },
+        { line: lineIndex, ch: matchEnd }
+      );
+      // Scroll the editor to show the match
+      this.host.scrollIntoView({ line: lineIndex, ch: matchStart });
     }
   }
 
@@ -69,8 +103,11 @@ class SearchManager {
     const query = this.dom.searchInput.value.trim();
     if (!query || query.length < 2) {
       this.dom.searchResults.innerHTML = '<div class="search-no-results">Type at least 2 characters to search</div>';
+      this.currentQuery = '';
       return;
     }
+
+    this.currentQuery = query;  // Store for highlighting
 
     if (!this.state.currentDirectory) {
       this.state.currentDirectory = await window.vomit.getCurrentDirectory();
