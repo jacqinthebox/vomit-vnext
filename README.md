@@ -26,10 +26,7 @@ An opinionated, keyboard-centric markdown editor for presentations and notes wit
 
 ## Platform Support
 
-| Platform | Editor & Presentation | AI Features (Ollama) |
-|----------|:---------------------:|:--------------------:|
-| macOS    | ✅ Full support       | ✅ Full support      |
-| Linux    | ✅ Full support       | ✅ Full support      |
+**macOS only** (Intel and Apple Silicon)
 
 ## Features
 
