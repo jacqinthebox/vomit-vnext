@@ -39,6 +39,7 @@ Press **Cmd+/** to open this help at any time.
 | Shortcut | Action |
 |----------|--------|
 | Cmd+P | Toggle preview pane |
+| Cmd+\\ | Toggle focus between editor and preview (split view) |
 | Cmd+Shift+O | Toggle outline sidebar (left) |
 | Cmd+Alt+O | Toggle right outline |
 | Cmd+E | Toggle file explorer |
@@ -166,3 +167,4 @@ Press **Cmd+/** to open this help at any time.
 - **Slide separator** is `---` on its own line
 - **Frontmatter** supports `theme:` and `font-size:` settings
 - **Privacy first** - All AI runs locally via Ollama, your data never leaves your machine
+- **Scroll sync** - In split view, scrolling the editor or preview keeps them aligned

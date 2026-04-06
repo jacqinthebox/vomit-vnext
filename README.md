@@ -70,7 +70,7 @@ Download the latest `.dmg` from [Releases](https://github.com/jacqinthebox/vomit
 **Important:** The app is not code-signed with an Apple Developer certificate. macOS will block it by default. After installing, run this command in Terminal to remove the quarantine flag:
 
 ```bash
-xattr -cr /Applications/Vomit\ vNext.app
+xattr -cr /Applications/Vomit.app
 ```
 
 Then the app will open normally.

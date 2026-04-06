@@ -152,6 +152,15 @@ class SettingsManager {
         e.stopPropagation();
         this.searchManager.togglePaneFocus();
       }
+
+      // Cmd+\ to toggle focus between editor and preview in split view
+      if (e.metaKey && e.key === '\\') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (this.previewManager) {
+          this.previewManager.toggleEditorPreviewFocus();
+        }
+      }
     }, true);  // capture phase
 
     // Cmd+1 from menu

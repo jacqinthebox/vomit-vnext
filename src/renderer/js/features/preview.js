@@ -35,6 +35,101 @@ class PreviewManager {
     this.state = state;
     this.host = host;
     this.dom = dom;  // { preview, previewPane, editorContainer, statusFile, statusSlides, statusWords, outlineList, rightOutline, rightOutlineList }
+
+    // Scroll sync state
+    this._isSyncingScroll = false;
+    this._scrollSyncEnabled = true;
+
+    // Setup scroll synchronization
+    this.setupScrollSync();
+  }
+
+  setupScrollSync() {
+    // Listen to CodeMirror scroll events
+    this.host.cm.on('scroll', () => {
+      if (!this._scrollSyncEnabled || this._isSyncingScroll) return;
+      if (!this.state.isPreviewVisible || this.state.viewMode !== 'split') return;
+
+      this._isSyncingScroll = true;
+
+      const scrollInfo = this.host.cm.getScrollInfo();
+      const maxEditorScroll = scrollInfo.height - scrollInfo.clientHeight;
+
+      if (maxEditorScroll > 0) {
+        const scrollPercent = scrollInfo.top / maxEditorScroll;
+        // Use previewPane (the scrollable container), not preview (the content)
+        const maxPreviewScroll = this.dom.previewPane.scrollHeight - this.dom.previewPane.clientHeight;
+        this.dom.previewPane.scrollTop = scrollPercent * maxPreviewScroll;
+      }
+
+      // Reset flag after a small delay to allow the scroll to complete
+      setTimeout(() => {
+        this._isSyncingScroll = false;
+      }, 50);
+    });
+
+    // Listen to preview pane scroll events (previewPane is the scrollable container)
+    this.dom.previewPane.addEventListener('scroll', () => {
+      if (!this._scrollSyncEnabled || this._isSyncingScroll) return;
+      if (!this.state.isPreviewVisible || this.state.viewMode !== 'split') return;
+
+      this._isSyncingScroll = true;
+
+      const maxPreviewScroll = this.dom.previewPane.scrollHeight - this.dom.previewPane.clientHeight;
+
+      if (maxPreviewScroll > 0) {
+        const scrollPercent = this.dom.previewPane.scrollTop / maxPreviewScroll;
+        const scrollInfo = this.host.cm.getScrollInfo();
+        const maxEditorScroll = scrollInfo.height - scrollInfo.clientHeight;
+        this.host.cm.scrollTo(null, scrollPercent * maxEditorScroll);
+      }
+
+      // Reset flag after a small delay to allow the scroll to complete
+      setTimeout(() => {
+        this._isSyncingScroll = false;
+      }, 50);
+    });
+  }
+
+  toggleScrollSync() {
+    this._scrollSyncEnabled = !this._scrollSyncEnabled;
+    return this._scrollSyncEnabled;
+  }
+
+  syncEditorToPreview() {
+    if (!this.state.isPreviewVisible || this.state.viewMode !== 'split') return;
+
+    // Use requestAnimationFrame to ensure preview has rendered
+    requestAnimationFrame(() => {
+      const scrollInfo = this.host.cm.getScrollInfo();
+      const maxEditorScroll = scrollInfo.height - scrollInfo.clientHeight;
+
+      if (maxEditorScroll > 0) {
+        const scrollPercent = scrollInfo.top / maxEditorScroll;
+        const maxPreviewScroll = this.dom.previewPane.scrollHeight - this.dom.previewPane.clientHeight;
+        this.dom.previewPane.scrollTop = scrollPercent * maxPreviewScroll;
+      }
+    });
+  }
+
+  toggleEditorPreviewFocus() {
+    if (!this.state.isPreviewVisible || this.state.viewMode !== 'split') return;
+
+    // Make preview pane focusable if not already
+    if (!this.dom.previewPane.hasAttribute('tabindex')) {
+      this.dom.previewPane.setAttribute('tabindex', '-1');
+    }
+
+    // Check if editor currently has focus
+    const editorHasFocus = this.host.cm.hasFocus();
+
+    if (editorHasFocus) {
+      // Focus preview
+      this.dom.previewPane.focus();
+    } else {
+      // Focus editor
+      this.host.cm.focus();
+    }
   }
 
   toggleRightOutline() {
@@ -56,6 +151,8 @@ class PreviewManager {
       body.classList.add('split-view');
       this.dom.previewPane.classList.add('visible');
       this.updatePreview();
+      // Sync scroll position after preview is rendered
+      this.syncEditorToPreview();
     } else if (this.state.viewMode === 'split') {
       this.state.viewMode = 'preview';
       body.classList.remove('split-view', 'editor-only');
