@@ -109,16 +109,18 @@ class SearchManager {
 
     this.currentQuery = query;  // Store for highlighting
 
-    if (!this.state.currentDirectory) {
-      this.state.currentDirectory = await window.vomit.getCurrentDirectory();
+    // Use projectRoot for search (covers entire project), fall back to currentDirectory
+    let searchDir = this.state.projectRoot || this.state.currentDirectory;
+    if (!searchDir) {
+      searchDir = await window.vomit.getCurrentDirectory();
     }
 
-    if (!this.state.currentDirectory) {
+    if (!searchDir) {
       this.dom.searchResults.innerHTML = '<div class="search-no-results">Open a file to search in its directory</div>';
       return;
     }
 
-    const results = await window.vomit.searchInFiles(this.state.currentDirectory, query);
+    const results = await window.vomit.searchInFiles(searchDir, query);
     this.renderSearchResults(results, query);
   }
 
@@ -154,6 +156,7 @@ class SearchManager {
         const line = parseInt(el.dataset.line, 10);
         window.vomit.openFile(filePath);
         this.state.pendingLineJump = line;
+        this.state.pendingSearchQuery = this.currentQuery;  // Store for highlighting
       });
     });
   }

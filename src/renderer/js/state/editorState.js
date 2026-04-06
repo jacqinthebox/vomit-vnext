@@ -50,6 +50,7 @@ class EditorState extends EventTarget {
     this.searchTimeout = null;
     this.autoSaveTimeout = null;
     this.pendingLineJump = null;
+    this.pendingSearchQuery = null;  // Search term to highlight after file opens
     this.selectedSearchIndex = -1;
   }
 

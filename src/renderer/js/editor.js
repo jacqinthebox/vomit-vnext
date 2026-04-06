@@ -304,7 +304,32 @@ class Editor {
       // Handle pending line jump from search
       if (this.state.pendingLineJump) {
         setTimeout(() => {
-          this.previewManager.goToLine(this.state.pendingLineJump - 1);
+          const lineIndex = this.state.pendingLineJump - 1;
+          const query = this.state.pendingSearchQuery;
+
+          if (query) {
+            // Highlight the search term on the line
+            const lineContent = this.host.getLine(lineIndex);
+            if (lineContent) {
+              const lowerLine = lineContent.toLowerCase();
+              const lowerQuery = query.toLowerCase();
+              const matchStart = lowerLine.indexOf(lowerQuery);
+              if (matchStart >= 0) {
+                const matchEnd = matchStart + query.length;
+                this.host.setSelection(
+                  { line: lineIndex, ch: matchStart },
+                  { line: lineIndex, ch: matchEnd }
+                );
+                this.host.scrollIntoView({ line: lineIndex, ch: matchStart });
+              } else {
+                this.previewManager.goToLine(lineIndex);
+              }
+            }
+            this.state.pendingSearchQuery = null;
+          } else {
+            this.previewManager.goToLine(lineIndex);
+          }
+
           this.state.pendingLineJump = null;
         }, 100);
       }
