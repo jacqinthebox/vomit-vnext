@@ -191,6 +191,9 @@ class TerminalManager {
           // Close the terminal panel
           this.state.isTerminalPanelVisible = false;
           this.terminalPanel.classList.add('hidden');
+          // Clear inline padding style
+          const mainContainer = document.getElementById('main-container');
+          if (mainContainer) mainContainer.style.paddingBottom = '';
           this.host.focus();
         }
       } else if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
@@ -221,6 +224,9 @@ class TerminalManager {
     this.terminalClose.addEventListener('click', () => {
       this.state.isTerminalPanelVisible = false;
       this.terminalPanel.classList.add('hidden');
+      // Clear inline padding style
+      const mainContainer = document.getElementById('main-container');
+      if (mainContainer) mainContainer.style.paddingBottom = '';
       this.host.focus();
     });
 
@@ -363,6 +369,7 @@ class TerminalManager {
     let isResizing = false;
     let startY = 0;
     let startHeight = 0;
+    const mainContainer = document.getElementById('main-container');
 
     this.terminalResize.addEventListener('mousedown', (e) => {
       isResizing = true;
@@ -377,6 +384,10 @@ class TerminalManager {
       const delta = startY - e.clientY;
       const newHeight = Math.max(100, Math.min(600, startHeight + delta));
       this.terminalPanel.style.height = `${newHeight}px`;
+      // Update main container padding to match terminal height
+      if (mainContainer) {
+        mainContainer.style.paddingBottom = `${newHeight}px`;
+      }
       // Fit xterm when resizing
       if (this.state.activeTerminalTab === 'shell' && this.xtermFitAddon) {
         this.xtermFitAddon.fit();
@@ -400,15 +411,22 @@ class TerminalManager {
   }
 
   toggleTerminal() {
+    const mainContainer = document.getElementById('main-container');
     if (this.state.isTerminalPanelVisible && this.state.activeTerminalTab === 'ai') {
       // Already showing AI terminal, close the panel
       this.state.isTerminalPanelVisible = false;
       this.terminalPanel.classList.add('hidden');
+      // Clear inline padding style (CSS will handle the rest)
+      if (mainContainer) mainContainer.style.paddingBottom = '';
       this.host.focus();
     } else {
       // Show panel and switch to AI tab
       this.state.isTerminalPanelVisible = true;
       this.terminalPanel.classList.remove('hidden');
+      // Set padding to match current terminal height
+      if (mainContainer) {
+        mainContainer.style.paddingBottom = `${this.terminalPanel.offsetHeight}px`;
+      }
       this.switchTerminalTab('ai');
     }
   }
@@ -417,6 +435,11 @@ class TerminalManager {
     if (!this.state.isTerminalPanelVisible || this.state.activeTerminalTab !== 'ai') {
       this.state.isTerminalPanelVisible = true;
       this.terminalPanel.classList.remove('hidden');
+      // Set padding to match current terminal height
+      const mainContainer = document.getElementById('main-container');
+      if (mainContainer) {
+        mainContainer.style.paddingBottom = `${this.terminalPanel.offsetHeight}px`;
+      }
       this.switchTerminalTab('ai');
     }
   }
@@ -558,15 +581,22 @@ class TerminalManager {
   }
 
   toggleShellTerminal() {
+    const mainContainer = document.getElementById('main-container');
     if (this.state.isTerminalPanelVisible && this.state.activeTerminalTab === 'shell') {
       // Already showing shell terminal, close the panel
       this.state.isTerminalPanelVisible = false;
       this.terminalPanel.classList.add('hidden');
+      // Clear inline padding style
+      if (mainContainer) mainContainer.style.paddingBottom = '';
       this.host.focus();
     } else {
       // Show panel and switch to shell tab
       this.state.isTerminalPanelVisible = true;
       this.terminalPanel.classList.remove('hidden');
+      // Set padding to match current terminal height
+      if (mainContainer) {
+        mainContainer.style.paddingBottom = `${this.terminalPanel.offsetHeight}px`;
+      }
       this.switchTerminalTab('shell');
     }
   }
