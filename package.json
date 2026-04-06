@@ -5,9 +5,8 @@
   "main": "src/main/main.js",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder --mac --linux",
+    "build": "electron-builder --mac",
     "build:mac": "electron-builder --mac",
-    "build:linux": "electron-builder --linux",
     "pack": "electron-builder --dir"
   },
   "keywords": [
@@ -43,14 +42,6 @@
       "category": "public.app-category.productivity",
       "target": "dmg",
       "icon": "build/icon.icns"
-    },
-    "linux": {
-      "target": [
-        "AppImage",
-        "deb"
-      ],
-      "icon": "build/icon.png",
-      "category": "Office"
     },
     "files": [
       "src/**/*",
