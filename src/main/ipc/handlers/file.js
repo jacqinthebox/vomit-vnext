@@ -596,8 +596,12 @@ Questions?
         // Refresh file tree to show new image
         bus.send('refresh-file-tree');
 
-        // Return relative path from bucket
-        if (bucketPath) {
+        // Return relative path from current file's directory
+        if (bucketPath && state.currentFilePath) {
+          const fileDir = path.dirname(state.currentFilePath);
+          const relativePath = path.relative(fileDir, filepath);
+          return relativePath;
+        } else if (bucketPath) {
           return `images/${filename}`;
         }
         return filepath;
