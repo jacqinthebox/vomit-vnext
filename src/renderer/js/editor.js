@@ -543,6 +543,26 @@ class Editor {
       // - Loading the file tree
     });
 
+    // File opened outside bucket notification
+    window.addEventListener('vomit:file-outside-bucket', (e) => {
+      const filePath = e.detail;
+      const fileName = filePath.split('/').pop();
+      this.showToast(`Opened "${fileName}" (outside bucket)`, 'info');
+    });
+
+  }
+
+  showToast(message, type = 'info', duration = 3000) {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.textContent = message;
+    container.appendChild(toast);
+
+    setTimeout(() => {
+      toast.classList.add('fade-out');
+      setTimeout(() => toast.remove(), 200);
+    }, duration);
   }
 
   async handleExternalFileChange(tab) {

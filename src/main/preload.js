@@ -210,6 +210,10 @@ ipcRenderer.on('bucket-switched', (event, bucket) => {
   window.dispatchEvent(new CustomEvent('vomit:bucket-switched', { detail: bucket }));
 });
 
+ipcRenderer.on('file-outside-bucket', (event, filePath) => {
+  window.dispatchEvent(new CustomEvent('vomit:file-outside-bucket', { detail: filePath }));
+});
+
 // Expose only the send methods (no callbacks needed)
 contextBridge.exposeInMainWorld('vomit', {
   watchFile: (filePath) => ipcRenderer.send('watch-file', filePath),

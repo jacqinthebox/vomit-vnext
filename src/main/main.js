@@ -167,14 +167,19 @@ app.on('window-all-closed', () => {
 app.on('open-file', (event, filePath) => {
   event.preventDefault();
   const activeBucket = configStore.getActiveBucket();
-  // Only open if within active bucket
-  if (activeBucket && filePath.startsWith(activeBucket.path)) {
-    if (bus.getMainWindow()) {
-      fileService.loadFile(filePath);
-    } else {
-      app.whenReady().then(() => {
-        fileService.loadFile(filePath);
-      });
+  const isOutsideBucket = !activeBucket || !filePath.startsWith(activeBucket.path);
+
+  if (bus.getMainWindow()) {
+    fileService.loadFile(filePath);
+    if (isOutsideBucket) {
+      bus.send('file-outside-bucket', filePath);
     }
+  } else {
+    app.whenReady().then(() => {
+      fileService.loadFile(filePath);
+      if (isOutsideBucket) {
+        bus.send('file-outside-bucket', filePath);
+      }
+    });
   }
 });
