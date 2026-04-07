@@ -415,6 +415,13 @@ Questions?
       }
     });
 
+    // Open file with system default application
+    ipcMain.handle('open-with-default', async (event, filePath) => {
+      if (filePath && fs.existsSync(filePath)) {
+        await shell.openPath(filePath);
+      }
+    });
+
     // Get directory contents for file tree
     ipcMain.handle('get-directory-contents', async (event, dirPath) => {
       try {

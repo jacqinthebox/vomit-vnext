@@ -230,6 +230,7 @@ contextBridge.exposeInMainWorld('vomit', {
   deleteItem: (itemPath) => ipcRenderer.invoke('delete-item', itemPath),
   moveItem: (sourcePath, targetDir) => ipcRenderer.invoke('move-item', sourcePath, targetDir),
   showInFinder: (itemPath) => ipcRenderer.invoke('show-in-finder', itemPath),
+  openWithDefault: (filePath) => ipcRenderer.invoke('open-with-default', filePath),
   openFile: (filePath) => ipcRenderer.send('open-file-path', filePath),
   saveContent: (content) => ipcRenderer.send('save-content', content),
   contentChanged: (content) => ipcRenderer.send('content-changed', content),

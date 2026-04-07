@@ -515,6 +515,7 @@ class FileTreeManager {
       <div class="context-menu-item" data-action="rename">Rename</div>
       <div class="context-menu-item" data-action="delete">Delete</div>
       <div class="context-menu-divider"></div>
+      <div class="context-menu-item" data-action="open-default">Open with Default App</div>
       <div class="context-menu-item" data-action="finder">Show in Finder</div>
     `;
     menu.style.left = `${x}px`;
@@ -537,6 +538,9 @@ class FileTreeManager {
           break;
         case 'delete':
           await this._deleteItem(path);
+          break;
+        case 'open-default':
+          window.vomit.openWithDefault(path);
           break;
         case 'finder':
           window.vomit.showInFinder(path);
