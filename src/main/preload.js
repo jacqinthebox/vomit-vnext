@@ -214,6 +214,10 @@ ipcRenderer.on('file-outside-bucket', (event, filePath) => {
   window.dispatchEvent(new CustomEvent('vomit:file-outside-bucket', { detail: filePath }));
 });
 
+ipcRenderer.on('update-available', (event, data) => {
+  window.dispatchEvent(new CustomEvent('vomit:update-available', { detail: data }));
+});
+
 // Expose only the send methods (no callbacks needed)
 contextBridge.exposeInMainWorld('vomit', {
   watchFile: (filePath) => ipcRenderer.send('watch-file', filePath),

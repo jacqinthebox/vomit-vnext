@@ -81,6 +81,47 @@ rag.registerHandlers(ipcMain, { state, bus });
 // App info handler
 ipcMain.handle('get-app-version', () => app.getVersion());
 
+// Check for updates via GitHub releases
+async function checkForUpdates() {
+  try {
+    const https = require('https');
+    const currentVersion = app.getVersion();
+
+    const options = {
+      hostname: 'api.github.com',
+      path: '/repos/jacqinthebox/vomit-vnext/releases/latest',
+      headers: { 'User-Agent': 'Vomit-App' }
+    };
+
+    const data = await new Promise((resolve, reject) => {
+      https.get(options, (res) => {
+        let body = '';
+        res.on('data', chunk => body += chunk);
+        res.on('end', () => resolve(JSON.parse(body)));
+      }).on('error', reject);
+    });
+
+    if (data.tag_name) {
+      const latestVersion = data.tag_name.replace(/^v/, '');
+      if (isNewerVersion(latestVersion, currentVersion)) {
+        bus.send('update-available', { current: currentVersion, latest: latestVersion });
+      }
+    }
+  } catch (err) {
+    // Silently fail - update check is non-critical
+  }
+}
+
+function isNewerVersion(latest, current) {
+  const latestParts = latest.split('.').map(Number);
+  const currentParts = current.split('.').map(Number);
+  for (let i = 0; i < 3; i++) {
+    if ((latestParts[i] || 0) > (currentParts[i] || 0)) return true;
+    if ((latestParts[i] || 0) < (currentParts[i] || 0)) return false;
+  }
+  return false;
+}
+
 // Helper to find first valid bucket
 function findFirstValidBucket() {
   const buckets = configStore.getBuckets();
@@ -149,6 +190,9 @@ app.whenReady().then(async () => {
   bus.getMainWindow().webContents.once('did-finish-load', () => {
     bus.send('open-folder', activeBucket.path);
     bus.getMainWindow()?.setTitle(`${activeBucket.name} - Vomit`);
+
+    // Check for updates after a short delay
+    setTimeout(checkForUpdates, 3000);
   });
 
   app.on('activate', () => {

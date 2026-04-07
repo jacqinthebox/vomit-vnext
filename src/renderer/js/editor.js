@@ -550,6 +550,12 @@ class Editor {
       this.showToast(`Opened "${fileName}" (outside bucket)`, 'info');
     });
 
+    // Update available notification
+    window.addEventListener('vomit:update-available', (e) => {
+      const { current, latest } = e.detail;
+      this.showToast(`Update available: v${latest} (current: v${current})`, 'info', 8000);
+    });
+
   }
 
   showToast(message, type = 'info', duration = 3000) {
