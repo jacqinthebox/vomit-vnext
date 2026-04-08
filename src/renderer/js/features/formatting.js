@@ -184,4 +184,16 @@ class FormattingManager {
     cm.replaceSelection(tableTemplate);
     cm.focus();
   }
+
+  insertDateHeading() {
+    const cm = this.host.cm;
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const dateStr = `## ${year}-${month}-${day}\n\n`;
+
+    cm.replaceSelection(dateStr);
+    cm.focus();
+  }
 }

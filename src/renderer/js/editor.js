@@ -496,6 +496,7 @@ class Editor {
         case 'quote': this.formatting.insertAtLineStart('> '); break;
         case 'hr': this.formatting.insertText('\n---\n'); break;
         case 'slide': this.formatting.insertSlide(); break;
+        case 'dateHeading': this.formatting.insertDateHeading(); break;
       }
     });
 

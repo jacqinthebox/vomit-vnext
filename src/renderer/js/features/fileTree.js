@@ -195,6 +195,12 @@ class FileTreeManager {
 
   _setupKeyboardNavigation() {
     this.fileTreeContainer.addEventListener('keydown', async (e) => {
+      // Don't intercept keyboard navigation when in rename/create inputs
+      // (except Enter/Escape which are handled by the input's own handler)
+      if (e.target.tagName === 'INPUT') {
+        return;
+      }
+
       const el = e.target.closest('.file-item');
       if (!el || !el.dataset.path) return;
 

@@ -323,6 +323,12 @@ function createMenu() {
           label: 'Insert Slide',
           accelerator: 'CmdOrCtrl+Enter',
           click: () => _actions.sendFormatCommand('slide')
+        },
+        { type: 'separator' },
+        {
+          label: 'Insert Date Heading',
+          accelerator: 'CmdOrCtrl+Shift+D',
+          click: () => _actions.sendFormatCommand('dateHeading')
         }
       ]
     },

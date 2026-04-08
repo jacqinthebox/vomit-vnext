@@ -68,6 +68,7 @@ Press **Cmd+/** to open this help at any time.
 | Cmd+Shift+3 | Heading 3 |
 | Cmd+' | Blockquote |
 | Cmd+- | Horizontal rule |
+| Cmd+Shift+D | Insert date heading (## YYYY-MM-DD) |
 | Cmd+Enter | Insert new slide |
 
 ---
