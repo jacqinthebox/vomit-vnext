@@ -2,6 +2,20 @@
 
 All notable changes to Vomit will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- Insert Date Heading shortcut (`Cmd+Shift+D`)
+- "Open with Default App" context menu option
+- Update notification on startup
+
+### Improved
+- Outside-bucket file warning now more prominent (top-right corner with amber styling)
+
+### Fixed
+- Image paste path for files in subdirectories
+- Rename input navigation in file tree
+
 ## [1.5.5] - 2026-02-16
 
 ### Security
