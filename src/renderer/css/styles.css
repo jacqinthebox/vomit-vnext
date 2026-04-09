@@ -1685,6 +1685,22 @@ body:has(#terminal-panel:not(.hidden)) #main-container {
   border-left: 3px solid var(--accent-color);
 }
 
+.toast.warning {
+  position: fixed;
+  top: 60px;
+  right: 20px;
+  left: auto;
+  bottom: auto;
+  background: #2a2520;
+  border: 1px solid #f5a623;
+  border-left: 4px solid #f5a623;
+  padding: 14px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  max-width: 400px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
 .toast.fade-out {
   animation: toast-out 0.2s ease-in forwards;
 }

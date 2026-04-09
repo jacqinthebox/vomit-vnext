@@ -548,7 +548,7 @@ class Editor {
     window.addEventListener('vomit:file-outside-bucket', (e) => {
       const filePath = e.detail;
       const fileName = filePath.split('/').pop();
-      this.showToast(`Opened "${fileName}" (outside bucket)`, 'info');
+      this.showToast(`⚠ Opened "${fileName}" (outside bucket)`, 'warning', 5000);
     });
 
     // Update available notification
