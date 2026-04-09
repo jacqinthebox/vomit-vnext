@@ -4,17 +4,48 @@ All notable changes to Vomit will be documented in this file.
 
 ## [Unreleased]
 
-### Added
-- Insert Date Heading shortcut (`Cmd+Shift+D`)
-- "Open with Default App" context menu option
-- Update notification on startup
-
 ### Improved
 - Outside-bucket file warning now more prominent (top-right corner with amber styling)
 
+## [1.6.0] - 2026-04-09
+
+### Added
+- **Multi-bucket support** - Switch between multiple document folders via Buckets menu
+- **Mermaid diagrams** - Render flowcharts, sequence diagrams, and more with configurable arrow styles
+- **Split view** - Side-by-side editor and preview with scroll sync (`Cmd+\`)
+- **Right outline bar** - Quick navigation through document headings
+- **Drag-and-drop file tree** - Reorder files and folders by dragging
+- **PyCharm-style multi-cursor** - `Cmd+G` to select next occurrence
+- **Agent mode** - AI tool calling with `/agent` command
+- **AI write commands** - `/write` to generate and insert content
+- **/presentation command** - Start presentations from terminal
+- **Search improvements** - Project-wide search with match highlighting in editor
+- **Font size setting** - Adjustable editor font size
+- **Code block shortcut** - Quick code fence insertion
+- **Insert Date Heading** - `Cmd+Shift+D` inserts date as heading
+- **Open with Default App** - Context menu option to open files externally
+- **Update notifications** - Notifies when new version is available on startup
+- **Open files outside bucket** - View files outside current bucket with warning toast
+- **Version display** - Shows version and bucket icon in UI
+- **Tabbed terminal panel** - AI and shell in separate tabs
+- **AI conversation history** - Maintains context across prompts
+- **Single file indexing** - Index individual files for RAG
+- **Format Table** - Auto-format markdown tables
+- **Toggle Word Wrap** - Toggle line wrapping in editor
+
+### Changed
+- **macOS only** - Removed Windows and Linux support for simplified maintenance
+- **Major refactoring** - Modularized codebase (main.js 2400→137 lines, editor.js 3332→521 lines)
+- **VS Code-inspired file tree** - Rewritten with better architecture
+- File tree hidden by default (toggle with `Cmd+B`)
+
 ### Fixed
+- Scrolling issues when terminal panel is visible
+- Line number left padding
+- Double execution crash in file tree operations
 - Image paste path for files in subdirectories
 - Rename input navigation in file tree
+- Search now searches entire project
 
 ## [1.5.5] - 2026-02-16
 
