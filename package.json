@@ -21,8 +21,11 @@
   },
   "license": "MIT",
   "devDependencies": {
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
     "electron": "^40.4.1",
-    "electron-builder": "^26.7.0"
+    "electron-builder": "^26.7.0",
+    "semantic-release": "^25.0.3"
   },
   "dependencies": {
     "@xterm/addon-fit": "^0.11.0",
