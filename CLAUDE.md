@@ -119,10 +119,29 @@ The built app will be at `dist/mac-arm64/Vomit.app`.
 
 **DO NOT run `npm run build`** - It tries to build for all platforms and fails on macOS due to Wine/32-bit issues.
 
-**Release process:**
-1. Build locally: `npx electron-builder --mac --dir`
-2. Commit and push changes
-3. DMG and cross-platform builds are handled by GitHub Actions CI
+### Automated Releases (semantic-release)
+
+Releases are fully automated via semantic-release. On every push to main:
+
+1. Analyzes commits since last release
+2. Determines version bump based on commit types
+3. Updates `CHANGELOG.md` automatically
+4. Bumps version in `package.json`
+5. Creates git tag and GitHub Release
+6. Build workflow attaches DMG to the release
+
+**Commit types and version bumps:**
+
+| Commit type | Version bump | Example |
+|-------------|--------------|---------|
+| `fix:` | Patch (1.6.14 → 1.6.15) | `fix: resolve crash` |
+| `feat:` | Minor (1.6.14 → 1.7.0) | `feat: add dark mode` |
+| `feat!:` or `BREAKING CHANGE:` | Major (1.6.14 → 2.0.0) | `feat!: new API` |
+| `chore:`, `docs:`, `refactor:` | No release | `chore: update deps` |
+
+**DO NOT manually edit version in package.json** - semantic-release manages this.
+
+**DO NOT manually edit CHANGELOG.md** - semantic-release generates it from commits.
 
 ## Important Guidelines
 
