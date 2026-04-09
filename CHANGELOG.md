@@ -2,11 +2,6 @@
 
 All notable changes to Vomit will be documented in this file.
 
-## [Unreleased]
-
-### Improved
-- Outside-bucket file warning now more prominent (top-right corner with amber styling)
-
 ## [1.6.0] - 2026-04-09
 
 ### Added
@@ -38,6 +33,7 @@ All notable changes to Vomit will be documented in this file.
 - **Major refactoring** - Modularized codebase (main.js 2400→137 lines, editor.js 3332→521 lines)
 - **VS Code-inspired file tree** - Rewritten with better architecture
 - File tree hidden by default (toggle with `Cmd+B`)
+- Outside-bucket file warning now more prominent (top-right corner with amber styling)
 
 ### Fixed
 - Scrolling issues when terminal panel is visible
