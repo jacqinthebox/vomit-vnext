@@ -186,14 +186,14 @@ app.whenReady().then(async () => {
   createMenu();
   windowManager.createMainWindow();
 
-  // Auto-open bucket
-  bus.getMainWindow().webContents.once('did-finish-load', () => {
+  // Auto-open bucket (on initial load and reload)
+  bus.getMainWindow().webContents.on('did-finish-load', () => {
     bus.send('open-folder', activeBucket.path);
     bus.getMainWindow()?.setTitle(`${activeBucket.name} - Vomit`);
-
-    // Check for updates after a short delay
-    setTimeout(checkForUpdates, 3000);
   });
+
+  // Check for updates after a short delay (only once on startup)
+  setTimeout(checkForUpdates, 3000);
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

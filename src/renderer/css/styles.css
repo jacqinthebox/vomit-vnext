@@ -1727,21 +1727,43 @@ body:has(#terminal-panel:not(.hidden)) #main-container {
   }
 }
 
-/* Inline image widgets in editor */
-.cm-image-widget {
+/* Inline widgets in editor (images, LaTeX, Mermaid, PlantUML) */
+.cm-inline-widget {
   display: block;
   margin: 8px 0 8px 32px;
   max-width: calc(100% - 64px);
 }
 
-.cm-image-widget img {
+.cm-inline-widget img {
   max-width: 100%;
   height: auto;
   display: block;
 }
 
-.cm-image-widget.error {
+.cm-inline-widget.error {
   color: var(--text-muted);
   font-size: 12px;
   padding: 4px 0;
+}
+
+.cm-inline-widget.loading img {
+  opacity: 0.5;
+}
+
+/* LaTeX widgets */
+.cm-latex-widget {
+  padding: 8px 0;
+}
+
+/* Mermaid widgets */
+.cm-mermaid-widget svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* PlantUML widgets */
+.cm-plantuml-widget img {
+  background: var(--bg-secondary);
+  padding: 8px;
+  border-radius: 4px;
 }
