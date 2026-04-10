@@ -1,3 +1,10 @@
+# [1.8.0](https://github.com/jacqinthebox/vomit-vnext/compare/v1.7.0...v1.8.0) (2026-04-10)
+
+
+### Features
+
+* **editor:** add inline preview for LaTeX, Mermaid, and PlantUML ([380274f](https://github.com/jacqinthebox/vomit-vnext/commit/380274f6fddbb2f9da74d34fcc5c4f5c2fcda13a))
+
 # [1.7.0](https://github.com/jacqinthebox/vomit-vnext/compare/v1.6.14...v1.7.0) (2026-04-10)
 
 
