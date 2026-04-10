@@ -1,3 +1,16 @@
+# [1.7.0](https://github.com/jacqinthebox/vomit-vnext/compare/v1.6.14...v1.7.0) (2026-04-10)
+
+
+### Bug Fixes
+
+* **editor:** simplify inline image widget styling ([d03b0a7](https://github.com/jacqinthebox/vomit-vnext/commit/d03b0a7f4fd3ac35c7d7304b9853431b83711618))
+* search highlight now works for files already open in tabs ([12be4a4](https://github.com/jacqinthebox/vomit-vnext/commit/12be4a4158c83a9b7ec50d262856c74ac99403a1))
+
+
+### Features
+
+* **editor:** add inline image preview in editor ([b905d0c](https://github.com/jacqinthebox/vomit-vnext/commit/b905d0c45f4db67b39ba8edd380f06f2fe5fcc03))
+
 # Changelog
 
 All notable changes to Vomit will be documented in this file.
