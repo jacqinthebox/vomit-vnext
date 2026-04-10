@@ -200,6 +200,11 @@ class CodemirrorHost {
     this.cm.execCommand(cmd);
   }
 
+  // --- Line Widgets ---
+  addLineWidget(line, node, options = {}) {
+    return this.cm.addLineWidget(line, node, options);
+  }
+
   // --- Direct access (escape hatch for complex operations) ---
   // Use sparingly — prefer adding a method to the host instead.
   get raw() {

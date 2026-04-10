@@ -113,6 +113,11 @@ class Editor {
         getValue: () => this.getValue(),
       })
     });
+    this.inlineImages = new InlineImageManager({
+      state: this.state,
+      host: this.host
+    });
+    this.inlineImages.setup();
 
     this.settingsManager.setupAutoSave();
     this.settingsManager.setupSidebarResize();

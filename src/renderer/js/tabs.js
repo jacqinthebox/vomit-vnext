@@ -97,6 +97,12 @@ class TabManager {
     this.editor.previewManager.updatePreview();
     this.editor.previewManager.updateStatus();
     this.editor.previewManager.updateOutline();
+
+    // Update inline images
+    if (this.editor.inlineImages) {
+      this.editor.inlineImages.clearAllWidgets();
+      this.editor.inlineImages.updateImages();
+    }
   }
 
   switchToTab(tabId) {
