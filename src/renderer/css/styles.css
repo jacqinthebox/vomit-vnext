@@ -1731,10 +1731,6 @@ body:has(#terminal-panel:not(.hidden)) #main-container {
 .cm-image-widget {
   display: block;
   margin: 8px 0 8px 32px;
-  padding: 8px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
   max-width: calc(100% - 64px);
 }
 
@@ -1742,12 +1738,10 @@ body:has(#terminal-panel:not(.hidden)) #main-container {
   max-width: 100%;
   height: auto;
   display: block;
-  border-radius: 4px;
 }
 
 .cm-image-widget.error {
-  border-color: #ef4444;
-  color: #ef4444;
+  color: var(--text-muted);
   font-size: 12px;
-  padding: 12px;
+  padding: 4px 0;
 }
