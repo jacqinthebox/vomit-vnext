@@ -117,6 +117,9 @@ class FileTreeManager {
 
     // Load root children
     await this.dataModel.loadChildren(folderPath);
+
+    // Explicitly render to ensure tree updates after bucket switch
+    this.treeView.renderRoot();
   }
 
   async refresh() {

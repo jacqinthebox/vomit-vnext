@@ -101,7 +101,7 @@ class TabManager {
     // Update inline images
     if (this.editor.inlineImages) {
       this.editor.inlineImages.clearAllWidgets();
-      this.editor.inlineImages.updateImages();
+      this.editor.inlineImages.updateAll();
     }
   }
 

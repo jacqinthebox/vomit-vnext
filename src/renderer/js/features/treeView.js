@@ -417,6 +417,14 @@ class TreeView {
     }
     return container;
   }
+
+  // Force render root children (called after bucket switch to ensure tree updates)
+  renderRoot() {
+    const rootPath = this.#state.rootPath;
+    if (rootPath && this.#dataModel.hasChildren(rootPath)) {
+      this.#renderChildrenOf(rootPath);
+    }
+  }
 }
 
 // Export for use in renderer
