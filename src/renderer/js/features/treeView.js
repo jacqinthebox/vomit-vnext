@@ -341,8 +341,11 @@ class TreeView {
     const isFocused = this.#state.focusedPath === node.path;
     const indent = depth * 16;
 
+    // Get file type class based on extension
+    const fileTypeClass = node.isDirectory ? '' : this.#getFileTypeClass(node.name);
+
     const el = document.createElement('div');
-    el.className = `file-item${node.isDirectory ? ' directory' : ''}${node.isMarkdown ? ' markdown' : ''}${isSelected ? ' active' : ''}${isExpanded ? ' expanded' : ''}${isFocused ? ' focused' : ''}`;
+    el.className = `file-item${node.isDirectory ? ' directory' : ''}${node.isMarkdown ? ' markdown' : ''}${fileTypeClass}${isSelected ? ' active' : ''}${isExpanded ? ' expanded' : ''}${isFocused ? ' focused' : ''}`;
     el.dataset.path = node.path;
     el.dataset.isDir = node.isDirectory;
     el.dataset.depth = depth;
@@ -355,6 +358,80 @@ class TreeView {
     `;
 
     return el;
+  }
+
+  #getFileTypeClass(filename) {
+    const ext = filename.split('.').pop()?.toLowerCase();
+    const typeMap = {
+      // Diagrams
+      drawio: ' filetype-diagram',
+      puml: ' filetype-diagram',
+      mermaid: ' filetype-diagram',
+      // Images
+      png: ' filetype-image',
+      jpg: ' filetype-image',
+      jpeg: ' filetype-image',
+      gif: ' filetype-image',
+      svg: ' filetype-image',
+      webp: ' filetype-image',
+      ico: ' filetype-image',
+      // Code
+      js: ' filetype-code',
+      ts: ' filetype-code',
+      jsx: ' filetype-code',
+      tsx: ' filetype-code',
+      py: ' filetype-code',
+      rb: ' filetype-code',
+      go: ' filetype-code',
+      rs: ' filetype-code',
+      java: ' filetype-code',
+      c: ' filetype-code',
+      cpp: ' filetype-code',
+      h: ' filetype-code',
+      cs: ' filetype-code',
+      php: ' filetype-code',
+      swift: ' filetype-code',
+      kt: ' filetype-code',
+      sh: ' filetype-code',
+      bash: ' filetype-code',
+      zsh: ' filetype-code',
+      ps1: ' filetype-code',
+      // Web
+      html: ' filetype-web',
+      htm: ' filetype-web',
+      css: ' filetype-web',
+      scss: ' filetype-web',
+      less: ' filetype-web',
+      // Data
+      json: ' filetype-data',
+      yaml: ' filetype-data',
+      yml: ' filetype-data',
+      xml: ' filetype-data',
+      toml: ' filetype-data',
+      csv: ' filetype-data',
+      sql: ' filetype-data',
+      // Documents
+      pdf: ' filetype-pdf',
+      doc: ' filetype-doc',
+      docx: ' filetype-doc',
+      xls: ' filetype-spreadsheet',
+      xlsx: ' filetype-spreadsheet',
+      ppt: ' filetype-presentation',
+      pptx: ' filetype-presentation',
+      txt: ' filetype-text',
+      // Config
+      env: ' filetype-config',
+      gitignore: ' filetype-config',
+      dockerignore: ' filetype-config',
+      editorconfig: ' filetype-config',
+      // Archives
+      zip: ' filetype-archive',
+      tar: ' filetype-archive',
+      gz: ' filetype-archive',
+      rar: ' filetype-archive',
+      '7z': ' filetype-archive',
+    };
+    return typeMap[ext] || ' filetype-generic';
   }
 
   #calculateDepth(path) {
