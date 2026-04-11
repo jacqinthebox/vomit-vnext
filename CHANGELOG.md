@@ -1,3 +1,10 @@
+## [1.8.2](https://github.com/jacqinthebox/vomit-vnext/compare/v1.8.1...v1.8.2) (2026-04-11)
+
+
+### Bug Fixes
+
+* **tree:** add file type icons for all common extensions ([c4c4567](https://github.com/jacqinthebox/vomit-vnext/commit/c4c4567beaaa82560fcf43a76fb533f040d0a97a))
+
 ## [1.8.1](https://github.com/jacqinthebox/vomit-vnext/compare/v1.8.0...v1.8.1) (2026-04-11)
 
 
