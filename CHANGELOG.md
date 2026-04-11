@@ -1,3 +1,10 @@
+## [1.8.1](https://github.com/jacqinthebox/vomit-vnext/compare/v1.8.0...v1.8.1) (2026-04-11)
+
+
+### Bug Fixes
+
+* **tabs:** correct method name for inline image updates ([df71e3e](https://github.com/jacqinthebox/vomit-vnext/commit/df71e3e668fe8cdc59c3408dacd5550e50d55650))
+
 # [1.8.0](https://github.com/jacqinthebox/vomit-vnext/compare/v1.7.0...v1.8.0) (2026-04-10)
 
 
