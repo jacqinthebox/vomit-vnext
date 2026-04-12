@@ -18,6 +18,7 @@ class Editor {
     this.searchInput = document.getElementById('search-input');
     this.searchResults = document.getElementById('search-results');
     this.sidebarResize = document.getElementById('sidebar-resize');
+    this.rightSidebarResize = document.getElementById('right-sidebar-resize');
 
     // Centralized state management
     this.state = new EditorState();
@@ -52,7 +53,8 @@ class Editor {
         statusWords: this.statusWords,
         outlineList: this.outlineList,
         rightOutline: this.rightOutline,
-        rightOutlineList: this.rightOutlineList
+        rightOutlineList: this.rightOutlineList,
+        rightSidebarResize: this.rightSidebarResize
       }
     });
     this.terminalManager = new TerminalManager({
@@ -95,7 +97,9 @@ class Editor {
         sidebarResize: this.sidebarResize,
         sidebarFiles: this.sidebarFiles,
         sidebarOutline: this.sidebarOutline,
-        sidebarSearch: this.sidebarSearch
+        sidebarSearch: this.sidebarSearch,
+        rightSidebarResize: this.rightSidebarResize,
+        rightOutline: this.rightOutline
       },
       getPreviewManager: () => this.previewManager,
       getSearchManager: () => this.searchManager,
@@ -121,6 +125,7 @@ class Editor {
 
     this.settingsManager.setupAutoSave();
     this.settingsManager.setupSidebarResize();
+    this.settingsManager.setupRightSidebarResize();
     this.fileTreeManager.setupFileTreeContextMenu();
     this.searchManager.setup();
     this.settingsManager.setupKeyboardNavigation();
@@ -198,6 +203,7 @@ class Editor {
 
     // Handle changes
     this.cm.on('change', () => {
+      this.host.updateCodeBlockStyles();
       this.previewManager.updatePreview();
       this.previewManager.updateStatus();
       this.previewManager.updateOutline();

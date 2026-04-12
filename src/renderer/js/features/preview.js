@@ -34,7 +34,7 @@ class PreviewManager {
   constructor({ state, host, dom }) {
     this.state = state;
     this.host = host;
-    this.dom = dom;  // { preview, previewPane, editorContainer, statusFile, statusSlides, statusWords, outlineList, rightOutline, rightOutlineList }
+    this.dom = dom;  // { preview, previewPane, editorContainer, statusFile, statusSlides, statusWords, outlineList, rightOutline, rightOutlineList, rightSidebarResize }
 
     // Scroll sync state
     this._isSyncingScroll = false;
@@ -135,6 +135,7 @@ class PreviewManager {
   toggleRightOutline() {
     this.state.isRightOutlineVisible = !this.state.isRightOutlineVisible;
     this.dom.rightOutline.classList.toggle('hidden', !this.state.isRightOutlineVisible);
+    this.dom.rightSidebarResize.classList.toggle('hidden', !this.state.isRightOutlineVisible);
 
     if (this.state.isRightOutlineVisible) {
       this.updateRightOutline();
@@ -446,6 +447,7 @@ class PreviewManager {
     const items = [];
     let slideNum = 1;
     let inFrontmatter = false;
+    let inCodeBlock = false;
 
     lines.forEach((line, index) => {
       if (index === 0 && line.trim() === '---') {
@@ -457,6 +459,13 @@ class PreviewManager {
         return;
       }
       if (inFrontmatter) return;
+
+      // Track fenced code blocks (``` or ~~~)
+      if (line.match(/^(`{3,}|~{3,})/)) {
+        inCodeBlock = !inCodeBlock;
+        return;
+      }
+      if (inCodeBlock) return;
 
       if (line.trim() === '---') {
         slideNum++;
@@ -504,6 +513,7 @@ class PreviewManager {
     const items = [];
     let slideNum = 1;
     let inFrontmatter = false;
+    let inCodeBlock = false;
 
     lines.forEach((line, index) => {
       if (index === 0 && line.trim() === '---') {
@@ -515,6 +525,13 @@ class PreviewManager {
         return;
       }
       if (inFrontmatter) return;
+
+      // Track fenced code blocks (``` or ~~~)
+      if (line.match(/^(`{3,}|~{3,})/)) {
+        inCodeBlock = !inCodeBlock;
+        return;
+      }
+      if (inCodeBlock) return;
 
       if (line.trim() === '---') {
         slideNum++;

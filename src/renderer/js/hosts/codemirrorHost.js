@@ -205,6 +205,27 @@ class CodemirrorHost {
     return this.cm.addLineWidget(line, node, options);
   }
 
+  // --- Code Block Styling ---
+  updateCodeBlockStyles() {
+    const lineCount = this.cm.lineCount();
+    let inCodeBlock = false;
+
+    for (let i = 0; i < lineCount; i++) {
+      const line = this.cm.getLine(i);
+      const isFence = /^(`{3,}|~{3,})/.test(line);
+
+      if (isFence) {
+        // Fence line itself gets the style
+        this.cm.addLineClass(i, 'background', 'code-block-line');
+        inCodeBlock = !inCodeBlock;
+      } else if (inCodeBlock) {
+        this.cm.addLineClass(i, 'background', 'code-block-line');
+      } else {
+        this.cm.removeLineClass(i, 'background', 'code-block-line');
+      }
+    }
+  }
+
   // --- Direct access (escape hatch for complex operations) ---
   // Use sparingly — prefer adding a method to the host instead.
   get raw() {

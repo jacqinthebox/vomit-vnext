@@ -17,7 +17,7 @@
   --toolbar-bg: #fafafa;
   --editor-bg: #ffffff;
   --preview-bg: #fafafa;
-  --code-bg: #f4f4f4;
+  --code-bg: #f0f0f0;
   --scrollbar-track: #f1f1f1;
   --scrollbar-thumb: #c1c1c1;
   --editor-font-size: 14px;
@@ -122,6 +122,24 @@ html, body {
 }
 
 #sidebar-resize.hidden {
+  display: none;
+}
+
+/* Right sidebar resize handle */
+#right-sidebar-resize {
+  width: 4px;
+  background: transparent;
+  cursor: col-resize;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+
+#right-sidebar-resize:hover,
+#right-sidebar-resize.dragging {
+  background: var(--accent-color);
+}
+
+#right-sidebar-resize.hidden {
   display: none;
 }
 
@@ -716,6 +734,14 @@ html, body {
   font-family: 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
 }
 
+/* Fenced code block line highlighting */
+#editor .CodeMirror .code-block-line {
+  background: var(--code-bg);
+  border-left: 3px solid var(--accent-color);
+  margin-left: -32px;
+  padding-left: 29px;
+}
+
 #preview-pane {
   flex: 1;
   overflow-y: auto;
@@ -791,13 +817,17 @@ html, body {
   margin: 1em 0;
   padding: 16px;
   background: var(--code-bg);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
   overflow-x: auto;
+  border-left: 3px solid var(--accent-color);
 }
 
 #preview pre code {
   padding: 0;
   background: none;
+  font-size: 0.85em;
+  line-height: 1.6;
 }
 
 #preview img {

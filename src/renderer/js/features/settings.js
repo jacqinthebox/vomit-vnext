@@ -10,6 +10,8 @@ class SettingsManager {
     this.sidebarFiles = dom.sidebarFiles;
     this.sidebarOutline = dom.sidebarOutline;
     this.sidebarSearch = dom.sidebarSearch;
+    this.rightSidebarResize = dom.rightSidebarResize;
+    this.rightOutline = dom.rightOutline;
 
     // Lazy getters for cross-module deps
     this._getPreviewManager = getPreviewManager;
@@ -246,6 +248,34 @@ class SettingsManager {
         isResizing = false;
         currentSidebar = null;
         this.sidebarResize.classList.remove('dragging');
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      }
+    });
+  }
+
+  setupRightSidebarResize() {
+    let isResizing = false;
+
+    this.rightSidebarResize.addEventListener('mousedown', (e) => {
+      isResizing = true;
+      this.rightSidebarResize.classList.add('dragging');
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isResizing) return;
+
+      const windowWidth = window.innerWidth;
+      const newWidth = Math.max(150, Math.min(500, windowWidth - e.clientX));
+      this.rightOutline.style.width = `${newWidth}px`;
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (isResizing) {
+        isResizing = false;
+        this.rightSidebarResize.classList.remove('dragging');
         document.body.style.cursor = '';
         document.body.style.userSelect = '';
       }
