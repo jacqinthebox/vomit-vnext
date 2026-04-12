@@ -1,3 +1,10 @@
+## [1.8.3](https://github.com/jacqinthebox/vomit-vnext/compare/v1.8.2...v1.8.3) (2026-04-12)
+
+
+### Bug Fixes
+
+* **editor:** improve code block styling and outline parsing ([31128cf](https://github.com/jacqinthebox/vomit-vnext/commit/31128cfa48ca93079aa8f10893728128e7d78268))
+
 ## [1.8.2](https://github.com/jacqinthebox/vomit-vnext/compare/v1.8.1...v1.8.2) (2026-04-11)
 
 
