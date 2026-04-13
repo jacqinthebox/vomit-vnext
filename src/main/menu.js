@@ -241,7 +241,29 @@ function createMenu() {
         { role: 'cut' },
         { role: 'copy' },
         { role: 'paste' },
-        { role: 'selectAll' }
+        { role: 'selectAll' },
+        { type: 'separator' },
+        {
+          label: 'Find in File',
+          accelerator: 'CmdOrCtrl+F',
+          click: () => {
+            _bus.send('find-in-file');
+          }
+        },
+        {
+          label: 'Find and Replace',
+          accelerator: 'CmdOrCtrl+Alt+F',
+          click: () => {
+            _bus.send('find-and-replace');
+          }
+        },
+        {
+          label: 'Search in Files',
+          accelerator: 'CmdOrCtrl+Shift+F',
+          click: () => {
+            _bus.send('toggle-search');
+          }
+        }
       ]
     },
     {
@@ -452,28 +474,6 @@ function createMenu() {
         },
         { type: 'separator' },
         {
-          label: 'Find in File',
-          accelerator: 'CmdOrCtrl+F',
-          click: () => {
-            _bus.send('find-in-file');
-          }
-        },
-        {
-          label: 'Find and Replace',
-          accelerator: 'CmdOrCtrl+Alt+F',
-          click: () => {
-            _bus.send('find-and-replace');
-          }
-        },
-        {
-          label: 'Search in Files',
-          accelerator: 'CmdOrCtrl+Shift+F',
-          click: () => {
-            _bus.send('toggle-search');
-          }
-        },
-        { type: 'separator' },
-        {
           label: 'Toggle Line Numbers',
           accelerator: 'CmdOrCtrl+L',
           click: () => {
@@ -573,6 +573,7 @@ function createMenu() {
         { label: 'Catppuccin', click: () => _actions.setTheme('catppuccin') },
         { label: 'Nord', click: () => _actions.setTheme('nord') },
         { label: 'Tokyo Night', click: () => _actions.setTheme('tokyo-night') },
+        { label: 'Tokyo Night Light', click: () => _actions.setTheme('tokyo-night-light') },
         { label: 'Solarized Dark', click: () => _actions.setTheme('solarized') }
       ]
     },

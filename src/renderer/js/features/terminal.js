@@ -1011,6 +1011,8 @@ Look for:
 - API keys, tokens, passwords
 - Database names
 - Cloud resource IDs
+- GUIDs/UUIDs (e.g. 745c93c0-151d-4cc9-a3d6-xxxxxxxxxxxx)
+- Azure/cloud IDs (subscription, tenant, object, resource IDs)
 - Paths with usernames
 
 For each item found, provide a fictional replacement.
@@ -1018,7 +1020,7 @@ For each item found, provide a fictional replacement.
 OUTPUT: Return ONLY a JSON object mapping original values to fake replacements. No other text.
 
 Example output:
-{"Annie de Waard": "Sarah Miller", "jan@company.nl": "user@example.com", "192.168.1.1": "10.0.0.1"}
+{"Annie de Waard": "Sarah Miller", "jan@company.nl": "user@example.com", "192.168.1.1": "10.0.0.1", "745c93c0-151d-4cc9-a3d6-abc123def456": "00000000-0000-0000-0000-000000000001"}
 
 If no sensitive data found, return: {}
 
@@ -1059,7 +1061,19 @@ ${docContent}
           let content = docContent;
           for (const [original, replacement] of Object.entries(mapping)) {
             const escaped = original.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            content = content.replace(new RegExp(escaped, 'g'), replacement);
+            // Case-insensitive replacement that preserves original case pattern
+            content = content.replace(new RegExp(escaped, 'gi'), (match) => {
+              // Determine case pattern of matched text and apply to replacement
+              if (match === match.toUpperCase()) {
+                return replacement.toUpperCase();
+              } else if (match === match.toLowerCase()) {
+                return replacement.toLowerCase();
+              } else if (match[0] === match[0].toUpperCase()) {
+                // Title case - capitalize first letter of replacement
+                return replacement.charAt(0).toUpperCase() + replacement.slice(1);
+              }
+              return replacement;
+            });
           }
 
           // Save the pseudonymized content
@@ -1070,8 +1084,9 @@ ${docContent}
           await window.vomit.writeFile(mappingPath, JSON.stringify(mapping, null, 2));
           this.appendTerminalOutput(`✓ Mapping saved: ${mappingPath.split('/').pop()}`, 'output');
 
-          // Refresh file tree
-          this.fileTreeManager.loadFileTree();
+          // Refresh the parent folder in the file tree
+          const parentDir = outputPath.substring(0, outputPath.lastIndexOf('/'));
+          await this.fileTreeManager.refreshFolder(parentDir);
         } else {
           this.appendTerminalOutput('No sensitive data found to anonymize.', 'system');
         }
@@ -1220,6 +1235,8 @@ ${docContent}
 - API keys/secrets → FAKE_API_KEY_XXXXX
 - Passwords → FAKE_PASSWORD_XXXXX
 - AWS/Azure/GCP resource IDs → fake resource IDs
+- GUIDs/UUIDs → 00000000-0000-0000-0000-00000000XXXX format
+- Subscription/tenant/object IDs → fake GUIDs
 - Database connection strings → fake connection strings
 - Usernames → user001, admin001, etc.
 - Dates of birth → randomize the year

@@ -130,6 +130,13 @@ class FileTreeManager {
     await this._ensureTreeLoaded();
   }
 
+  // Force refresh a specific folder (invalidate cache and reload)
+  async refreshFolder(folderPath) {
+    this.dataModel.invalidateChildren(folderPath);
+    await this.dataModel.loadChildren(folderPath);
+    this.treeView.renderRoot();
+  }
+
   async _ensureTreeLoaded() {
     // Use projectRoot as the stable tree root (not currentDirectory which follows open file)
     const rootDir = this.editorState.projectRoot || this.editorState.currentDirectory;

@@ -179,6 +179,71 @@
 .theme-nord .hljs-operator { color: #81a1c1; }
 .theme-nord .hljs-punctuation { color: #eceff4; }
 
+/* Tokyo Night Light Theme */
+.theme-tokyo-night-light {
+  --bg-primary: #ffffff;        /* Background */
+  --bg-secondary: #f5f5f7;      /* Background Dark */
+  --bg-tertiary: #eeeef0;       /* Background Highlight */
+  --text-primary: #343b58;      /* Foreground */
+  --text-secondary: #565a6e;    /* Foreground Alt */
+  --text-muted: #9699a3;        /* Comment */
+  --accent-color: #34548a;      /* Blue */
+  --accent-hover: #5a4a78;      /* Purple */
+  --border-color: #d5d6db;      /* Border */
+  --toolbar-bg: #f5f5f7;
+  --editor-bg: #ffffff;
+  --preview-bg: #f5f5f7;
+  --code-bg: #eeeef0;
+  --scrollbar-track: #ffffff;
+  --scrollbar-thumb: #c4c8da;
+  /* Syntax highlighting - Tokyo Night Light */
+  --syntax-header: #34548a;     /* Blue */
+  --syntax-bold: #343b58;       /* Foreground */
+  --syntax-italic: #5a4a78;     /* Purple */
+  --syntax-link: #0f4b6e;       /* Cyan */
+  --syntax-url: #8f5e15;        /* Yellow */
+  --syntax-code: #33635c;       /* Green */
+  --syntax-quote: #9699a3;      /* Comment */
+  --syntax-hr: #b4b5b9;         /* Border */
+  --selection-bg: rgba(52, 84, 138, 0.25);
+}
+
+/* Tokyo Night Light CodeMirror syntax */
+.theme-tokyo-night-light .CodeMirror .cm-keyword { color: #5a4a78 !important; }     /* Purple */
+.theme-tokyo-night-light .CodeMirror .cm-def { color: #34548a !important; }         /* Blue */
+.theme-tokyo-night-light .CodeMirror .cm-variable { color: #343b58 !important; }    /* Foreground */
+.theme-tokyo-night-light .CodeMirror .cm-variable-2 { color: #965027 !important; }  /* Orange */
+.theme-tokyo-night-light .CodeMirror .cm-variable-3 { color: #8f5e15 !important; }  /* Yellow */
+.theme-tokyo-night-light .CodeMirror .cm-property { color: #0f4b6e !important; }    /* Cyan */
+.theme-tokyo-night-light .CodeMirror .cm-operator { color: #343b58 !important; }    /* Foreground */
+.theme-tokyo-night-light .CodeMirror .cm-number { color: #965027 !important; }      /* Orange */
+.theme-tokyo-night-light .CodeMirror .cm-string { color: #33635c !important; }      /* Green */
+.theme-tokyo-night-light .CodeMirror .cm-string-2 { color: #0f4b6e !important; }    /* Cyan */
+.theme-tokyo-night-light .CodeMirror .cm-comment { color: #9699a3 !important; }     /* Comment */
+.theme-tokyo-night-light .CodeMirror .cm-atom { color: #8f5e15 !important; }        /* Yellow */
+.theme-tokyo-night-light .CodeMirror .cm-builtin { color: #8c4351 !important; }     /* Red */
+.theme-tokyo-night-light .CodeMirror .cm-tag { color: #8c4351 !important; }         /* Red */
+.theme-tokyo-night-light .CodeMirror .cm-attribute { color: #5a4a78 !important; }   /* Purple */
+.theme-tokyo-night-light .CodeMirror .cm-type { color: #0f4b6e !important; }        /* Cyan */
+.theme-tokyo-night-light .CodeMirror .cm-meta { color: #5a4a78 !important; }        /* Purple */
+.theme-tokyo-night-light .CodeMirror .cm-qualifier { color: #0f4b6e !important; }   /* Cyan */
+
+/* Tokyo Night Light highlight.js */
+.theme-tokyo-night-light .hljs {
+  color: #343b58;
+  background: #eeeef0;
+}
+.theme-tokyo-night-light .hljs-keyword { color: #5a4a78; }
+.theme-tokyo-night-light .hljs-title { color: #34548a; }
+.theme-tokyo-night-light .hljs-string { color: #33635c; }
+.theme-tokyo-night-light .hljs-variable { color: #965027; }
+.theme-tokyo-night-light .hljs-comment { color: #9699a3; }
+.theme-tokyo-night-light .hljs-number { color: #965027; }
+.theme-tokyo-night-light .hljs-built_in { color: #8c4351; }
+.theme-tokyo-night-light .hljs-attr { color: #5a4a78; }
+.theme-tokyo-night-light .hljs-operator { color: #343b58; }
+.theme-tokyo-night-light .hljs-punctuation { color: #565a6e; }
+
 /* Tokyo Night Theme */
 .theme-tokyo-night {
   --bg-primary: #1a1b26;      /* Background */
