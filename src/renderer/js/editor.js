@@ -224,34 +224,41 @@ class Editor {
       this.settingsManager.scheduleAutoSave();
     });
 
-    // Paste image handling
+    // Paste handling - handle images and rich formatted content
     this.cm.on('paste', async (cm, e) => {
-      const items = e.clipboardData?.items;
-      if (!items) return;
+      const clipboardData = e.clipboardData;
+      if (!clipboardData) return;
 
-      for (const item of items) {
-        if (item.type.startsWith('image/')) {
-          e.preventDefault();
-          const blob = item.getAsFile();
-          if (!blob) continue;
+      // First check for images
+      const items = clipboardData.items;
+      if (items) {
+        for (const item of items) {
+          if (item.type.startsWith('image/')) {
+            e.preventDefault();
+            const blob = item.getAsFile();
+            if (!blob) continue;
 
-          // Convert to base64
-          const reader = new FileReader();
-          reader.onload = async () => {
-            const base64 = reader.result;
-            const filename = `image-${Date.now()}.png`;
+            // Convert to base64
+            const reader = new FileReader();
+            reader.onload = async () => {
+              const base64 = reader.result;
+              const filename = `image-${Date.now()}.png`;
 
-            // Save image and get path
-            const imagePath = await window.vomit.saveImage(base64, filename);
-            if (imagePath) {
-              // Insert markdown image with default size
-              this.formatting.insertText(`![](${imagePath} =400x)`);
-            }
-          };
-          reader.readAsDataURL(blob);
-          break;
+              // Save image and get path
+              const imagePath = await window.vomit.saveImage(base64, filename);
+              if (imagePath) {
+                // Insert markdown image with default size
+                this.formatting.insertText(`![](${imagePath} =800x)`);
+              }
+            };
+            reader.readAsDataURL(blob);
+            break;
+          }
         }
       }
+
+      // For non-image pastes, let CodeMirror handle it normally
+      // This preserves markdown formatting when pasting markdown text
     });
   }
 

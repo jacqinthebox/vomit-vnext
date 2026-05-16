@@ -359,17 +359,17 @@ class FileTreeManager {
 
       if (!targetIsDir || !draggedPath) return;
 
+      // Expand target folder FIRST to ensure smooth visual transition
+      if (!this.treeState.isExpanded(targetPath)) {
+        await this._expandFolder(targetPath);
+      }
+
       // Perform the move
       const result = await window.vomit.moveItem(draggedPath, targetPath);
 
       if (result.success && result.newPath) {
-        // Update data model
+        // Update data model (now that target is expanded, the move will render smoothly)
         this.dataModel.moveNode(draggedPath, result.newPath, targetPath);
-
-        // Expand target folder to show moved item
-        if (!this.treeState.isExpanded(targetPath)) {
-          await this._expandFolder(targetPath);
-        }
 
         // Focus the moved item
         this.treeState.focusedPath = result.newPath;
