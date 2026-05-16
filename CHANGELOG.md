@@ -1,3 +1,10 @@
+# [1.9.0](https://github.com/jacqinthebox/vomit-vnext/compare/v1.8.5...v1.9.0) (2026-05-16)
+
+
+### Features
+
+* **agent:** add Tavily internet search capability ([292378f](https://github.com/jacqinthebox/vomit-vnext/commit/292378f72bc414df7a22ed778274401d39d509d0))
+
 ## [1.8.5](https://github.com/jacqinthebox/vomit-vnext/compare/v1.8.4...v1.8.5) (2026-05-16)
 
 
