@@ -1,3 +1,11 @@
+## [1.8.4](https://github.com/jacqinthebox/vomit-vnext/compare/v1.8.3...v1.8.4) (2026-05-16)
+
+
+### Bug Fixes
+
+* **editor:** preserve markdown formatting when pasting ([fb9c286](https://github.com/jacqinthebox/vomit-vnext/commit/fb9c286c3cc654a83132486636199dd6602db39d))
+* **pseudo:** improve pseudonymization with GUID support and case handling ([86ee47c](https://github.com/jacqinthebox/vomit-vnext/commit/86ee47cfc50dfdb35a2add223fff3a84baad13e4))
+
 ## [1.8.3](https://github.com/jacqinthebox/vomit-vnext/compare/v1.8.2...v1.8.3) (2026-04-12)
 
 
