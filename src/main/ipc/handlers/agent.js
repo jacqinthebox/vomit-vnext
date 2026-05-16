@@ -78,6 +78,28 @@ const agentTools = [
         required: ['path']
       }
     }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'tavily_search',
+      description: 'Search the internet using Tavily API. Returns current information from web search results. Use this when you need up-to-date information, facts, news, or documentation from the internet.',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: {
+            type: 'string',
+            description: 'The search query'
+          },
+          max_results: {
+            type: 'number',
+            description: 'Maximum number of results to return (default: 5)',
+            default: 5
+          }
+        },
+        required: ['query']
+      }
+    }
   }
 ];
 
@@ -121,6 +143,82 @@ async function executeAgentTool(toolName, args, cwd) {
         }
         const items = fs.readdirSync(dirPath, { withFileTypes: true });
         return items.map(item => `${item.isDirectory() ? '[dir] ' : ''}${item.name}`).join('\n');
+      }
+      case 'tavily_search': {
+        const apiKey = process.env.TAVILY_API_KEY;
+        if (!apiKey) {
+          return 'Error: TAVILY_API_KEY environment variable not set. Set it with: export TAVILY_API_KEY="your-key"';
+        }
+
+        try {
+          const https = require('https');
+          const maxResults = args.max_results || 5;
+
+          const requestBody = JSON.stringify({
+            api_key: apiKey,
+            query: args.query,
+            search_depth: 'basic',
+            max_results: maxResults,
+            include_answer: true
+          });
+
+          return await new Promise((resolve, reject) => {
+            const req = https.request({
+              hostname: 'api.tavily.com',
+              port: 443,
+              path: '/search',
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Content-Length': Buffer.byteLength(requestBody)
+              }
+            }, (res) => {
+              let data = '';
+              res.on('data', chunk => data += chunk);
+              res.on('end', () => {
+                try {
+                  const result = JSON.parse(data);
+
+                  if (result.error) {
+                    resolve(`Error from Tavily: ${result.error}`);
+                    return;
+                  }
+
+                  // Format results nicely
+                  let output = '';
+
+                  if (result.answer) {
+                    output += `Answer: ${result.answer}\n\n`;
+                  }
+
+                  if (result.results && result.results.length > 0) {
+                    output += 'Sources:\n';
+                    result.results.forEach((item, idx) => {
+                      output += `\n${idx + 1}. ${item.title}\n`;
+                      output += `   URL: ${item.url}\n`;
+                      output += `   ${item.content}\n`;
+                    });
+                  } else {
+                    output += 'No results found.';
+                  }
+
+                  resolve(output);
+                } catch (e) {
+                  resolve(`Error parsing Tavily response: ${e.message}`);
+                }
+              });
+            });
+
+            req.on('error', (err) => {
+              resolve(`Error calling Tavily API: ${err.message}`);
+            });
+
+            req.write(requestBody);
+            req.end();
+          });
+        } catch (e) {
+          return `Error: ${e.message}`;
+        }
       }
       default:
         return `Error: Unknown tool: ${toolName}`;
