@@ -229,39 +229,43 @@ class Editor {
       const clipboardData = e.clipboardData;
       if (!clipboardData) return;
 
-      // First check for images
-      const items = clipboardData.items;
-      if (items) {
-        for (const item of items) {
-          if (item.type.startsWith('image/')) {
-            e.preventDefault();
-            const blob = item.getAsFile();
-            if (!blob) continue;
-
-            // Convert to base64
-            const reader = new FileReader();
-            reader.onload = async () => {
-              const base64 = reader.result;
-              const filename = `image-${Date.now()}.png`;
-
-              // Save image and get path
-              const imagePath = await window.vomit.saveImage(base64, filename);
-              if (imagePath) {
-                // Insert markdown image with default size
-                this.formatting.insertText(`![](${imagePath} =800x)`);
-              }
-            };
-            reader.readAsDataURL(blob);
-            return; // Exit early for images
-          }
-        }
-      }
-
-      // Get both plain text and HTML
+      // Get both plain text and HTML first
       const plainText = clipboardData.getData('text/plain');
       const htmlText = clipboardData.getData('text/html');
 
-      if (!plainText) return;
+      // If we have text, handle it (Word/browser/markdown)
+      if (plainText) {
+        // Continue with text handling below
+      } else {
+        // No text available, check for images only
+        const items = clipboardData.items;
+        if (items) {
+          for (const item of items) {
+            if (item.type.startsWith('image/')) {
+              e.preventDefault();
+              const blob = item.getAsFile();
+              if (!blob) continue;
+
+              // Convert to base64
+              const reader = new FileReader();
+              reader.onload = async () => {
+                const base64 = reader.result;
+                const filename = `image-${Date.now()}.png`;
+
+                // Save image and get path
+                const imagePath = await window.vomit.saveImage(base64, filename);
+                if (imagePath) {
+                  // Insert markdown image with default size
+                  this.formatting.insertText(`![](${imagePath} =800x)`);
+                }
+              };
+              reader.readAsDataURL(blob);
+              return; // Exit early for images
+            }
+          }
+        }
+        return; // No text and no image, nothing to paste
+      }
 
       // Strategy:
       // 1. If plain text already has markdown syntax → use it as-is (markdown source)
