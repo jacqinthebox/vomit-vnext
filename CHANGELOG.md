@@ -1,3 +1,10 @@
+## [1.9.1](https://github.com/jacqinthebox/vomit-vnext/compare/v1.9.0...v1.9.1) (2026-05-16)
+
+
+### Bug Fixes
+
+* **editor:** prioritize text over images when pasting from Word ([409afad](https://github.com/jacqinthebox/vomit-vnext/commit/409afad38c78d97a0464b14df3c2d434915be697))
+
 # [1.9.0](https://github.com/jacqinthebox/vomit-vnext/compare/v1.8.5...v1.9.0) (2026-05-16)
 
 
