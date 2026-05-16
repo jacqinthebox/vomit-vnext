@@ -1,3 +1,10 @@
+## [1.8.5](https://github.com/jacqinthebox/vomit-vnext/compare/v1.8.4...v1.8.5) (2026-05-16)
+
+
+### Bug Fixes
+
+* **editor:** improve paste handling, auto-save, and folder move refresh ([132016b](https://github.com/jacqinthebox/vomit-vnext/commit/132016b445f1a6bb70693c6e2147ef1ec4a3ef6f))
+
 ## [1.8.4](https://github.com/jacqinthebox/vomit-vnext/compare/v1.8.3...v1.8.4) (2026-05-16)
 
 
