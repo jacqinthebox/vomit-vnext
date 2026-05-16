@@ -217,6 +217,17 @@ class SettingsManager {
 
     window.vomit.saveContent(this.host.cm.getValue());
     this.state.isDirty = false;
+
+    // Also mark the current tab as clean
+    if (this.tabManager && this.tabManager.activeTabId) {
+      const tab = this.tabManager.tabs.get(this.tabManager.activeTabId);
+      if (tab) {
+        tab.isDirty = false;
+        this.tabManager.renderTabBar();
+        this.tabManager.updateWindowTitle();
+      }
+    }
+
     this.previewManager.updateStatus();
   }
 

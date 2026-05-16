@@ -368,8 +368,18 @@ class FileTreeManager {
       const result = await window.vomit.moveItem(draggedPath, targetPath);
 
       if (result.success && result.newPath) {
-        // Update data model (now that target is expanded, the move will render smoothly)
+        // Get old parent before updating data model
+        const oldNode = this.dataModel.getNode(draggedPath);
+        const oldParentPath = oldNode?.parentPath;
+
+        // Update data model (triggers TreeView nodeMoved event)
         this.dataModel.moveNode(draggedPath, result.newPath, targetPath);
+
+        // Refresh old parent folder to update its children list
+        if (oldParentPath && this.treeState.isExpanded(oldParentPath)) {
+          this.dataModel.invalidateChildren(oldParentPath);
+          await this.dataModel.loadChildren(oldParentPath);
+        }
 
         // Focus the moved item
         this.treeState.focusedPath = result.newPath;

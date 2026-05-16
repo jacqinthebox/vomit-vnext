@@ -224,7 +224,7 @@ class Editor {
       this.settingsManager.scheduleAutoSave();
     });
 
-    // Paste handling - handle images and rich formatted content
+    // Paste handling - smart detection for markdown vs rich text
     this.cm.on('paste', async (cm, e) => {
       const clipboardData = e.clipboardData;
       if (!clipboardData) return;
@@ -252,14 +252,69 @@ class Editor {
               }
             };
             reader.readAsDataURL(blob);
-            break;
+            return; // Exit early for images
           }
         }
       }
 
-      // For non-image pastes, let CodeMirror handle it normally
-      // This preserves markdown formatting when pasting markdown text
+      // Get both plain text and HTML
+      const plainText = clipboardData.getData('text/plain');
+      const htmlText = clipboardData.getData('text/html');
+
+      if (!plainText) return;
+
+      // Strategy:
+      // 1. If plain text already has markdown syntax → use it as-is (markdown source)
+      // 2. If plain text has no markdown but HTML has links → convert HTML to markdown (browser)
+      // 3. Otherwise → use plain text (Word/rich text)
+
+      let textToInsert = plainText;
+
+      // Check if plain text already contains markdown
+      const hasMarkdown = /\[.+?\]\(.+?\)|\*\*.+?\*\*|__.+?__|^#{1,6}\s|```/m.test(plainText);
+
+      if (!hasMarkdown && htmlText) {
+        // Plain text has no markdown, but we have HTML
+        // Check if HTML contains links (common in browser copies)
+        if (/<a\s+href=/i.test(htmlText)) {
+          // Convert HTML links to markdown
+          textToInsert = this._extractLinksFromHtml(htmlText, plainText);
+        }
+        // For other HTML (Word, etc) we just use plain text (already set)
+      }
+
+      e.preventDefault();
+      const doc = cm.getDoc();
+      const cursor = doc.getCursor();
+      doc.replaceRange(textToInsert, cursor);
     });
+  }
+
+  // Extract links from HTML and convert to markdown, preserving plain text structure
+  _extractLinksFromHtml(html, plainText) {
+    const temp = document.createElement('div');
+    temp.innerHTML = html;
+
+    // Build a map of link text → URL
+    const linkMap = new Map();
+    temp.querySelectorAll('a[href]').forEach(a => {
+      const text = a.textContent.trim();
+      const href = a.getAttribute('href');
+      if (text && href) {
+        linkMap.set(text, href);
+      }
+    });
+
+    // Replace link texts in plain text with markdown links
+    let result = plainText;
+    linkMap.forEach((url, text) => {
+      // Use a more precise regex to avoid replacing partial matches
+      const escapedText = text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(`\\b${escapedText}\\b`, 'g');
+      result = result.replace(regex, `[${text}](${url})`);
+    });
+
+    return result;
   }
 
   getValue() {
