@@ -345,9 +345,9 @@ class TerminalManager {
       const marker = isSelected ? '▸' : ' ';
       const name = c.name.padEnd(maxLen);
       const argsStr = showArgs ? `  ${(c.argsHint || '').padEnd(maxHintLen)}` : '';
-      const cls = isSelected ? 'terminal-picker-line terminal-picker-selected' : 'terminal-picker-line';
+      const cls = isSelected ? 'terminal-line system terminal-picker-selected' : 'terminal-line system';
       const text = ` ${marker} ${name}${argsStr}  —  ${c.description}`;
-      return `<span class="${cls}">${this.escapeHtml(text)}</span>`;
+      return `<div class="${cls}" style="white-space:pre">${this.escapeHtml(text)}</div>`;
     }).join('');
 
     this.terminalOutput.scrollTop = this.terminalOutput.scrollHeight;
