@@ -122,6 +122,12 @@ class TerminalManager {
   setupTerminal() {
     if (!this.terminalInput) return;
 
+    // Load persisted command history
+    window.vomit.getTerminalHistory().then(history => {
+      this.state.terminalHistory = history;
+      this.state.terminalHistoryIndex = history.length;
+    });
+
     // Handle input changes - show inline picker when typing /
     this.terminalInput.addEventListener('input', () => {
       const value = this.terminalInput.value;
@@ -149,6 +155,7 @@ class TerminalManager {
             this.executeClaudeCommand(selected.name);
             this.state.terminalHistory.push(selected.name);
             this.state.terminalHistoryIndex = this.state.terminalHistory.length;
+            window.vomit.setTerminalHistory(this.state.terminalHistory);
             this.terminalInput.value = '';
           }
         } else {
@@ -158,6 +165,7 @@ class TerminalManager {
             this.executeClaudeCommand(command);
             this.state.terminalHistory.push(command);
             this.state.terminalHistoryIndex = this.state.terminalHistory.length;
+            window.vomit.setTerminalHistory(this.state.terminalHistory);
             this.terminalInput.value = '';
           }
         }
@@ -216,7 +224,10 @@ class TerminalManager {
         e.preventDefault();
         this.clearTerminal();
         window.vomit.claudeClearHistory();
-        this.appendTerminalOutput('Conversation cleared.', 'system');
+        this.state.terminalHistory = [];
+        this.state.terminalHistoryIndex = 0;
+        window.vomit.clearTerminalHistory();
+        this.appendTerminalOutput('Conversation and command history cleared.', 'system');
       }
     });
 
