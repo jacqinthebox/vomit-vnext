@@ -544,7 +544,12 @@ class Editor {
     });
 
     window.addEventListener('vomit:refresh-file-tree', () => {
-      this.fileTreeManager.loadFileTree();
+      const root = this.state.projectRoot || this.state.currentDirectory;
+      if (root) {
+        this.fileTreeManager.refreshFolder(root);
+      } else {
+        this.fileTreeManager.loadFileTree();
+      }
     });
 
     window.addEventListener('vomit:new-folder', () => {

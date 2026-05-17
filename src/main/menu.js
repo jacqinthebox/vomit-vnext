@@ -432,6 +432,16 @@ function createMenu() {
           }
         },
         {
+          label: 'Show Images Folder',
+          type: 'checkbox',
+          checked: _configStore.getShowImagesFolder(),
+          click: () => {
+            _configStore.setShowImagesFolder(!_configStore.getShowImagesFolder());
+            createMenu();
+            _bus.send('refresh-file-tree');
+          }
+        },
+        {
           label: 'Toggle Word Wrap',
           accelerator: 'Alt+Z',
           click: () => {

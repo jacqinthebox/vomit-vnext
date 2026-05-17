@@ -15,7 +15,8 @@ const store = new Store({
     activeBucketIndex: 0,
     mermaidCurve: 'linear',
     fontSize: 14,
-    tavilyApiKey: ''
+    tavilyApiKey: '',
+    showImagesFolder: false
   }
 });
 
@@ -72,6 +73,11 @@ function setFontSize(size) { store.set('fontSize', size); }
 function getTavilyApiKey() { return store.get('tavilyApiKey') || ''; }
 /** @param {string} key */
 function setTavilyApiKey(key) { store.set('tavilyApiKey', key); }
+
+/** @returns {boolean} */
+function getShowImagesFolder() { return store.get('showImagesFolder') === true; }
+/** @param {boolean} value */
+function setShowImagesFolder(value) { store.set('showImagesFolder', value); }
 
 const TERMINAL_HISTORY_MAX = 100;
 /** @returns {string[]} */
@@ -163,6 +169,8 @@ module.exports = {
   getAIProvider,
   getTavilyApiKey,
   setTavilyApiKey,
+  getShowImagesFolder,
+  setShowImagesFolder,
   getTerminalHistory,
   setTerminalHistory,
   clearTerminalHistory,
