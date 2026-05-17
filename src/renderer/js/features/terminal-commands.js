@@ -90,10 +90,10 @@ const COMMAND_REGISTRY = [
     name: '/index',
     description: 'Index folder for RAG search',
     args: 'optional',
-    argsHint: '[folder]',
+    argsHint: '[subfolder]',
     requiresCwd: true,
     async handler(args, ctx, cwd) {
-      const targetPath = args ? `${cwd}/${args}` : cwd;
+      const targetPath = args ? `${cwd}/${args.replace(/^\//, '')}` : cwd;
       await ctx.indexFolderForRAG(cwd, targetPath, args || null);
     }
   },
