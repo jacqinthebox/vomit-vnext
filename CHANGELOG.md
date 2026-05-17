@@ -1,3 +1,10 @@
+## [1.10.1](https://github.com/jacqinthebox/vomit-vnext/compare/v1.10.0...v1.10.1) (2026-05-17)
+
+
+### Bug Fixes
+
+* **filetree:** hide images folder from file tree ([283b1d8](https://github.com/jacqinthebox/vomit-vnext/commit/283b1d87a0c951b4b5568215cf812d46a551c186))
+
 # [1.10.0](https://github.com/jacqinthebox/vomit-vnext/compare/v1.9.3...v1.10.0) (2026-05-17)
 
 
