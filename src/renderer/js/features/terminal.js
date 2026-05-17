@@ -303,7 +303,7 @@ class TerminalManager {
     } else {
       filtered = [...COMMAND_REGISTRY]
         .filter(c => c.name.toLowerCase().startsWith(lower))
-        .sort((a, b) => b.name.length - a.name.length);
+        .sort((a, b) => a.name.localeCompare(b.name));
     }
 
     if (filtered.length === 0) {
