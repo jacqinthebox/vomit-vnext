@@ -433,7 +433,7 @@ Questions?
 
         const entries = fs.readdirSync(dirPath, { withFileTypes: true });
         const items = entries
-          .filter(entry => !entry.name.startsWith('.')) // Hide hidden files
+          .filter(entry => !entry.name.startsWith('.') && entry.name !== 'images') // Hide hidden files and images folder
           .map(entry => ({
             name: entry.name,
             path: path.join(dirPath, entry.name),
