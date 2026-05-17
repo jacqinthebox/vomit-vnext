@@ -90,7 +90,15 @@ async function indexFolder(projectRoot, targetPath, progressCallback) {
   const db = getRAGDatabase(projectRoot);
 
   // Check if targetPath is a single file or a directory
-  const targetStat = fs.statSync(targetPath);
+  let targetStat;
+  try {
+    targetStat = fs.statSync(targetPath);
+  } catch (err) {
+    if (err.code === 'ENOENT') {
+      throw new Error(`Path not found: "${targetPath}"\nUse /index without arguments to index the entire project.`);
+    }
+    throw err;
+  }
   const isSingleFile = targetStat.isFile();
 
   if (isSingleFile) {

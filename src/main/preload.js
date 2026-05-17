@@ -276,6 +276,9 @@ contextBridge.exposeInMainWorld('vomit', {
   switchBucket: (index) => ipcRenderer.invoke('switch-bucket', index),
   addBucket: () => ipcRenderer.invoke('add-bucket'),
   removeBucket: (index) => ipcRenderer.invoke('remove-bucket', index),
+  getTerminalHistory: () => ipcRenderer.invoke('get-terminal-history'),
+  setTerminalHistory: (history) => ipcRenderer.invoke('set-terminal-history', history),
+  clearTerminalHistory: () => ipcRenderer.invoke('clear-terminal-history'),
   // App info
   getAppVersion: () => ipcRenderer.invoke('get-app-version')
 });

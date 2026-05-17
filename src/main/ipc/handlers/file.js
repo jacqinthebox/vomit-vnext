@@ -722,6 +722,10 @@ Questions?
         return { success: false, error: err.message };
       }
     });
+
+    ipcMain.handle('get-terminal-history', () => configStore.getTerminalHistory());
+    ipcMain.handle('set-terminal-history', (event, history) => configStore.setTerminalHistory(history));
+    ipcMain.handle('clear-terminal-history', () => configStore.clearTerminalHistory());
   }
 
   return {

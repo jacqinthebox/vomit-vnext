@@ -90,10 +90,14 @@ const COMMAND_REGISTRY = [
     name: '/index',
     description: 'Index folder for RAG search',
     args: 'optional',
-    argsHint: '[folder]',
+    argsHint: '[subfolder]',
     requiresCwd: true,
     async handler(args, ctx, cwd) {
-      const targetPath = args ? `${cwd}/${args}` : cwd;
+      // Default to the current file's directory, not the whole bucket root
+      const currentFile = ctx.state.currentFilePath;
+      const currentDir = currentFile ? currentFile.substring(0, currentFile.lastIndexOf('/')) : cwd;
+      const base = args ? cwd : currentDir;
+      const targetPath = args ? `${cwd}/${args.replace(/^\//, '')}` : base;
       await ctx.indexFolderForRAG(cwd, targetPath, args || null);
     }
   },

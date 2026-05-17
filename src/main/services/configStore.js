@@ -73,6 +73,13 @@ function getTavilyApiKey() { return store.get('tavilyApiKey') || ''; }
 /** @param {string} key */
 function setTavilyApiKey(key) { store.set('tavilyApiKey', key); }
 
+const TERMINAL_HISTORY_MAX = 100;
+/** @returns {string[]} */
+function getTerminalHistory() { return store.get('terminalHistory') || []; }
+/** @param {string[]} history */
+function setTerminalHistory(history) { store.set('terminalHistory', history.slice(-TERMINAL_HISTORY_MAX)); }
+function clearTerminalHistory() { store.set('terminalHistory', []); }
+
 /** @returns {string} */
 function getAIProvider() { return store.get('aiProvider'); }
 
@@ -156,6 +163,9 @@ module.exports = {
   getAIProvider,
   getTavilyApiKey,
   setTavilyApiKey,
+  getTerminalHistory,
+  setTerminalHistory,
+  clearTerminalHistory,
   getBucketPath,
   setBucketPath,
   getBuckets,
