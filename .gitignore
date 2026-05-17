@@ -29,3 +29,6 @@ Vomit-stable.app/
 # Build artifacts
 Vomit.app/
 dist/
+.omegon/
+ai/
+SCR-*.png

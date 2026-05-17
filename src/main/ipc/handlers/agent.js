@@ -104,7 +104,7 @@ const agentTools = [
 ];
 
 // Execute a tool and return the result
-async function executeAgentTool(toolName, args, cwd) {
+async function executeAgentTool(toolName, args, cwd, configStore) {
   try {
     switch (toolName) {
       case 'bash': {
@@ -145,9 +145,9 @@ async function executeAgentTool(toolName, args, cwd) {
         return items.map(item => `${item.isDirectory() ? '[dir] ' : ''}${item.name}`).join('\n');
       }
       case 'tavily_search': {
-        const apiKey = process.env.TAVILY_API_KEY;
+        const apiKey = (configStore && configStore.getTavilyApiKey()) || process.env.TAVILY_API_KEY;
         if (!apiKey) {
-          return 'Error: TAVILY_API_KEY environment variable not set. Set it with: export TAVILY_API_KEY="your-key"';
+          return 'Error: Tavily API key not set. Add it via the AI menu → Set Tavily API Key...';
         }
 
         try {
@@ -350,7 +350,7 @@ When you need to run commands, read files, write files, or list directories, use
             bus.send('claude-output', `\n▶ ${toolName}: ${JSON.stringify(toolArgs)}\n`);
 
             // Execute the tool
-            const toolResult = await executeAgentTool(toolName, toolArgs, workingDir);
+            const toolResult = await executeAgentTool(toolName, toolArgs, workingDir, configStore);
 
             // Show result (truncated if too long)
             const displayResult = toolResult.length > 2000

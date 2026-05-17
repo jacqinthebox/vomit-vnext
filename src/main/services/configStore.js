@@ -14,7 +14,8 @@ const store = new Store({
     buckets: [],
     activeBucketIndex: 0,
     mermaidCurve: 'linear',
-    fontSize: 14
+    fontSize: 14,
+    tavilyApiKey: ''
   }
 });
 
@@ -67,7 +68,12 @@ function getFontSize() { return store.get('fontSize'); }
 /** @param {number} size */
 function setFontSize(size) { store.set('fontSize', size); }
 
-/** @returns {string|null} */
+/** @returns {string} */
+function getTavilyApiKey() { return store.get('tavilyApiKey') || ''; }
+/** @param {string} key */
+function setTavilyApiKey(key) { store.set('tavilyApiKey', key); }
+
+/** @returns {string} */
 function getAIProvider() { return store.get('aiProvider'); }
 
 /** @returns {string|null} Returns active bucket path (backwards compatible) */
@@ -148,6 +154,8 @@ module.exports = {
   getFontSize,
   setFontSize,
   getAIProvider,
+  getTavilyApiKey,
+  setTavilyApiKey,
   getBucketPath,
   setBucketPath,
   getBuckets,

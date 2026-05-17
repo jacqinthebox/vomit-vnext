@@ -1,22 +1,5 @@
 // TerminalManager — AI terminal, shell terminal, commands, and output formatting.
 
-// Available commands with descriptions
-const COMMANDS = [
-  { cmd: '/write', args: '<prompt>', desc: 'Insert AI response at cursor position' },
-  { cmd: '/write-new', args: '<prompt>', desc: 'Create new file with AI response' },
-  { cmd: '/rewrite', args: '<prompt>', desc: 'Replace selection with AI response' },
-  { cmd: '/append', args: '<prompt>', desc: 'Add AI response at end of document' },
-  { cmd: '/doc', args: '<prompt>', desc: 'Ask AI about current document' },
-  { cmd: '/presentation', args: '<topic>', desc: 'Generate a presentation' },
-  { cmd: '/rag', args: '<query>', desc: 'Search with RAG context' },
-  { cmd: '/index', args: '[folder]', desc: 'Index folder for RAG search' },
-  { cmd: '/agent', args: '<prompt>', desc: 'Run in agent mode with tools' },
-  { cmd: '/pseudo', args: '', desc: 'Pseudonymize current document' },
-  { cmd: '/pseudo all', args: '', desc: 'Pseudonymize all files' },
-  { cmd: '/depseudo', args: '', desc: 'Restore original document' },
-  { cmd: '/new', args: '', desc: 'Start a new conversation' },
-];
-
 class TerminalManager {
   constructor({ state, host, dom, getTabManager, getPreviewManager, getFileTreeManager }) {
     this.state = state;
@@ -262,15 +245,18 @@ class TerminalManager {
   }
 
   showAvailableCommands() {
+    const { COMMAND_REGISTRY } = window.TerminalCommands;
     this.appendTerminalOutput('Available commands:', 'system');
-    COMMANDS.forEach(c => {
-      const args = c.args ? ` ${c.args}` : '';
-      this.appendTerminalOutput(`  ${c.cmd}${args}  —  ${c.desc}`, 'output');
+    COMMAND_REGISTRY.forEach(c => {
+      const args = c.argsHint ? ` ${c.argsHint}` : '';
+      this.appendTerminalOutput(`  ${c.name}${args}  —  ${c.description}`, 'output');
     });
     this.appendTerminalOutput('', 'system');
   }
 
   showCommandPopup(filter = '/') {
+    const { COMMAND_REGISTRY } = window.TerminalCommands;
+
     // Create popup if it doesn't exist
     if (!this.commandPopup) {
       this.commandPopup = document.createElement('div');
@@ -284,8 +270,8 @@ class TerminalManager {
     // Filter commands based on input
     const filterText = filter.substring(1).toLowerCase(); // Remove leading /
     const filtered = filterText
-      ? COMMANDS.filter(c => c.cmd.toLowerCase().includes(filterText))
-      : COMMANDS;
+      ? COMMAND_REGISTRY.filter(c => c.name.toLowerCase().includes(filterText))
+      : COMMAND_REGISTRY;
 
     if (filtered.length === 0) {
       this.hideCommandPopup();
@@ -294,11 +280,11 @@ class TerminalManager {
 
     // Build popup content
     this.commandPopup.innerHTML = filtered.map(c => {
-      const args = c.args ? c.args : '';
-      return `<div class="command-item" data-cmd="${c.cmd}">
-        <span class="command-name">${c.cmd}</span>
+      const args = c.argsHint ? c.argsHint : '';
+      return `<div class="command-item" data-cmd="${c.name}">
+        <span class="command-name">${c.name}</span>
         <span class="command-args">${args}</span>
-        <span class="command-desc">${c.desc}</span>
+        <span class="command-desc">${c.description}</span>
       </div>`;
     }).join('');
 
@@ -616,133 +602,40 @@ class TerminalManager {
   // --- AI commands ---
 
   async executeClaudeCommand(command) {
-    // Check for /help - show available commands (doesn't require cwd)
+    // /help is handled before dispatch: it needs no cwd and is not in the registry
+    // so it does not appear in the command popup.
     if (command.trim() === '/help') {
       this.appendTerminalOutput('❯ /help', 'input');
       this.showAvailableCommands();
       return;
     }
 
-    // Get working directory - prefer project root, fall back to current file's directory
-    const cwd = this.state.projectRoot || this.state.currentDirectory;
+    const { parseCommand, dispatchCommand } = window.TerminalCommands;
+    const parsed = parseCommand(command);
+    if (parsed) {
+      try {
+        await dispatchCommand(parsed, this);
+      } catch (err) {
+        this.appendTerminalOutput(`Error: ${err.message}`, 'error');
+        this.state.isClaudeRunning = false;
+        this.terminalStop.classList.add('hidden');
+      }
+      return;
+    }
 
+    // Plain text or unrecognized slash command — pass directly to AI
+    const cwd = this.state.projectRoot || this.state.currentDirectory;
     if (!cwd) {
       this.appendTerminalOutput('Error: No project folder open. Open a folder first with Cmd+Alt+O.', 'error');
       return;
     }
 
-    // Check for /new command - start a new conversation
-    if (command.trim() === '/new') {
-      window.vomit.claudeClearHistory();
-      this.clearTerminal();
-      this.appendTerminalOutput('New conversation started.', 'system');
-      return;
-    }
-
-    // Check for /write command - insert AI response at cursor
-    if (command.startsWith('/write ') && !command.startsWith('/write-new ')) {
-      const prompt = command.substring(7).trim();
-      if (prompt) {
-        await this.executeWriteCommand(prompt, 'cursor', cwd);
-        return;
-      }
-    }
-
-    // Check for /write-new command - create new file with AI response
-    if (command.startsWith('/write-new ')) {
-      const prompt = command.substring(11).trim();
-      if (prompt) {
-        await this.executeWriteCommand(prompt, 'new', cwd);
-        return;
-      }
-    }
-
-    // Check for /rewrite command - replace selection with AI response
-    if (command.startsWith('/rewrite ')) {
-      const prompt = command.substring(9).trim();
-      if (prompt) {
-        await this.executeWriteCommand(prompt, 'replace', cwd);
-        return;
-      }
-    }
-
-    // Check for /append command - add AI response at end of document
-    if (command.startsWith('/append ')) {
-      const prompt = command.substring(8).trim();
-      if (prompt) {
-        await this.executeWriteCommand(prompt, 'append', cwd);
-        return;
-      }
-    }
-
-    // Check for /pseudo command
-    if (command.trim() === '/pseudo' || command.trim() === '/pseudo doc') {
-      await this.pseudonymizeCurrentDoc(cwd);
-      return;
-    }
-    if (command.trim() === '/pseudo all') {
-      await this.runPseudonymization(cwd);
-      return;
-    }
-
-    // Check for /depseudo command - restore original from backup
-    if (command === '/depseudo') {
-      await this.depseudonymizeCurrentDoc();
-      return;
-    }
-
-    // Check for /index command - index folder for RAG
-    if (command === '/index' || command.startsWith('/index ')) {
-      const subpath = command.substring(6).trim();
-      const targetPath = subpath ? `${cwd}/${subpath}` : cwd;
-      await this.indexFolderForRAG(cwd, targetPath, subpath || null);
-      return;
-    }
-
-    // Check for /rag command - search with RAG context
-    if (command.startsWith('/rag ')) {
-      const query = command.substring(5).trim();
-      if (query) {
-        await this.searchWithRAG(query, cwd);
-        return;
-      }
-    }
-
-    // Check for /agent command - agentic mode with tool calling
-    if (command.startsWith('/agent ')) {
-      const prompt = command.substring(7).trim();
-      if (prompt) {
-        await this.executeAgentCommand(prompt, cwd);
-        return;
-      }
-    }
-
-    // Check for /presentation command - generate a presentation
-    if (command.startsWith('/presentation ')) {
-      const topic = command.substring(14).trim();
-      if (topic) {
-        await this.generatePresentation(topic, cwd);
-        return;
-      }
-    }
-
-    let finalCommand = command;
-
-    // Check for /doc prefix to include document context
-    if (command.startsWith('/doc ')) {
-      const docContent = this.host.getContent();
-      const userPrompt = command.substring(5); // Remove '/doc '
-      finalCommand = `Here is the document I'm working on:\n\n---\n${docContent}\n---\n\nUser request: ${userPrompt}`;
-      this.appendTerminalOutput(`❯ ${userPrompt} (with document context)`, 'input');
-    } else {
-      this.appendTerminalOutput(`❯ ${command}`, 'input');
-    }
-
+    this.appendTerminalOutput(`❯ ${command}`, 'input');
     this.state.isClaudeRunning = true;
     this.terminalStop.classList.remove('hidden');
 
     try {
-      await window.vomit.claudeExecute(finalCommand, cwd);
+      await window.vomit.claudeExecute(command, cwd);
     } catch (err) {
       this.appendTerminalOutput(`Error: ${err.message}`, 'error');
       this.state.isClaudeRunning = false;
@@ -1201,7 +1094,7 @@ ${docContent}
   }
 
   async runPseudonymization(cwd) {
-    this.appendTerminalOutput('❯ /pseudo', 'input');
+    this.appendTerminalOutput('❯ /pseudo all', 'input');
     this.appendTerminalOutput('Starting batch pseudonymization...', 'system');
 
     // File extensions to process

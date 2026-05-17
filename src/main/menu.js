@@ -58,7 +58,33 @@ function buildAISubmenu() {
     });
   }
 
+  submenu.push({ type: 'separator' });
+  const tavilyKey = _configStore.getTavilyApiKey();
+  submenu.push({
+    label: tavilyKey ? 'Tavily API Key ✓' : 'Set Tavily API Key...',
+    click: () => setTavilyApiKey()
+  });
+
   return submenu;
+}
+
+// Prompt user to enter Tavily API key
+async function setTavilyApiKey() {
+  const mainWindow = _bus.getMainWindow();
+  const currentKey = _configStore.getTavilyApiKey();
+  const promptMsg = currentKey
+    ? `Current key: ${currentKey.substring(0, 8)}...\n\nEnter new Tavily API key (leave blank to clear):`
+    : 'Enter your Tavily API key:';
+
+  const key = await mainWindow.webContents.executeJavaScript(
+    `window.prompt(${JSON.stringify(promptMsg)}, ${JSON.stringify(currentKey)})`
+  );
+
+  // null means the user clicked Cancel
+  if (key === null) return;
+
+  _configStore.setTavilyApiKey(key.trim());
+  createMenu();
 }
 
 // Set Ollama model and show terminal
