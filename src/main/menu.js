@@ -70,21 +70,26 @@ function buildAISubmenu() {
 
 // Prompt user to enter Tavily API key
 async function setTavilyApiKey() {
-  const mainWindow = _bus.getMainWindow();
+  const { exec } = require('child_process');
   const currentKey = _configStore.getTavilyApiKey();
   const promptMsg = currentKey
-    ? `Current key: ${currentKey.substring(0, 8)}...\n\nEnter new Tavily API key (leave blank to clear):`
+    ? `Enter new Tavily API key (current: ${currentKey.substring(0, 8)}...):\\nLeave blank to clear.`
     : 'Enter your Tavily API key:';
 
-  const key = await mainWindow.webContents.executeJavaScript(
-    `window.prompt(${JSON.stringify(promptMsg)}, ${JSON.stringify(currentKey)})`
-  );
+  const script = `osascript -e 'display dialog "${promptMsg}" default answer "" with hidden answer'`;
 
-  // null means the user clicked Cancel
-  if (key === null) return;
-
-  _configStore.setTavilyApiKey(key.trim());
-  createMenu();
+  return new Promise((resolve) => {
+    exec(script, (err, stdout) => {
+      if (err) return resolve(); // user cancelled
+      const match = stdout.match(/text returned:(.*)/);
+      if (match) {
+        const value = match[1].trim();
+        _configStore.setTavilyApiKey(value || '');
+        createMenu();
+      }
+      resolve();
+    });
+  });
 }
 
 // Set Ollama model and show terminal
