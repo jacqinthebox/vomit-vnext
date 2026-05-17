@@ -172,6 +172,10 @@ Vomit includes a built-in AI terminal powered by [Ollama](https://ollama.ai). Al
 2. Pull a model: `ollama pull qwen2.5:14b` (recommended for best results)
 3. Press `Cmd+J` or select a model from the AI menu
 
+**Command picker:**
+
+Type `/` in the AI terminal to open an inline command picker. Navigate with `↑`/`↓`, press `Enter` to execute (or complete to name + space if the command needs arguments), `Tab` to complete without executing, and `Escape` to close.
+
 **Special commands:**
 - `/doc <prompt>` - Include the current document in your prompt
 - `/write <prompt>` - Insert AI response at cursor position
@@ -180,10 +184,18 @@ Vomit includes a built-in AI terminal powered by [Ollama](https://ollama.ai). Al
 - `/append <prompt>` - Add AI response at end of document
 - `/presentation <topic>` - Generate a presentation with slides and speaker notes
 - `/pseudo` - Pseudonymize the current document (names, emails, IPs, secrets)
+- `/pseudo all` - Pseudonymize all files in the current folder
 - `/depseudo` - Restore original data from pseudonymized file using the mapping
-- `/index` - Index all documents in the bucket for RAG search
-- `/index subfolder` - Index only a specific subfolder
+- `/index` - Index the current file's folder for RAG search (recursive)
+- `/index <subfolder>` - Index only a specific subfolder
 - `/rag <query>` - Search indexed documents and ask AI with context
+- `/agent <prompt>` - Agentic mode with tools (bash, file read/write, web search)
+- `/new` - Start a new conversation (clear history)
+- `/help` - Show all available commands
+
+**Web search with Tavily:**
+
+The `/agent` command supports real-time web search via [Tavily](https://tavily.com). Set your API key once via **AI menu → Set Tavily API Key...**. When you ask the agent to search the web (e.g. `/agent search for the latest news on...`), it will automatically call the Tavily search tool and include current results in its response.
 
 **RAG (Retrieval Augmented Generation):**
 
@@ -194,12 +206,16 @@ RAG allows the AI to answer questions using all your project documents as contex
 ollama pull nomic-embed-text
 
 # In Vomit AI terminal
-/index                              # Index entire project
+/index                              # Index current file's folder (recursive)
 /index src/docs                     # Index only a subfolder
 /rag how does authentication work?  # Search and ask with context
 ```
 
 The index is stored in `~/.config/vomit/rag/` to keep your project clean.
+
+**Command history:**
+
+The AI terminal remembers your last 100 commands across restarts. Use `↑`/`↓` (when no picker is open) to navigate history. `Cmd+K` clears both the conversation and the command history.
 
 The AI menu shows all your installed Ollama models - just click one to switch.
 

@@ -136,27 +136,43 @@ Press **Cmd+/** to open this help at any time.
 | Shortcut | Action |
 |----------|--------|
 | Cmd+J | Toggle AI terminal |
-| Cmd+K | Clear terminal and conversation history |
+| Cmd+K | Clear terminal, conversation history, and command history |
+
+### Command Picker
+
+Type `/` to open an inline command picker showing all available commands.
+
+| Key | Action |
+|-----|--------|
+| `↑` / `↓` | Move selection up/down (wraps around) |
+| `Enter` | Execute selected command (or complete to `name ` if args required) |
+| `Tab` | Complete input to selected command name + space |
+| `Escape` | Close picker, keep input |
+| Any character | Re-filter the list |
+
+When the picker is closed, `↑`/`↓` navigate command history (persisted across restarts, up to 100 entries).
 
 ### AI Commands
 
 | Command | Action |
 |---------|--------|
+| `/help` | Show all available commands |
 | `/new` | Start a new conversation (clear history) |
 | `/doc <prompt>` | Include current document in prompt |
 | `/write <prompt>` | Insert AI response at cursor |
 | `/write-new <prompt>` | Create new file with AI response |
 | `/rewrite <prompt>` | Replace selection with AI response |
 | `/append <prompt>` | Add AI response at end of document |
-| `/pseudo` | Pseudonymize current document |
+| `/pseudo` | Pseudonymize current document (names, emails, IPs) |
+| `/pseudo all` | Pseudonymize all files in current folder |
 | `/depseudo` | Restore original data from mapping |
-| `/index` | Index folder for RAG |
-| `/index <subfolder>` | Index specific subfolder |
-| `/index <file>` | Index a single file |
-| `/rag <query>` | Search docs and ask AI |
+| `/index` | Index current file's folder for RAG (recursive) |
+| `/index <subfolder>` | Index a specific subfolder |
+| `/rag <query>` | Search indexed docs and ask AI with context |
 | `/presentation <topic>` | Generate a presentation on the topic |
-| `/agent <prompt>` | Agentic mode with tools (bash, file read/write) |
-| `/agent clear` | Clear agent conversation history |
+| `/agent <prompt>` | Agentic mode with tools (bash, file read/write, web search) |
+
+**Web search:** Set a [Tavily](https://tavily.com) API key via **AI menu → Set Tavily API Key...** to enable real-time web search in `/agent` mode.
 
 ---
 
