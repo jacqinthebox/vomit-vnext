@@ -1,3 +1,10 @@
+## [1.9.3](https://github.com/jacqinthebox/vomit-vnext/compare/v1.9.2...v1.9.3) (2026-05-17)
+
+
+### Bug Fixes
+
+* **terminal:** surface command policy violations and clean up handlers ([f4263de](https://github.com/jacqinthebox/vomit-vnext/commit/f4263defd24d7d4bd164812f805ffe402daf5a4d))
+
 ## [1.9.2](https://github.com/jacqinthebox/vomit-vnext/compare/v1.9.1...v1.9.2) (2026-05-17)
 
 
