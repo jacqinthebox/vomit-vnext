@@ -350,7 +350,11 @@ class TerminalManager {
       return `<div class="${cls}" style="white-space:pre">${this.escapeHtml(text)}</div>`;
     }).join('');
 
-    this.terminalOutput.scrollTop = this.terminalOutput.scrollHeight;
+    // Scroll the selected row into view rather than always jumping to bottom
+    const selectedEl = this.pickerState.blockEl.querySelector('.terminal-picker-selected');
+    if (selectedEl) {
+      selectedEl.scrollIntoView({ block: 'nearest' });
+    }
   }
 
   _pickerMoveSelection(delta) {
