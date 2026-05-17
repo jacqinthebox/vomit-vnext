@@ -139,15 +139,17 @@ class TerminalManager {
         if (this.pickerState.active && this.pickerState.items.length > 0) {
           // Picker is open: complete the selection (Tab and Enter are equivalent)
           const selected = this.pickerState.items[this.pickerState.selectedIndex];
-          if (selected.args === 'none') {
+          if (selected.args === 'required') {
+            // Must provide args — complete to name + space and keep picker open
+            this.terminalInput.value = selected.name + ' ';
+            this._openPicker(this.terminalInput.value);
+          } else {
+            // args: 'none' or 'optional' — execute immediately
             this._closePicker();
             this.executeClaudeCommand(selected.name);
             this.state.terminalHistory.push(selected.name);
             this.state.terminalHistoryIndex = this.state.terminalHistory.length;
             this.terminalInput.value = '';
-          } else {
-            this.terminalInput.value = selected.name + ' ';
-            this._openPicker(this.terminalInput.value);
           }
         } else {
           this._closePicker();
