@@ -4,6 +4,7 @@
 const { dialog, shell, app } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const chokidar = require('chokidar');
 
 /**
  * Create file service with all file operations and IPC handlers.
@@ -142,53 +143,50 @@ Questions?
   // Directory watcher for file tree auto-refresh
   let directoryWatcher = null;
   let watchedDirectory = null;
-  let refreshDebounceTimer = null;
+  const debounceMap = new Map(); // per-folder debounce timers; kept in outer scope for cleanup
 
   function stopDirectoryWatcher() {
+    for (const timer of debounceMap.values()) clearTimeout(timer);
+    debounceMap.clear();
     if (directoryWatcher) {
-      try {
-        directoryWatcher.close();
-      } catch (err) {
-        // Ignore errors when closing watcher
-      }
+      try { directoryWatcher.close(); } catch (_) {}
       directoryWatcher = null;
       watchedDirectory = null;
     }
   }
 
   function startDirectoryWatcher(dirPath) {
-    if (!dirPath || !fs.existsSync(dirPath)) {
-      return;
-    }
-
-    // Don't restart if already watching this directory
-    if (watchedDirectory === dirPath) {
-      return;
-    }
+    if (!dirPath || !fs.existsSync(dirPath)) return;
+    if (watchedDirectory === dirPath) return;
 
     stopDirectoryWatcher();
     watchedDirectory = dirPath;
 
-    try {
-      // Use fs.watch with recursive option for macOS
-      directoryWatcher = fs.watch(dirPath, { recursive: true }, (eventType, filename) => {
-        // Debounce rapid changes - longer delay to avoid conflicts with manual refreshes
-        if (refreshDebounceTimer) {
-          clearTimeout(refreshDebounceTimer);
-        }
-        refreshDebounceTimer = setTimeout(() => {
-          refreshDebounceTimer = null;
-          bus.send('refresh-file-tree');
-        }, 1000);
-      });
+    directoryWatcher = chokidar.watch(dirPath, {
+      // Ignore node_modules, .git dir, and hidden files — use segment-aware regex
+      ignored: /(^|[/\\])(node_modules|\.git)(\/|\\|$)/,
+      persistent: true,
+      ignoreInitial: true
+    });
 
-      directoryWatcher.on('error', () => {
-        // Silently handle watcher errors
-        stopDirectoryWatcher();
-      });
-    } catch (err) {
-      // Ignore directory watch errors
-    }
+    const sendRefresh = (eventName, eventPath) => {
+      const changedDir = path.dirname(eventPath);
+      if (debounceMap.has(changedDir)) clearTimeout(debounceMap.get(changedDir));
+      debounceMap.set(changedDir, setTimeout(() => {
+        debounceMap.delete(changedDir);
+        const payload = { changedPath: changedDir };
+        // For deleted dirs, also pass the path so renderer can purge its subtree cache
+        if (eventName === 'unlinkDir') payload.deletedPath = eventPath;
+        bus.send('refresh-file-tree', payload);
+      }, 300));
+    };
+
+    directoryWatcher
+      .on('add',       p => sendRefresh('add', p))
+      .on('addDir',    p => sendRefresh('addDir', p))
+      .on('unlink',    p => sendRefresh('unlink', p))
+      .on('unlinkDir', p => sendRefresh('unlinkDir', p))
+      .on('error',     () => stopDirectoryWatcher());
   }
 
   function startFileWatcher(filePath) {

@@ -137,6 +137,11 @@ class FileTreeManager {
     this.treeView.renderRoot();
   }
 
+  // Invalidate cache for a directory without reloading (e.g. for deleted dirs)
+  invalidateDirectory(folderPath) {
+    this.dataModel.invalidateChildren(folderPath);
+  }
+
   async _ensureTreeLoaded() {
     // Use projectRoot as the stable tree root (not currentDirectory which follows open file)
     const rootDir = this.editorState.projectRoot || this.editorState.currentDirectory;

@@ -543,10 +543,23 @@ class Editor {
       this.fileTreeManager.openFolder(e.detail);
     });
 
-    window.addEventListener('vomit:refresh-file-tree', () => {
-      const root = this.state.projectRoot || this.state.currentDirectory;
-      if (root) {
-        this.fileTreeManager.refreshFolder(root);
+    window.addEventListener('vomit:refresh-file-tree', (e) => {
+      const projectRoot = this.state.projectRoot || this.state.currentDirectory;
+      const { changedPath, deletedPath } = e.detail || {};
+
+      // Purge stale subtree cache for deleted directories
+      if (deletedPath) {
+        this.fileTreeManager.invalidateDirectory(deletedPath);
+      }
+
+      // Refresh the most specific changed folder, or fall back to root
+      const normalRoot = projectRoot ? projectRoot.replace(/\/$/, '') : null;
+      const isInsideProject = normalRoot && changedPath &&
+        (changedPath === normalRoot || changedPath.startsWith(normalRoot + '/'));
+      const target = isInsideProject ? changedPath : projectRoot;
+
+      if (target) {
+        this.fileTreeManager.refreshFolder(target);
       } else {
         this.fileTreeManager.loadFileTree();
       }

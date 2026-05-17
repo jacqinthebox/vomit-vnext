@@ -6,7 +6,8 @@ class TreeDataModel extends EventTarget {
   #nodes = new Map();      // path -> { name, path, isDirectory, isMarkdown, parentPath }
   #children = new Map();   // path -> [childPaths]
   #rootPath = null;
-  #loadingPaths = new Set(); // Prevent duplicate loads
+  #loadingPaths = new Set(); // Prevent duplicate concurrent loads
+  #dirtyPaths = new Set();   // Paths invalidated while a load was in flight
 
   // ─────────────────────────────────────────────────────────────
   // Root management
@@ -19,6 +20,7 @@ class TreeDataModel extends EventTarget {
     this.#nodes.clear();
     this.#children.clear();
     this.#loadingPaths.clear();
+    this.#dirtyPaths.clear();
     this.dispatchEvent(new CustomEvent('rootChanged', { detail: path }));
   }
 
@@ -55,6 +57,7 @@ class TreeDataModel extends EventTarget {
     }
 
     this.#loadingPaths.add(parentPath);
+    this.#dirtyPaths.delete(parentPath); // consume any pending dirty marker
     this.dispatchEvent(new CustomEvent('loadingStarted', { detail: parentPath }));
 
     try {
@@ -81,6 +84,11 @@ class TreeDataModel extends EventTarget {
       this.dispatchEvent(new CustomEvent('loadingFailed', { detail: { path: parentPath, error: err } }));
     } finally {
       this.#loadingPaths.delete(parentPath);
+      // If invalidated while this load was in flight, reload with fresh data
+      if (this.#dirtyPaths.has(parentPath)) {
+        this.#dirtyPaths.delete(parentPath);
+        this.loadChildren(parentPath);
+      }
     }
   }
 
@@ -188,9 +196,13 @@ class TreeDataModel extends EventTarget {
     this.dispatchEvent(new CustomEvent('nodeRenamed', { detail: { oldPath, newPath } }));
   }
 
-  // Invalidate cached children (force re-fetch on next expand)
+  // Invalidate cached children (force re-fetch on next expand/refresh)
   invalidateChildren(path) {
     this.#children.delete(path);
+    // If a load is in flight, mark dirty so it re-fetches once the current load finishes
+    if (this.#loadingPaths.has(path)) {
+      this.#dirtyPaths.add(path);
+    }
     this.dispatchEvent(new CustomEvent('childrenInvalidated', { detail: path }));
   }
 
