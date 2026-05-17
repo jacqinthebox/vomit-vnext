@@ -1,3 +1,10 @@
+## [1.10.2](https://github.com/jacqinthebox/vomit-vnext/compare/v1.10.1...v1.10.2) (2026-05-17)
+
+
+### Bug Fixes
+
+* **filetree:** add View menu toggle to show/hide images folder ([45cdc93](https://github.com/jacqinthebox/vomit-vnext/commit/45cdc9395e7468e75c8b7517f028e220631c3cab))
+
 ## [1.10.1](https://github.com/jacqinthebox/vomit-vnext/compare/v1.10.0...v1.10.1) (2026-05-17)
 
 
