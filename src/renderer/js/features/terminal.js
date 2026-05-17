@@ -602,25 +602,18 @@ class TerminalManager {
   // --- AI commands ---
 
   async executeClaudeCommand(command) {
-    // /help is handled before dispatch: it needs no cwd and is not in the registry
-    // so it does not appear in the command popup.
-    if (command.trim() === '/help') {
-      this.appendTerminalOutput('❯ /help', 'input');
-      this.showAvailableCommands();
-      return;
-    }
-
     const { parseCommand, dispatchCommand } = window.TerminalCommands;
     const parsed = parseCommand(command);
     if (parsed) {
       try {
-        await dispatchCommand(parsed, this);
+        const handled = await dispatchCommand(parsed, this);
+        if (handled) return;
       } catch (err) {
         this.appendTerminalOutput(`Error: ${err.message}`, 'error');
         this.state.isClaudeRunning = false;
         this.terminalStop.classList.add('hidden');
+        return;
       }
-      return;
     }
 
     // Plain text or unrecognized slash command — pass directly to AI
@@ -636,6 +629,22 @@ class TerminalManager {
 
     try {
       await window.vomit.claudeExecute(command, cwd);
+    } catch (err) {
+      this.appendTerminalOutput(`Error: ${err.message}`, 'error');
+      this.state.isClaudeRunning = false;
+      this.terminalStop.classList.add('hidden');
+    }
+  }
+
+  async executeDocCommand(prompt, cwd) {
+    const docContent = this.host.getContent();
+    const finalCommand = `Here is the document I'm working on:\n\n---\n${docContent}\n---\n\nUser request: ${prompt}`;
+    this.appendTerminalOutput(`❯ ${prompt} (with document context)`, 'input');
+    this.state.isClaudeRunning = true;
+    this.terminalStop.classList.remove('hidden');
+
+    try {
+      await window.vomit.claudeExecute(finalCommand, cwd);
     } catch (err) {
       this.appendTerminalOutput(`Error: ${err.message}`, 'error');
       this.state.isClaudeRunning = false;

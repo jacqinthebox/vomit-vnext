@@ -69,9 +69,8 @@ const COMMAND_REGISTRY = [
   {
     name: '/pseudo',
     description: 'Pseudonymize current document',
-    args: 'optional',
+    args: 'none',
     argsHint: '',
-    subcommands: ['doc'],
     requiresCwd: true,
     async handler(args, ctx, cwd) {
       await ctx.pseudonymizeCurrentDoc(cwd);
@@ -135,18 +134,18 @@ const COMMAND_REGISTRY = [
     argsHint: '<prompt>',
     requiresCwd: true,
     async handler(args, ctx, cwd) {
-      const docContent = ctx.host.getContent();
-      const finalCommand = `Here is the document I'm working on:\n\n---\n${docContent}\n---\n\nUser request: ${args}`;
-      ctx.appendTerminalOutput(`❯ ${args} (with document context)`, 'input');
-      ctx.state.isClaudeRunning = true;
-      ctx.terminalStop.classList.remove('hidden');
-      try {
-        await window.vomit.claudeExecute(finalCommand, cwd);
-      } catch (err) {
-        ctx.appendTerminalOutput(`Error: ${err.message}`, 'error');
-        ctx.state.isClaudeRunning = false;
-        ctx.terminalStop.classList.add('hidden');
-      }
+      await ctx.executeDocCommand(args, cwd);
+    }
+  },
+  {
+    name: '/help',
+    description: 'Show available commands',
+    args: 'none',
+    argsHint: '',
+    requiresCwd: false,
+    async handler(args, ctx) {
+      ctx.appendTerminalOutput('❯ /help', 'input');
+      ctx.showAvailableCommands();
     }
   },
 ];
@@ -185,10 +184,19 @@ async function dispatchCommand(parsed, ctx) {
   const cmd = COMMAND_REGISTRY.find(c => c.name === parsed.name);
   if (!cmd) return false;
 
-  // Enforce args policy — preserve original fallthrough behavior for edge cases
-  if (cmd.args === 'none' && parsed.args !== '') return false;
-  if (cmd.args === 'required' && !parsed.args) return false;
-  if (cmd.subcommands && parsed.args !== '' && !cmd.subcommands.includes(parsed.args)) return false;
+  // Enforce args policy — surface violations as terminal errors
+  if (cmd.args === 'none' && parsed.args !== '') {
+    ctx.appendTerminalOutput(`Error: Command ${cmd.name} does not accept arguments.`, 'error');
+    return true;
+  }
+  if (cmd.args === 'required' && !parsed.args) {
+    ctx.appendTerminalOutput(`Error: Command ${cmd.name} requires an argument. Usage: ${cmd.name} ${cmd.argsHint}.`, 'error');
+    return true;
+  }
+  if (cmd.subcommands && parsed.args !== '' && !cmd.subcommands.includes(parsed.args)) {
+    ctx.appendTerminalOutput(`Error: Unknown subcommand '${parsed.args}' for ${cmd.name}. Valid: ${cmd.subcommands.join(', ')}.`, 'error');
+    return true;
+  }
 
   let cwd = null;
   if (cmd.requiresCwd !== false) {
