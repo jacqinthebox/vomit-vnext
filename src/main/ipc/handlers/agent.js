@@ -259,7 +259,9 @@ function registerHandlers(ipcMain, { state, bus, configStore }) {
       role: 'system',
       content: `You are a helpful assistant with access to tools. Use tools to help the user accomplish tasks. The current working directory is: ${workingDir}
 
-When you need to run commands, read files, write files, or list directories, use the appropriate tool. After using tools, provide a summary of what you did. You have access to conversation history, so you can answer follow-up questions about previous results.`
+When you need to run commands, read files, write files, or list directories, use the appropriate tool.
+When the user asks you to search the internet, look up current information, find recent news, or uses words like "zoek", "search", "latest", "recent", or "news", ALWAYS use the tavily_search tool — do not answer from memory.
+After using tools, provide a summary of what you did. You have access to conversation history, so you can answer follow-up questions about previous results.`
     };
 
     // Start with system message, then history, then new prompt
