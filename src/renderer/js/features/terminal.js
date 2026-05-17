@@ -30,8 +30,8 @@ class TerminalManager {
     // pseudonymization output path
     this.pseudoOutputPath = null;
 
-    // Command autocomplete state
-    this.commandPopup = null;
+    // Inline command picker state
+    this.pickerState = { active: false, items: [], selectedIndex: 0, blockEl: null };
 
     // Write mode state (for streaming to editor)
     this.writeMode = null; // null, 'cursor', 'new', 'replace', 'append'
@@ -122,13 +122,13 @@ class TerminalManager {
   setupTerminal() {
     if (!this.terminalInput) return;
 
-    // Handle input changes - show command popup when typing /
+    // Handle input changes - show inline picker when typing /
     this.terminalInput.addEventListener('input', () => {
       const value = this.terminalInput.value;
       if (value.startsWith('/')) {
-        this.showCommandPopup(value);
+        this._openPicker(value);
       } else {
-        this.hideCommandPopup();
+        this._closePicker();
       }
     });
 
@@ -136,23 +136,54 @@ class TerminalManager {
     this.terminalInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
-        this.hideCommandPopup();
-        const command = this.terminalInput.value.trim();
-        if (command) {
-          this.executeClaudeCommand(command);
-          this.state.terminalHistory.push(command);
-          this.state.terminalHistoryIndex = this.state.terminalHistory.length;
-          this.terminalInput.value = '';
+        if (this.pickerState.active && this.pickerState.items.length > 0) {
+          // Picker is open: complete the selection (Tab and Enter are equivalent)
+          const selected = this.pickerState.items[this.pickerState.selectedIndex];
+          if (selected.args === 'none') {
+            this._closePicker();
+            this.executeClaudeCommand(selected.name);
+            this.state.terminalHistory.push(selected.name);
+            this.state.terminalHistoryIndex = this.state.terminalHistory.length;
+            this.terminalInput.value = '';
+          } else {
+            this.terminalInput.value = selected.name + ' ';
+            this._openPicker(this.terminalInput.value);
+          }
+        } else {
+          this._closePicker();
+          const command = this.terminalInput.value.trim();
+          if (command) {
+            this.executeClaudeCommand(command);
+            this.state.terminalHistory.push(command);
+            this.state.terminalHistoryIndex = this.state.terminalHistory.length;
+            this.terminalInput.value = '';
+          }
+        }
+      } else if (e.key === 'Tab') {
+        e.preventDefault();
+        if (this.pickerState.active && this.pickerState.items.length > 0) {
+          const selected = this.pickerState.items[this.pickerState.selectedIndex];
+          if (selected.args === 'none') {
+            this.terminalInput.value = selected.name;
+            this._closePicker();
+          } else {
+            this.terminalInput.value = selected.name + ' ';
+            this._openPicker(this.terminalInput.value);
+          }
         }
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
-        if (this.state.terminalHistoryIndex > 0) {
+        if (this.pickerState.active) {
+          this._pickerMoveSelection(-1);
+        } else if (this.state.terminalHistoryIndex > 0) {
           this.state.terminalHistoryIndex--;
           this.terminalInput.value = this.state.terminalHistory[this.state.terminalHistoryIndex] || '';
         }
       } else if (e.key === 'ArrowDown') {
         e.preventDefault();
-        if (this.state.terminalHistoryIndex < this.state.terminalHistory.length - 1) {
+        if (this.pickerState.active) {
+          this._pickerMoveSelection(1);
+        } else if (this.state.terminalHistoryIndex < this.state.terminalHistory.length - 1) {
           this.state.terminalHistoryIndex++;
           this.terminalInput.value = this.state.terminalHistory[this.state.terminalHistoryIndex] || '';
         } else {
@@ -166,8 +197,8 @@ class TerminalManager {
           this.stopAI();
         }
       } else if (e.key === 'Escape') {
-        if (this.commandPopup && !this.commandPopup.classList.contains('hidden')) {
-          this.hideCommandPopup();
+        if (this.pickerState.active) {
+          this._closePicker();
         } else if (this.state.isClaudeRunning) {
           this.stopAI();
         } else {
@@ -249,62 +280,83 @@ class TerminalManager {
     this.appendTerminalOutput('Available commands:', 'system');
     COMMAND_REGISTRY.forEach(c => {
       const args = c.argsHint ? ` ${c.argsHint}` : '';
-      this.appendTerminalOutput(`  ${c.name}${args}  —  ${c.description}`, 'output');
+      this.appendTerminalOutput(`  ${c.name}${args}  —  ${c.description}`, 'system');
     });
     this.appendTerminalOutput('', 'system');
   }
 
-  showCommandPopup(filter = '/') {
+  _openPicker(inputValue) {
     const { COMMAND_REGISTRY } = window.TerminalCommands;
+    const lower = inputValue.toLowerCase();
+    const trimmedLower = lower.trim();
+    let filtered;
 
-    // Create popup if it doesn't exist
-    if (!this.commandPopup) {
-      this.commandPopup = document.createElement('div');
-      this.commandPopup.className = 'command-popup hidden';
-      // Insert popup before the input container
-      const inputContainer = document.getElementById('terminal-input-container');
-      inputContainer.style.position = 'relative';
-      inputContainer.insertBefore(this.commandPopup, inputContainer.firstChild);
+    // Hint mode: exact command name followed by a trailing space (after Tab completion)
+    if (inputValue.endsWith(' ') && trimmedLower.startsWith('/')) {
+      const exact = COMMAND_REGISTRY.find(c => c.name.toLowerCase() === trimmedLower);
+      if (exact && exact.args !== 'none') {
+        filtered = [exact];
+      } else {
+        this._closePicker();
+        return;
+      }
+    } else {
+      filtered = [...COMMAND_REGISTRY]
+        .filter(c => c.name.toLowerCase().startsWith(lower))
+        .sort((a, b) => b.name.length - a.name.length);
     }
 
-    // Filter commands based on input
-    const filterText = filter.substring(1).toLowerCase(); // Remove leading /
-    const filtered = filterText
-      ? COMMAND_REGISTRY.filter(c => c.name.toLowerCase().includes(filterText))
-      : COMMAND_REGISTRY;
-
     if (filtered.length === 0) {
-      this.hideCommandPopup();
+      this._closePicker();
       return;
     }
 
-    // Build popup content
-    this.commandPopup.innerHTML = filtered.map(c => {
-      const args = c.argsHint ? c.argsHint : '';
-      return `<div class="command-item" data-cmd="${c.name}">
-        <span class="command-name">${c.name}</span>
-        <span class="command-args">${args}</span>
-        <span class="command-desc">${c.description}</span>
-      </div>`;
-    }).join('');
-
-    // Add click handlers
-    this.commandPopup.querySelectorAll('.command-item').forEach(item => {
-      item.addEventListener('click', () => {
-        const cmd = item.dataset.cmd;
-        this.terminalInput.value = cmd + ' ';
-        this.terminalInput.focus();
-        this.hideCommandPopup();
-      });
-    });
-
-    this.commandPopup.classList.remove('hidden');
+    this.pickerState.selectedIndex = 0;
+    this.pickerState.items = filtered;
+    this.pickerState.active = true;
+    this._renderPicker();
   }
 
-  hideCommandPopup() {
-    if (this.commandPopup) {
-      this.commandPopup.classList.add('hidden');
+  _closePicker() {
+    if (this.pickerState.blockEl) {
+      this.pickerState.blockEl.remove();
+      this.pickerState.blockEl = null;
     }
+    this.pickerState.active = false;
+    this.pickerState.items = [];
+    this.pickerState.selectedIndex = 0;
+  }
+
+  _renderPicker() {
+    const { items, selectedIndex } = this.pickerState;
+    const maxLen = Math.max(...items.map(c => c.name.length));
+    const maxHintLen = Math.max(0, ...items.map(c => (c.argsHint || '').length));
+    const showArgs = maxHintLen > 0;
+
+    if (!this.pickerState.blockEl) {
+      const el = document.createElement('div');
+      el.className = 'terminal-picker-block';
+      this.terminalOutput.appendChild(el);
+      this.pickerState.blockEl = el;
+    }
+
+    this.pickerState.blockEl.innerHTML = items.map((c, i) => {
+      const isSelected = i === selectedIndex;
+      const marker = isSelected ? '▸' : ' ';
+      const name = c.name.padEnd(maxLen);
+      const argsStr = showArgs ? `  ${(c.argsHint || '').padEnd(maxHintLen)}` : '';
+      const cls = isSelected ? 'terminal-picker-line terminal-picker-selected' : 'terminal-picker-line';
+      const text = ` ${marker} ${name}${argsStr}  —  ${c.description}`;
+      return `<span class="${cls}">${this.escapeHtml(text)}</span>`;
+    }).join('');
+
+    this.terminalOutput.scrollTop = this.terminalOutput.scrollHeight;
+  }
+
+  _pickerMoveSelection(delta) {
+    const n = this.pickerState.items.length;
+    this.pickerState.selectedIndex = (this.pickerState.selectedIndex + delta + n) % n;
+    this._renderPicker();
   }
 
   switchTerminalTab(tabName) {
@@ -1309,6 +1361,9 @@ Provide a helpful, accurate answer based on the context above. If the context do
         this.terminalOutput.appendChild(outputDiv);
       }
       outputDiv.textContent += text;
+      if (this.pickerState.active && this.pickerState.blockEl) {
+        this.terminalOutput.appendChild(this.pickerState.blockEl);
+      }
       this.terminalOutput.scrollTop = this.terminalOutput.scrollHeight;
       return;
     }
@@ -1317,6 +1372,9 @@ Provide a helpful, accurate answer based on the context above. If the context do
     line.className = `terminal-line ${type}`;
     line.textContent = text;
     this.terminalOutput.appendChild(line);
+    if (this.pickerState.active && this.pickerState.blockEl) {
+      this.terminalOutput.appendChild(this.pickerState.blockEl);
+    }
     this.terminalOutput.scrollTop = this.terminalOutput.scrollHeight;
   }
 
@@ -1420,6 +1478,7 @@ Provide a helpful, accurate answer based on the context above. If the context do
   }
 
   clearTerminal() {
+    this._closePicker();
     this.terminalOutput.innerHTML = '';
   }
 
