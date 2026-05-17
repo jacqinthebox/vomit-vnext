@@ -255,9 +255,10 @@ function registerHandlers(ipcMain, { state, bus, configStore }) {
     }
 
     // Build messages array - include conversation history for context
+    const today = new Date().toISOString().split('T')[0];
     const systemMessage = {
       role: 'system',
-      content: `You are a helpful assistant with access to tools. Use tools to help the user accomplish tasks. The current working directory is: ${workingDir}
+      content: `You are a helpful assistant with access to tools. Use tools to help the user accomplish tasks. The current working directory is: ${workingDir}. Today's date is ${today}.
 
 When you need to run commands, read files, write files, or list directories, use the appropriate tool.
 When the user asks you to search the internet, look up current information, find recent news, or uses words like "zoek", "search", "latest", "recent", or "news", ALWAYS use the tavily_search tool — do not answer from memory.
