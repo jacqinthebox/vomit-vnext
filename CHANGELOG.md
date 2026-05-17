@@ -1,3 +1,10 @@
+## [1.9.2](https://github.com/jacqinthebox/vomit-vnext/compare/v1.9.1...v1.9.2) (2026-05-17)
+
+
+### Bug Fixes
+
+* **terminal:** extract command registry and add Tavily API key menu ([8142d64](https://github.com/jacqinthebox/vomit-vnext/commit/8142d641657f49c9fa3de92f42429b850187be70))
+
 ## [1.9.1](https://github.com/jacqinthebox/vomit-vnext/compare/v1.9.0...v1.9.1) (2026-05-16)
 
 
