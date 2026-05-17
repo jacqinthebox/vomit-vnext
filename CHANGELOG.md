@@ -1,3 +1,24 @@
+# [1.10.0](https://github.com/jacqinthebox/vomit-vnext/compare/v1.9.3...v1.10.0) (2026-05-17)
+
+
+### Bug Fixes
+
+* **agent:** inject current date into system prompt ([76b8f5d](https://github.com/jacqinthebox/vomit-vnext/commit/76b8f5d6d16fd5a082167e8c3c0e7764e15f8872))
+* **agent:** instruct model to use tavily_search for internet queries ([42b960b](https://github.com/jacqinthebox/vomit-vnext/commit/42b960b3c3f43bd4e4bcd99322ffae384f87a322))
+* **menu:** use osascript for Tavily API key dialog ([96d3acd](https://github.com/jacqinthebox/vomit-vnext/commit/96d3acda8f6b072ea4dba97ed2d1cf9c83b1fa11))
+* **rag:** /index defaults to current file's directory, not bucket root ([9856976](https://github.com/jacqinthebox/vomit-vnext/commit/9856976b9a9376838f6e1d7c2905491c3ec1e086))
+* **rag:** show clear error when /index subfolder does not exist ([3f93f4e](https://github.com/jacqinthebox/vomit-vnext/commit/3f93f4eefb65d14b6faed2881c030f00c979bda0))
+* **terminal:** enter completes picker selection and restore /help line breaks ([d1ae70c](https://github.com/jacqinthebox/vomit-vnext/commit/d1ae70cfa34df1c36a06b0eb2c4cc87bb679c27c))
+* **terminal:** Enter executes optional-args commands immediately from picker ([006c1c1](https://github.com/jacqinthebox/vomit-vnext/commit/006c1c18d84ee4b61c8225de81329c031d87cb95))
+* **terminal:** make picker render as plain terminal output, not styled block ([b5e8417](https://github.com/jacqinthebox/vomit-vnext/commit/b5e84176d512a1b6b2296766de84494aca0f3785))
+* **terminal:** scroll selected picker item into view on navigation ([e8c5951](https://github.com/jacqinthebox/vomit-vnext/commit/e8c5951570795c78148685d79ce134025384e57d))
+* **terminal:** sort picker commands alphabetically ([c56334f](https://github.com/jacqinthebox/vomit-vnext/commit/c56334f81cb14cfd477be39a9aa4203f6e9005df))
+
+
+### Features
+
+* **terminal:** persist command history across restarts ([889a58b](https://github.com/jacqinthebox/vomit-vnext/commit/889a58bf8030e9bbb110cebf2b2b181351a9b9b5))
+
 ## [1.9.3](https://github.com/jacqinthebox/vomit-vnext/compare/v1.9.2...v1.9.3) (2026-05-17)
 
 
