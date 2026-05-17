@@ -661,32 +661,19 @@ class FileTreeManager {
     const finish = async (save) => {
       input.removeEventListener('blur', onBlur);
       input.removeEventListener('keydown', onKeydown);
+      const name = save ? input.value.trim() : null;
+      inputContainer.remove();
 
-      if (save) {
-        const name = input.value.trim();
-        if (name) {
-          const newPath = `${targetDir}/${name}`;
-          try {
-            await window.vomit.createDirectory(newPath);
-
-            // Add to data model
-            this.dataModel.addNode(newPath, {
-              name,
-              isDirectory: true,
-              parentPath: targetDir
-            });
-
-            // Expand and focus the new folder
-            this.treeState.expand(newPath);
-            this.treeState.focusedPath = newPath;
-          } catch (err) {
-            console.error('Failed to create folder:', err);
-            alert(`Failed to create folder: ${err.message || err}`);
-          }
+      if (name) {
+        const newPath = `${targetDir}/${name}`;
+        try {
+          await window.vomit.createDirectory(newPath);
+          await this.refreshFolder(targetDir);
+        } catch (err) {
+          console.error('Failed to create folder:', err);
+          alert(`Failed to create folder: ${err.message || err}`);
         }
       }
-
-      inputContainer.remove();
     };
 
     const onBlur = () => finish(true);
@@ -762,39 +749,21 @@ class FileTreeManager {
     const finish = async (save) => {
       input.removeEventListener('blur', onBlur);
       input.removeEventListener('keydown', onKeydown);
-
-      let newPath = null;
-
-      if (save) {
-        const name = input.value.trim();
-        if (name) {
-          newPath = `${targetDir}/${name}`;
-          try {
-            await window.vomit.writeFile(newPath, '');
-
-            // Add to data model
-            this.dataModel.addNode(newPath, {
-              name,
-              isDirectory: false,
-              parentPath: targetDir
-            });
-
-            // Select and open the file
-            this.treeState.focusAndSelect(newPath);
-            window.vomit.openFile(newPath);
-          } catch (err) {
-            console.error('Failed to create file:', err);
-            alert(`Failed to create file: ${err.message || err}`);
-            newPath = null;
-          }
-        }
-      }
-
+      const name = save ? input.value.trim() : null;
       inputContainer.remove();
 
-      // Focus editor for new file (tree stays visible)
-      if (newPath) {
-        this.host.focus();
+      if (name) {
+        const newPath = `${targetDir}/${name}`;
+        try {
+          await window.vomit.writeFile(newPath, '');
+          await this.refreshFolder(targetDir);
+          this.treeState.focusAndSelect(newPath);
+          window.vomit.openFile(newPath);
+          this.host.focus();
+        } catch (err) {
+          console.error('Failed to create file:', err);
+          alert(`Failed to create file: ${err.message || err}`);
+        }
       }
     };
 
@@ -869,32 +838,22 @@ class FileTreeManager {
     const finish = async (save) => {
       input.removeEventListener('blur', onBlur);
       input.removeEventListener('keydown', onKeydown);
-
-      if (save) {
-        const name = input.value.trim();
-        if (name) {
-          const newPath = `${targetDir}/${name}`;
-          try {
-            const result = await window.vomit.createPresentationFile(newPath);
-            if (!result.success) throw new Error(result.error);
-
-            // Add to data model
-            this.dataModel.addNode(newPath, {
-              name,
-              isDirectory: false,
-              parentPath: targetDir
-            });
-
-            this.treeState.focusAndSelect(newPath);
-          } catch (err) {
-            console.error('Failed to create presentation:', err);
-            alert(`Failed to create presentation: ${err.message || err}`);
-          }
-        }
-      }
-
+      const name = save ? input.value.trim() : null;
       inputContainer.remove();
       this.host.focus();
+
+      if (name) {
+        const newPath = `${targetDir}/${name}`;
+        try {
+          const result = await window.vomit.createPresentationFile(newPath);
+          if (!result.success) throw new Error(result.error);
+          await this.refreshFolder(targetDir);
+          this.treeState.focusAndSelect(newPath);
+        } catch (err) {
+          console.error('Failed to create presentation:', err);
+          alert(`Failed to create presentation: ${err.message || err}`);
+        }
+      }
     };
 
     const onBlur = () => finish(true);

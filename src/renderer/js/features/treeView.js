@@ -291,7 +291,6 @@ class TreeView {
 
   #renderChildrenOf(parentPath) {
     const children = this.#dataModel.getChildren(parentPath);
-    if (!children.length) return;
 
     // Find or create container
     let container;
@@ -301,28 +300,32 @@ class TreeView {
       const parentEl = this.#elements.get(parentPath);
       if (!parentEl) return;
 
-      // Check for existing child container
       container = this.#childContainers.get(parentPath);
       if (!container) {
         container = document.createElement('div');
         container.className = 'tree-children expanded';
         container.dataset.parentPath = parentPath;
-        parentEl.after(container);
         this.#childContainers.set(parentPath, container);
       }
+      // Always reposition immediately after the parent element to fix
+      // ordering issues when re-rendering after a refresh
+      parentEl.after(container);
     }
 
-    // Clear existing children in container (but keep the container)
-    const existingItems = container.querySelectorAll(':scope > .file-item');
-    existingItems.forEach(item => {
-      this.#elements.delete(item.dataset.path);
-      item.remove();
+    // Clear all direct children (file-items AND orphaned tree-children containers)
+    Array.from(container.children).forEach(child => {
+      if (child.classList.contains('file-item')) {
+        this.#elements.delete(child.dataset.path);
+      }
+      child.remove();
     });
+
+    if (!children.length) return;
 
     // Calculate depth
     const depth = this.#calculateDepth(parentPath) + 1;
 
-    // Render children
+    // Render children, inserting each item and its child-container in order
     for (const child of children) {
       const el = this.#createNodeElement(child, depth);
       container.appendChild(el);
