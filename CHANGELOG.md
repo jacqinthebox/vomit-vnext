@@ -1,3 +1,10 @@
+## [1.11.2](https://github.com/jacqinthebox/vomit-vnext/compare/v1.11.1...v1.11.2) (2026-05-18)
+
+
+### Bug Fixes
+
+* **images:** use custom vomit-file:// protocol for local image loading in packaged app ([f87d622](https://github.com/jacqinthebox/vomit-vnext/commit/f87d6221462f2761001ab8353d70562ae2f3d6a1))
+
 ## [1.11.1](https://github.com/jacqinthebox/vomit-vnext/compare/v1.11.0...v1.11.1) (2026-05-18)
 
 
