@@ -707,10 +707,12 @@ class TerminalManager {
     this.appendTerminalOutput(`❯ ${prompt} (with document context)`, 'input');
     this.state.isClaudeRunning = true;
     this.terminalStop.classList.remove('hidden');
+    this.showThinkingIndicator();
 
     try {
       await window.vomit.agentExecute(finalCommand, cwd);
     } catch (err) {
+      this.hideThinkingIndicator();
       this.appendTerminalOutput(`Error: ${err.message}`, 'error');
       this.state.isClaudeRunning = false;
       this.terminalStop.classList.add('hidden');
@@ -723,10 +725,12 @@ class TerminalManager {
 
     this.state.isClaudeRunning = true;
     this.terminalStop.classList.remove('hidden');
+    this.showThinkingIndicator();
 
     try {
       await window.vomit.agentExecute(prompt, cwd);
     } catch (err) {
+      this.hideThinkingIndicator();
       this.appendTerminalOutput(`Error: ${err.message}`, 'error');
       this.state.isClaudeRunning = false;
       this.terminalStop.classList.add('hidden');
@@ -786,6 +790,7 @@ Now create the presentation about: ${topic}`;
 
     this.state.isClaudeRunning = true;
     this.terminalStop.classList.remove('hidden');
+    this.showThinkingIndicator();
 
     // Collect the AI output
     this.state.pseudoOutput = '';
@@ -812,6 +817,7 @@ Now create the presentation about: ${topic}`;
       }
       this.markOutputComplete();
     } catch (err) {
+      this.hideThinkingIndicator();
       this.appendTerminalOutput(`Error: ${err.message}`, 'error');
       this.state.isClaudeRunning = false;
       this.terminalStop.classList.add('hidden');
@@ -894,10 +900,12 @@ Now create the presentation about: ${topic}`;
 
     this.state.isClaudeRunning = true;
     this.terminalStop.classList.remove('hidden');
+    this.showThinkingIndicator();
 
     try {
       await window.vomit.claudeExecute(finalPrompt, cwd);
     } catch (err) {
+      this.hideThinkingIndicator();
       this.appendTerminalOutput(`Error: ${err.message}`, 'error');
       this.writeMode = null;
       this.state.isClaudeRunning = false;
@@ -998,6 +1006,7 @@ ${docContent}
 
     this.state.isClaudeRunning = true;
     this.terminalStop.classList.remove('hidden');
+    this.showThinkingIndicator();
 
     // Collect the AI output
     this.state.pseudoOutput = '';
@@ -1060,6 +1069,7 @@ ${docContent}
       }
       this.markOutputComplete();
     } catch (err) {
+      this.hideThinkingIndicator();
       this.appendTerminalOutput(`Error: ${err.message}`, 'error');
       this.state.isClaudeRunning = false;
       this.terminalStop.classList.add('hidden');
@@ -1313,9 +1323,11 @@ Provide a helpful, accurate answer based on the context above. If the context do
 
       this.state.isClaudeRunning = true;
       this.terminalStop.classList.remove('hidden');
+      this.showThinkingIndicator();
 
       await window.vomit.agentExecute(ragPrompt, cwd);
     } catch (err) {
+      this.hideThinkingIndicator();
       this.appendTerminalOutput(`Error: ${err.message}`, 'error');
     }
   }
@@ -1365,6 +1377,11 @@ Provide a helpful, accurate answer based on the context above. If the context do
   // --- Output formatting ---
 
   appendTerminalOutput(text, type = 'output') {
+    // Hide thinking indicator when first output arrives
+    if (type === 'output') {
+      this.hideThinkingIndicator();
+    }
+
     // For streaming output, append to a single div element (not pre, to allow nested code blocks)
     if (type === 'output') {
       let outputDiv = this.terminalOutput.querySelector('.terminal-output-stream:not(.complete)');
@@ -1391,7 +1408,26 @@ Provide a helpful, accurate answer based on the context above. If the context do
     this.terminalOutput.scrollTop = this.terminalOutput.scrollHeight;
   }
 
+  showThinkingIndicator() {
+    // Remove any existing indicator first
+    this.hideThinkingIndicator();
+
+    const indicator = document.createElement('div');
+    indicator.className = 'terminal-line terminal-thinking-indicator';
+    indicator.innerHTML = '<span class="thinking-dots"><span>.</span><span>.</span><span>.</span></span>';
+    this.terminalOutput.appendChild(indicator);
+    this.terminalOutput.scrollTop = this.terminalOutput.scrollHeight;
+  }
+
+  hideThinkingIndicator() {
+    const indicator = this.terminalOutput.querySelector('.terminal-thinking-indicator');
+    if (indicator) {
+      indicator.remove();
+    }
+  }
+
   markOutputComplete() {
+    this.hideThinkingIndicator();
     const outputStream = this.terminalOutput.querySelector('.terminal-output-stream:not(.complete)');
     if (outputStream) {
       outputStream.classList.add('complete');
