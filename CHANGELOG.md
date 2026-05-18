@@ -1,3 +1,10 @@
+## [1.11.1](https://github.com/jacqinthebox/vomit-vnext/compare/v1.11.0...v1.11.1) (2026-05-18)
+
+
+### Bug Fixes
+
+* **terminal:** add thinking indicator for AI processing ([2b196d9](https://github.com/jacqinthebox/vomit-vnext/commit/2b196d9ff5495feac1942158159c36ef95526814))
+
 # [1.11.0](https://github.com/jacqinthebox/vomit-vnext/compare/v1.10.3...v1.11.0) (2026-05-18)
 
 
