@@ -1,3 +1,10 @@
+## [1.11.3](https://github.com/jacqinthebox/vomit-vnext/compare/v1.11.2...v1.11.3) (2026-05-18)
+
+
+### Bug Fixes
+
+* **images:** trigger release for vomit-file protocol image fix ([e1044fd](https://github.com/jacqinthebox/vomit-vnext/commit/e1044fd4110b206240932be510476429e083f0ca))
+
 ## [1.11.2](https://github.com/jacqinthebox/vomit-vnext/compare/v1.11.1...v1.11.2) (2026-05-18)
 
 
