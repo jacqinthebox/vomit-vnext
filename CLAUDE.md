@@ -143,6 +143,53 @@ Releases are fully automated via semantic-release. On every push to main:
 
 **DO NOT manually edit CHANGELOG.md** - semantic-release generates it from commits.
 
+### Pre-Push Workflow (Manual Version Bump)
+
+**IMPORTANT**: Before pushing changes, follow these steps to avoid update popups during local testing:
+
+1. **Determine change type**:
+   - `fix:` = Bug fix, UI improvement, performance fix → Patch bump (1.11.0 → 1.11.1)
+   - `feat:` = New feature, new command, new capability → Minor bump (1.11.0 → 1.12.0)
+   - `feat!:` = Breaking change → Major bump (1.11.0 → 2.0.0)
+
+2. **Manually bump version in package.json**:
+   ```bash
+   # For fix: 1.11.0 → 1.11.1
+   # For feat: 1.11.0 → 1.12.0
+   ```
+
+3. **Build the app**:
+   ```bash
+   npx electron-builder --mac --dir
+   ```
+
+4. **Test the built app** at `dist/mac-arm64/Vomit.app`:
+   - Verify the feature works
+   - Check version in About dialog
+   - Ensure no update popup appears
+
+5. **Commit with semantic-release format**:
+   ```bash
+   git add .
+   git commit -m "fix(scope): short description
+
+   - Detailed change 1
+   - Detailed change 2
+
+   🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+   Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
+   ```
+
+6. **Push to main**:
+   ```bash
+   git push
+   ```
+   - semantic-release will see the version already matches the commit type
+   - GitHub Actions will build and attach DMG to the release
+
+**Why manual version bump?** This prevents the update popup during local testing. The version in the built app matches the next release version, so the app won't prompt for an update.
+
 ## Important Guidelines
 
 1. **DO NOT push before the user has tested the changes** - Always let the user verify the app works before committing/pushing.
