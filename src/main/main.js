@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, protocol, net } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const configStore = require('./services/configStore');
@@ -133,8 +133,18 @@ function findFirstValidBucket() {
   return null;
 }
 
+// Register custom protocol for serving local files (images etc.) in packaged app
+protocol.registerSchemesAsPrivileged([
+  { scheme: 'vomit-file', privileges: { secure: true, supportFetchAPI: true, bypassCSP: false, stream: true } }
+]);
+
 // App lifecycle
 app.whenReady().then(async () => {
+  // Handle local file requests (e.g. images in markdown preview)
+  protocol.handle('vomit-file', (request) => {
+    const filePath = decodeURIComponent(request.url.slice('vomit-file://'.length));
+    return net.fetch(`file://${filePath}`);
+  });
   aiHandlers.detectAITools(state);
 
   // Get active bucket from new multi-bucket system

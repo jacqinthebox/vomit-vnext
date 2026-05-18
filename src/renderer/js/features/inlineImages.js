@@ -93,12 +93,12 @@ class InlineImageManager {
   }
 
   resolveImagePath(src) {
-    if (src.startsWith('http') || src.startsWith('file://') || src.startsWith('data:')) {
+    if (src.startsWith('http') || src.startsWith('file://') || src.startsWith('vomit-file://') || src.startsWith('data:')) {
       return src;
     }
     const basePath = this.state.basePath;
     if (basePath) {
-      return `file://${basePath}/${src}`;
+      return `vomit-file://${basePath}/${src}`;
     }
     return src;
   }

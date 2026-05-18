@@ -375,8 +375,8 @@ class PreviewManager {
         if (width) style += `width:${width}px;`;
         if (height) style += `height:${height}px;`;
         let resolvedSrc = src;
-        if (basePath && !src.startsWith('http') && !src.startsWith('file://') && !src.startsWith('data:')) {
-          resolvedSrc = `file://${basePath}/${src}`;
+        if (basePath && !src.startsWith('http') && !src.startsWith('file://') && !src.startsWith('vomit-file://') && !src.startsWith('data:')) {
+          resolvedSrc = `vomit-file://${basePath}/${src}`;
         }
         return `<img src="${resolvedSrc}" alt="${alt}" style="${style}">`;
       }
@@ -387,8 +387,8 @@ class PreviewManager {
       (match, alt, src) => {
         if (src.includes('=')) return match;
         let resolvedSrc = src;
-        if (basePath && !src.startsWith('http') && !src.startsWith('file://') && !src.startsWith('data:')) {
-          resolvedSrc = `file://${basePath}/${src}`;
+        if (basePath && !src.startsWith('http') && !src.startsWith('file://') && !src.startsWith('vomit-file://') && !src.startsWith('data:')) {
+          resolvedSrc = `vomit-file://${basePath}/${src}`;
         }
         return `![${alt}](${resolvedSrc})`;
       }
