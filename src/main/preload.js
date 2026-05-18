@@ -180,6 +180,10 @@ ipcRenderer.on('ai-provider-changed', (event, data) => {
   window.dispatchEvent(new CustomEvent('vomit:ai-provider-changed', { detail: data }));
 });
 
+ipcRenderer.on('context-stats-updated', () => {
+  window.dispatchEvent(new CustomEvent('vomit:context-stats-updated'));
+});
+
 ipcRenderer.on('mermaid-curve-changed', (event, curve) => {
   window.dispatchEvent(new CustomEvent('vomit:mermaid-curve-changed', { detail: curve }));
 });
@@ -258,6 +262,9 @@ contextBridge.exposeInMainWorld('vomit', {
   getFontSize: () => ipcRenderer.invoke('get-font-size'),
   // Agent mode with tool calling
   agentExecute: (prompt, cwd) => ipcRenderer.invoke('agent-execute', prompt, cwd),
+  agentClearHistory: () => ipcRenderer.send('agent-clear-history'),
+  getContextStats: () => ipcRenderer.invoke('get-context-stats'),
+  onContextStatsUpdated: (cb) => ipcRenderer.on('context-stats-updated', cb),
   // File operations for pseudonymization
   readFile: (filePath) => ipcRenderer.invoke('read-file', filePath),
   writeFile: (filePath, content) => ipcRenderer.invoke('write-file', filePath, content),

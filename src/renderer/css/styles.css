@@ -1636,6 +1636,44 @@ li.CodeMirror-hint-active {
   font-size: 0.9em;
 }
 
+#terminal-context-bar {
+  display: none;
+  padding: 3px 12px;
+  border-top: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  font-family: 'SF Mono', 'Monaco', 'Menlo', monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+#terminal-context-bar.visible {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+#terminal-context-bar .context-usage {
+  display: inline-block;
+  width: 60px;
+  height: 4px;
+  background: var(--border-color);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+#terminal-context-bar .context-usage-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s, background-color 0.3s;
+}
+
+#terminal-context-bar.level-ok .context-usage-fill { background: var(--accent-color); }
+#terminal-context-bar.level-warn { color: #e8a838; }
+#terminal-context-bar.level-warn .context-usage-fill { background: #e8a838; }
+#terminal-context-bar.level-danger { color: #e85838; }
+#terminal-context-bar.level-danger .context-usage-fill { background: #e85838; }
+
 #terminal-input-container {
   display: flex;
   align-items: center;

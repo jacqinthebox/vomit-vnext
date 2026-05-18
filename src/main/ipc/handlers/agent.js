@@ -3,6 +3,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const http = require('http');
 const { execSync } = require('child_process');
 
 // Tool definitions for Ollama
@@ -102,6 +103,16 @@ const agentTools = [
     }
   }
 ];
+
+// Rough token estimate: ~4 chars per token for English text
+function estimateTokens(messages) {
+  let chars = 0;
+  for (const msg of messages) {
+    chars += (msg.content || '').length;
+    if (msg.tool_calls) chars += JSON.stringify(msg.tool_calls).length;
+  }
+  return Math.ceil(chars / 4);
+}
 
 // Execute a tool and return the result
 async function executeAgentTool(toolName, args, cwd, configStore) {
@@ -228,13 +239,182 @@ async function executeAgentTool(toolName, args, cwd, configStore) {
   }
 }
 
+// Streaming Ollama request that collects the full response
+function streamOllamaChat(model, messages, tools, bus, abortCheck) {
+  return new Promise((resolve, reject) => {
+    const requestBody = JSON.stringify({
+      model,
+      messages,
+      tools,
+      stream: true
+    });
+
+    const req = http.request({
+      hostname: '127.0.0.1',
+      port: 11434,
+      path: '/api/chat',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(requestBody)
+      }
+    }, (res) => {
+      if (res.statusCode !== 200) {
+        let body = '';
+        res.on('data', chunk => body += chunk);
+        res.on('end', () => {
+          if (res.statusCode === 400) {
+            reject(new Error(`Model may not support tool calling. Try llama3.2, llama3.1, mistral, or qwen2.5.\n\nDetails: ${body}`));
+          } else {
+            reject(new Error(`Ollama API error: ${res.statusCode} - ${body}`));
+          }
+        });
+        return;
+      }
+
+      res.setEncoding('utf8');
+      let buffer = '';
+      let contentSoFar = '';
+      let toolCalls = null;
+
+      res.on('data', (chunk) => {
+        if (abortCheck()) return;
+
+        buffer += chunk;
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const json = JSON.parse(line);
+            if (json.message && json.message.content) {
+              contentSoFar += json.message.content;
+              bus.send('claude-output', json.message.content);
+            }
+            if (json.message && json.message.tool_calls) {
+              toolCalls = json.message.tool_calls;
+            }
+            if (json.done) {
+              resolve({
+                role: 'assistant',
+                content: contentSoFar || '',
+                tool_calls: toolCalls || undefined
+              });
+            }
+          } catch (e) {
+            // Ignore partial JSON
+          }
+        }
+      });
+
+      res.on('end', () => {
+        // Process remaining buffer
+        if (buffer.trim()) {
+          try {
+            const json = JSON.parse(buffer);
+            if (json.message && json.message.content) {
+              contentSoFar += json.message.content;
+              bus.send('claude-output', json.message.content);
+            }
+            if (json.message && json.message.tool_calls) {
+              toolCalls = json.message.tool_calls;
+            }
+          } catch (e) {
+            // Ignore
+          }
+        }
+        resolve({
+          role: 'assistant',
+          content: contentSoFar || '',
+          tool_calls: toolCalls || undefined
+        });
+      });
+    });
+
+    req.on('error', (err) => {
+      reject(new Error(`Connection error: ${err.message}\nMake sure Ollama is running: ollama serve`));
+    });
+
+    req.write(requestBody);
+    req.end();
+  });
+}
+
+const MAX_HISTORY = 40;
+
 /**
  * Register agent IPC handlers.
  * @param {import('electron').IpcMain} ipcMain
  * @param {{ state: import('../../services/sessionState').SessionState, bus: import('../rendererBus').RendererBus, configStore: typeof import('../../services/configStore') }} deps
  */
 function registerHandlers(ipcMain, { state, bus, configStore }) {
-  // Agent execution using Ollama HTTP API with tool calling
+  // Cache for model context lengths
+  const modelContextCache = {};
+
+  // Get model context length from Ollama
+  async function getModelContextLength(modelName) {
+    if (modelContextCache[modelName]) return modelContextCache[modelName];
+    try {
+      const requestBody = JSON.stringify({ name: modelName });
+      const result = await new Promise((resolve, reject) => {
+        const req = http.request({
+          hostname: '127.0.0.1',
+          port: 11434,
+          path: '/api/show',
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(requestBody)
+          }
+        }, (res) => {
+          let data = '';
+          res.on('data', chunk => data += chunk);
+          res.on('end', () => {
+            try {
+              const json = JSON.parse(data);
+              const info = json.model_info || {};
+              // Look for context_length in model_info keys
+              for (const key of Object.keys(info)) {
+                if (key.toLowerCase().includes('context_length')) {
+                  resolve(info[key]);
+                  return;
+                }
+              }
+              resolve(32768); // Default fallback
+            } catch (e) {
+              resolve(32768);
+            }
+          });
+        });
+        req.on('error', () => resolve(32768));
+        req.write(requestBody);
+        req.end();
+      });
+      modelContextCache[modelName] = result;
+      return result;
+    } catch (e) {
+      return 32768;
+    }
+  }
+
+  // Context health stats IPC
+  ipcMain.handle('get-context-stats', async () => {
+    const model = configStore.getOllamaModel();
+    const history = state.agentConversationHistory;
+    const messageCount = history.length;
+    const estimatedTokens = estimateTokens(history);
+    const contextLimit = model ? await getModelContextLength(model) : 32768;
+    return {
+      model: model || 'none',
+      messageCount,
+      estimatedTokens,
+      contextLimit,
+      usagePercent: Math.round((estimatedTokens / contextLimit) * 100)
+    };
+  });
+
+  // Agent execution using Ollama HTTP API with streaming and tool calling
   ipcMain.handle('agent-execute', async (event, prompt, cwd) => {
     const ollamaModel = configStore.getOllamaModel();
     if (!ollamaModel) {
@@ -278,34 +458,17 @@ After using tools, provide a summary of what you did. You have access to convers
       while (iterations < maxIterations && !state.agentAborted) {
         iterations++;
 
-        // Call Ollama API with tools
-        const response = await fetch('http://localhost:11434/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: ollamaModel,
-            messages: messages,
-            tools: agentTools,
-            stream: false
-          })
-        });
-
-        if (!response.ok) {
-          const errorBody = await response.text();
-          if (response.status === 400) {
-            throw new Error(`Model "${ollamaModel}" may not support tool calling. Try llama3.2, llama3.1, mistral, or qwen2.5.\n\nDetails: ${errorBody}`);
-          }
-          throw new Error(`Ollama API error: ${response.status} - ${errorBody}`);
-        }
-
-        const result = await response.json();
-        const assistantMessage = result.message;
+        // Stream Ollama response
+        const assistantMessage = await streamOllamaChat(
+          ollamaModel, messages, agentTools, bus,
+          () => state.agentAborted
+        );
 
         if (!assistantMessage) {
           throw new Error('No response from model');
         }
 
-        // Add assistant message to history
+        // Add assistant message to messages for multi-turn tool loop
         messages.push(assistantMessage);
 
         // Check if the model wants to call tools (native format)
@@ -317,14 +480,12 @@ After using tools, provide a summary of what you did. You have access to convers
           if (jsonMatch) {
             try {
               const parsed = JSON.parse(jsonMatch[0]);
-              // Map the JSON format to our tool format
               const toolName = parsed.name === 'Execute a shell command and return the output' ? 'bash' :
                               parsed.name === 'Read the contents of a file' ? 'read_file' :
                               parsed.name === 'Write content to a file' ? 'write_file' :
                               parsed.name === 'List files and directories in a path' ? 'list_files' :
-                              parsed.name; // fallback to original name
+                              parsed.name;
 
-              // Handle different parameter formats
               let toolArgs = parsed.parameters || parsed.arguments || {};
               if (toolArgs.command && Array.isArray(toolArgs.command)) {
                 toolArgs = { command: toolArgs.command.join(' ') };
@@ -374,10 +535,8 @@ After using tools, provide a summary of what you did. You have access to convers
             });
           }
         } else {
-          // No tool calls - model is done, show final response
+          // No tool calls - model is done, save final response to history
           if (assistantMessage.content) {
-            bus.send('claude-output', assistantMessage.content);
-            // Save final response to conversation history
             state.agentConversationHistory.push({
               role: 'assistant',
               content: assistantMessage.content
@@ -391,11 +550,13 @@ After using tools, provide a summary of what you did. You have access to convers
         bus.send('claude-output', '\n(Reached maximum iterations)\n');
       }
 
-      // Limit conversation history to last 20 messages to prevent context overflow
-      if (state.agentConversationHistory.length > 20) {
-        state.agentConversationHistory = state.agentConversationHistory.slice(-20);
+      // Limit conversation history to prevent context overflow
+      if (state.agentConversationHistory.length > MAX_HISTORY) {
+        state.agentConversationHistory = state.agentConversationHistory.slice(-MAX_HISTORY);
       }
 
+      // Notify renderer to update context stats
+      bus.send('context-stats-updated');
       bus.send('claude-done', 0);
       return 0;
     } catch (e) {
@@ -403,6 +564,12 @@ After using tools, provide a summary of what you did. You have access to convers
       bus.send('claude-done', 1);
       return 1;
     }
+  });
+
+  // Clear agent conversation history
+  ipcMain.on('agent-clear-history', () => {
+    state.agentConversationHistory = [];
+    bus.send('context-stats-updated');
   });
 }
 

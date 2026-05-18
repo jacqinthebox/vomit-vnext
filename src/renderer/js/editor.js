@@ -70,6 +70,7 @@ class Editor {
         aiTerminalContent: document.getElementById('ai-terminal-content'),
         terminalOutput: document.getElementById('terminal-output'),
         terminalInput: document.getElementById('terminal-input'),
+        terminalContextBar: document.getElementById('terminal-context-bar'),
         shellTerminalContent: document.getElementById('shell-terminal-content'),
         shellTerminalContainer: document.getElementById('shell-terminal-container')
       },
