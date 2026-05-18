@@ -1,3 +1,11 @@
+## [1.10.3](https://github.com/jacqinthebox/vomit-vnext/compare/v1.10.2...v1.10.3) (2026-05-18)
+
+
+### Bug Fixes
+
+* **filetree:** fix DOM ordering after refresh and remove addNode optimistic updates ([cc0f8ef](https://github.com/jacqinthebox/vomit-vnext/commit/cc0f8ef216e224a48880b4793880d3193c01324d))
+* **filetree:** use chokidar for reliable refresh, invalidate changed folder only ([0d41bb9](https://github.com/jacqinthebox/vomit-vnext/commit/0d41bb975c10514051bcdd10fc1eb0e878f83dfd))
+
 ## [1.10.2](https://github.com/jacqinthebox/vomit-vnext/compare/v1.10.1...v1.10.2) (2026-05-17)
 
 
