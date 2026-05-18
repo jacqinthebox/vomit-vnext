@@ -71,8 +71,8 @@ ipcRenderer.on('open-folder', (event, folderPath) => {
   window.dispatchEvent(new CustomEvent('vomit:open-folder', { detail: folderPath }));
 });
 
-ipcRenderer.on('refresh-file-tree', () => {
-  window.dispatchEvent(new CustomEvent('vomit:refresh-file-tree'));
+ipcRenderer.on('refresh-file-tree', (_, detail) => {
+  window.dispatchEvent(new CustomEvent('vomit:refresh-file-tree', { detail }));
 });
 
 ipcRenderer.on('new-folder', () => {
