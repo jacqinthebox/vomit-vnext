@@ -15,6 +15,7 @@ class TerminalManager {
     this.aiTerminalContent = dom.aiTerminalContent;
     this.terminalOutput = dom.terminalOutput;
     this.terminalInput = dom.terminalInput;
+    this.terminalContextBar = dom.terminalContextBar;
     this.shellTerminalContent = dom.shellTerminalContent;
     this.shellTerminalContainer = dom.shellTerminalContainer;
 
@@ -103,6 +104,11 @@ class TerminalManager {
 
     window.addEventListener('vomit:ai-provider-changed', (e) => {
       this.updateTerminalTitle(e.detail);
+      this.updateContextBar();
+    });
+
+    window.addEventListener('vomit:context-stats-updated', () => {
+      this.updateContextBar();
     });
 
     window.addEventListener('vomit:rag-progress', (e) => {
@@ -685,24 +691,14 @@ class TerminalManager {
       }
     }
 
-    // Plain text or unrecognized slash command — pass directly to AI
+    // Plain text or unrecognized slash command — route to agent mode (has tools + history)
     const cwd = this.state.projectRoot || this.state.currentDirectory;
     if (!cwd) {
       this.appendTerminalOutput('Error: No project folder open. Open a folder first with Cmd+Alt+O.', 'error');
       return;
     }
 
-    this.appendTerminalOutput(`❯ ${command}`, 'input');
-    this.state.isClaudeRunning = true;
-    this.terminalStop.classList.remove('hidden');
-
-    try {
-      await window.vomit.claudeExecute(command, cwd);
-    } catch (err) {
-      this.appendTerminalOutput(`Error: ${err.message}`, 'error');
-      this.state.isClaudeRunning = false;
-      this.terminalStop.classList.add('hidden');
-    }
+    await this.executeAgentCommand(command, cwd);
   }
 
   async executeDocCommand(prompt, cwd) {
@@ -713,7 +709,7 @@ class TerminalManager {
     this.terminalStop.classList.remove('hidden');
 
     try {
-      await window.vomit.claudeExecute(finalCommand, cwd);
+      await window.vomit.agentExecute(finalCommand, cwd);
     } catch (err) {
       this.appendTerminalOutput(`Error: ${err.message}`, 'error');
       this.state.isClaudeRunning = false;
@@ -1318,7 +1314,7 @@ Provide a helpful, accurate answer based on the context above. If the context do
       this.state.isClaudeRunning = true;
       this.terminalStop.classList.remove('hidden');
 
-      await window.vomit.claudeExecute(ragPrompt, cwd);
+      await window.vomit.agentExecute(ragPrompt, cwd);
     } catch (err) {
       this.appendTerminalOutput(`Error: ${err.message}`, 'error');
     }
@@ -1520,6 +1516,38 @@ Provide a helpful, accurate answer based on the context above. If the context do
     if (window.vomit && window.vomit.getAIProvider) {
       const aiInfo = await window.vomit.getAIProvider();
       this.updateTerminalTitle(aiInfo);
+    }
+  }
+
+  async updateContextBar() {
+    if (!this.terminalContextBar) return;
+    try {
+      const stats = await window.vomit.getContextStats();
+      if (!stats || stats.model === 'none' || stats.messageCount === 0) {
+        this.terminalContextBar.classList.remove('visible', 'level-ok', 'level-warn', 'level-danger');
+        return;
+      }
+
+      const pct = stats.usagePercent;
+      const level = pct >= 75 ? 'danger' : pct >= 50 ? 'warn' : 'ok';
+      const tokensK = (stats.estimatedTokens / 1000).toFixed(1);
+      const limitK = (stats.contextLimit / 1000).toFixed(0);
+
+      this.terminalContextBar.classList.add('visible');
+      this.terminalContextBar.classList.remove('level-ok', 'level-warn', 'level-danger');
+      this.terminalContextBar.classList.add(`level-${level}`);
+
+      let hint = '';
+      if (pct >= 75) hint = ' — consider /new to clear';
+      else if (pct >= 50) hint = ' — getting full';
+
+      this.terminalContextBar.innerHTML =
+        `<span>${stats.model}</span>` +
+        `<span>${stats.messageCount} messages · ~${tokensK}K/${limitK}K tokens</span>` +
+        `<span class="context-usage"><span class="context-usage-fill" style="width:${Math.min(pct, 100)}%"></span></span>` +
+        `<span>${pct}%${hint}</span>`;
+    } catch (e) {
+      // Silently fail — stats are informational only
     }
   }
 }

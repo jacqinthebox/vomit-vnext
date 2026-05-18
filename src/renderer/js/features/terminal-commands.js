@@ -11,8 +11,10 @@ const COMMAND_REGISTRY = [
     requiresCwd: true,
     async handler(args, ctx) {
       window.vomit.claudeClearHistory();
+      window.vomit.agentClearHistory();
       ctx.clearTerminal();
       ctx.appendTerminalOutput('New conversation started.', 'system');
+      ctx.updateContextBar();
     }
   },
   {
