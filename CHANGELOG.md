@@ -1,3 +1,10 @@
+# [1.11.0](https://github.com/jacqinthebox/vomit-vnext/compare/v1.10.3...v1.11.0) (2026-05-18)
+
+
+### Features
+
+* **ai:** unified agent mode with streaming and context health bar ([6d818d5](https://github.com/jacqinthebox/vomit-vnext/commit/6d818d5bc3e0e31c271dc906aa29a614d7737969))
+
 ## [1.10.3](https://github.com/jacqinthebox/vomit-vnext/compare/v1.10.2...v1.10.3) (2026-05-18)
 
 
