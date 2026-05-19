@@ -1,3 +1,10 @@
+## [1.11.4](https://github.com/jacqinthebox/vomit-vnext/compare/v1.11.3...v1.11.4) (2026-05-19)
+
+
+### Bug Fixes
+
+* **terminal:** allow terminal pane to resize to full window height ([5c0e71b](https://github.com/jacqinthebox/vomit-vnext/commit/5c0e71b6e787ae242d0062546d64252aa83a6ee8))
+
 ## [1.11.3](https://github.com/jacqinthebox/vomit-vnext/compare/v1.11.2...v1.11.3) (2026-05-18)
 
 
