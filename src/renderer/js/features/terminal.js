@@ -443,7 +443,8 @@ class TerminalManager {
     document.addEventListener('mousemove', (e) => {
       if (!isResizing) return;
       const delta = startY - e.clientY;
-      const newHeight = Math.max(100, Math.min(600, startHeight + delta));
+      const maxHeight = window.innerHeight - 24; // leave room for status bar
+      const newHeight = Math.max(100, Math.min(maxHeight, startHeight + delta));
       this.terminalPanel.style.height = `${newHeight}px`;
       // Update main container padding to match terminal height
       if (mainContainer) {
