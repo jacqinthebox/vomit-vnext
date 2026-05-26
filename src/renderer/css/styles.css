@@ -742,6 +742,11 @@ html, body {
   padding-left: 29px;
 }
 
+/* Frontmatter lines — dimmed so metadata doesn't dominate */
+#editor .CodeMirror .frontmatter-line {
+  opacity: 0.45;
+}
+
 #preview-pane {
   flex: 1;
   overflow-y: auto;

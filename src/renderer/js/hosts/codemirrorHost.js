@@ -209,10 +209,39 @@ class CodemirrorHost {
   updateCodeBlockStyles() {
     const lineCount = this.cm.lineCount();
     let inCodeBlock = false;
+    let inFrontmatter = false;
+    let frontmatterDone = false;
 
     for (let i = 0; i < lineCount; i++) {
       const line = this.cm.getLine(i);
       const isFence = /^(`{3,}|~{3,})/.test(line);
+
+      // Frontmatter detection: must start at line 0
+      if (!frontmatterDone && line.trim() === '---') {
+        if (i === 0) {
+          inFrontmatter = true;
+          this.cm.addLineClass(i, 'wrap', 'frontmatter-line');
+          continue;
+        } else if (inFrontmatter) {
+          this.cm.addLineClass(i, 'wrap', 'frontmatter-line');
+          inFrontmatter = false;
+          frontmatterDone = true;
+          continue;
+        }
+      }
+
+      if (inFrontmatter) {
+        this.cm.addLineClass(i, 'wrap', 'frontmatter-line');
+        this.cm.removeLineClass(i, 'background', 'code-block-line');
+        continue;
+      }
+
+      // Mark frontmatter as done once we pass a non-frontmatter line at the top
+      if (!frontmatterDone && i > 0) {
+        frontmatterDone = true;
+      }
+
+      this.cm.removeLineClass(i, 'wrap', 'frontmatter-line');
 
       if (isFence) {
         // Fence line itself gets the style
