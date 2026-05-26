@@ -755,7 +755,19 @@ class FileTreeManager {
       if (name) {
         const newPath = `${targetDir}/${name}`;
         try {
-          await window.vomit.writeFile(newPath, '');
+          // Add metadata frontmatter for markdown files
+          const ext = name.split('.').pop().toLowerCase();
+          let initialContent = '';
+          if (ext === 'md' || ext === 'markdown') {
+            const d = new Date();
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            const today = `${y}-${m}-${day}`;
+            const title = name.replace(/\.(md|markdown)$/i, '').replace(/[-_]/g, ' ');
+            initialContent = `---\ntitle: ${title}\ncreated: ${today}\nmodified: ${today}\ndraft: true\ntags: []\n---\n\n`;
+          }
+          await window.vomit.writeFile(newPath, initialContent);
           await this.refreshFolder(targetDir);
           this.treeState.focusAndSelect(newPath);
           window.vomit.openFile(newPath);

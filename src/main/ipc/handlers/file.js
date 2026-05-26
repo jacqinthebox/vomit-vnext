@@ -10,6 +10,31 @@ const chokidar = require('chokidar');
  * Create file service with all file operations and IPC handlers.
  * @param {{ state: import('../../services/sessionState').SessionState, bus: import('../rendererBus').RendererBus, configStore: typeof import('../../services/configStore') }} deps
  */
+function localDateString() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function isMarkdownPath(filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  return ext === '.md' || ext === '.markdown';
+}
+
+function updateModifiedDate(content) {
+  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
+  if (!match) return content;
+
+  const frontmatter = match[0];
+  if (!/^modified:/m.test(match[1])) return content;
+
+  const today = localDateString();
+  const updated = frontmatter.replace(/^modified:.*$/m, `modified: ${today}`);
+  return updated + content.substring(frontmatter.length);
+}
+
 function createFileService({ state, bus, configStore }) {
 
   async function newFile() {
@@ -304,6 +329,11 @@ Questions?
           bus.send('file-changed-externally', state.currentFilePath);
           return; // Don't overwrite
         }
+      }
+
+      // Update modified date in frontmatter for markdown files
+      if (isMarkdownPath(state.currentFilePath)) {
+        content = updateModifiedDate(content);
       }
 
       fs.writeFileSync(state.currentFilePath, content, 'utf-8');
