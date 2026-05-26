@@ -1584,6 +1584,10 @@ li.CodeMirror-hint-active {
   padding: 0;
 }
 
+.terminal-output-stream.complete {
+  white-space: normal;
+}
+
 .terminal-line {
   margin-bottom: 4px;
 }
@@ -1673,6 +1677,103 @@ li.CodeMirror-hint-active {
   padding: 2px 6px;
   font-family: 'SF Mono', Menlo, Monaco, monospace;
   font-size: 0.9em;
+}
+
+/* Markdown elements in terminal output */
+.terminal-output-stream.complete h1,
+.terminal-output-stream.complete h2,
+.terminal-output-stream.complete h3,
+.terminal-output-stream.complete h4,
+.terminal-output-stream.complete h5,
+.terminal-output-stream.complete h6 {
+  color: var(--accent-color);
+  margin: 6px 0 2px 0;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.terminal-output-stream.complete h1 { font-size: 1.5em; }
+.terminal-output-stream.complete h2 { font-size: 1.3em; }
+.terminal-output-stream.complete h3 { font-size: 1.15em; }
+.terminal-output-stream.complete h4 { font-size: 1.05em; }
+.terminal-output-stream.complete h5 { font-size: 1em; }
+.terminal-output-stream.complete h6 { font-size: 0.9em; }
+
+.terminal-output-stream.complete p {
+  margin: 2px 0;
+  line-height: 1.4;
+}
+
+.terminal-output-stream.complete ul,
+.terminal-output-stream.complete ol {
+  margin: 2px 0;
+  padding-left: 20px;
+  line-height: 1.4;
+}
+
+.terminal-output-stream.complete li {
+  margin: 0;
+}
+
+.terminal-output-stream.complete li > p {
+  margin: 0;
+}
+
+.terminal-output-stream.complete strong {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.terminal-output-stream.complete em {
+  font-style: italic;
+  color: var(--text-primary);
+}
+
+.terminal-output-stream.complete a {
+  color: var(--accent-color);
+  text-decoration: underline;
+}
+
+.terminal-output-stream.complete a:hover {
+  color: var(--text-primary);
+}
+
+.terminal-output-stream.complete blockquote {
+  margin: 6px 0;
+  padding: 4px 12px;
+  border-left: 4px solid var(--accent-color);
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.terminal-output-stream.complete hr {
+  border: none;
+  border-top: 1px solid var(--border-color);
+  margin: 8px 0;
+}
+
+.terminal-output-stream.complete table {
+  border-collapse: collapse;
+  margin: 6px 0;
+  width: 100%;
+}
+
+.terminal-output-stream.complete table th,
+.terminal-output-stream.complete table td {
+  border: 1px solid var(--border-color);
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.terminal-output-stream.complete table th {
+  background: var(--bg-secondary);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.terminal-output-stream.complete table tr:nth-child(even) {
+  background: var(--bg-secondary);
 }
 
 #terminal-context-bar {

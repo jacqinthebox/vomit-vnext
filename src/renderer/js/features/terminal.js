@@ -1433,92 +1433,76 @@ Provide a helpful, accurate answer based on the context above. If the context do
     if (outputStream) {
       outputStream.classList.add('complete');
 
-      // Apply syntax highlighting to code blocks
-      this.highlightCodeBlocks(outputStream);
+      // Render as markdown
+      this.renderMarkdown(outputStream);
     }
   }
 
-  highlightCodeBlocks(element) {
+  renderMarkdown(element) {
     const text = element.textContent;
 
-    // Check if there's any markdown to process
-    const hasCodeBlocks = /```[\s\S]*?```/.test(text);
-    const hasInlineCode = /`[^`]+`/.test(text);
-
-    if (!hasCodeBlocks && !hasInlineCode) {
+    if (!text.trim()) {
       return;
     }
 
-    // First, handle fenced code blocks (```language\n...```)
-    // Then handle inline code (`...`)
-    let html = '';
+    // Configure marked to use highlight.js for code blocks
+    if (window.marked && window.hljs) {
+      const renderer = new marked.Renderer();
 
-    // Process fenced code blocks first
-    const codeBlockRegex = /```(\w*)\n?([\s\S]*?)```/g;
-    let lastIndex = 0;
-    let match;
-
-    while ((match = codeBlockRegex.exec(text)) !== null) {
-      // Add text before the code block (with inline code processed)
-      const textBefore = text.slice(lastIndex, match.index);
-      html += this.processInlineCode(textBefore);
-
-      // Add highlighted code block
-      const language = match[1] || '';
-      const code = match[2];
-
-      if (window.hljs && language) {
-        try {
-          const highlighted = window.hljs.highlight(code, { language: language, ignoreIllegals: true });
-          html += `<pre class="terminal-code"><code class="hljs language-${language}">${highlighted.value}</code></pre>`;
-        } catch (e) {
-          // Fallback to auto-detection
+      // Custom code block renderer with syntax highlighting
+      renderer.code = function(code, language) {
+        if (language && window.hljs.getLanguage(language)) {
           try {
-            const highlighted = window.hljs.highlightAuto(code);
-            html += `<pre class="terminal-code"><code class="hljs">${highlighted.value}</code></pre>`;
-          } catch (e2) {
-            html += `<pre class="terminal-code"><code>${this.escapeHtml(code)}</code></pre>`;
+            const highlighted = window.hljs.highlight(code, { language: language, ignoreIllegals: true });
+            return `<pre class="terminal-code"><code class="hljs language-${language}">${highlighted.value}</code></pre>`;
+          } catch (e) {
+            // Fallback to auto-detection
           }
         }
-      } else if (window.hljs) {
+        // Auto-detect language
         try {
           const highlighted = window.hljs.highlightAuto(code);
-          html += `<pre class="terminal-code"><code class="hljs">${highlighted.value}</code></pre>`;
+          return `<pre class="terminal-code"><code class="hljs">${highlighted.value}</code></pre>`;
         } catch (e) {
-          html += `<pre class="terminal-code"><code>${this.escapeHtml(code)}</code></pre>`;
+          return `<pre class="terminal-code"><code>${escapeHtml(code)}</code></pre>`;
         }
-      } else {
-        html += `<pre class="terminal-code"><code>${this.escapeHtml(code)}</code></pre>`;
+      };
+
+      // Custom inline code renderer
+      renderer.codespan = function(code) {
+        return `<code class="terminal-inline-code">${escapeHtml(code)}</code>`;
+      };
+
+      // Helper function for escaping HTML (needs to be accessible in renderer scope)
+      function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
       }
 
-      lastIndex = match.index + match[0].length;
-    }
+      // Configure marked options
+      marked.setOptions({
+        renderer: renderer,
+        breaks: false,      // Don't convert \n to <br> — markdown handles spacing
+        gfm: true,          // GitHub Flavored Markdown
+        headerIds: false,   // Don't generate header IDs
+        mangle: false,      // Don't mangle email addresses
+        sanitize: false     // Allow HTML (AI responses are from trusted local source)
+      });
 
-    // Add remaining text after last code block (with inline code processed)
-    html += this.processInlineCode(text.slice(lastIndex));
-
-    // Replace content with formatted HTML
-    element.innerHTML = html;
-  }
-
-  processInlineCode(text) {
-    // Replace inline code `...` with styled <code> elements
-    // But first escape HTML, then process backticks
-    const parts = text.split(/(`[^`]+`)/g);
-    let result = '';
-
-    for (const part of parts) {
-      if (part.startsWith('`') && part.endsWith('`') && part.length > 2) {
-        // This is inline code
-        const code = part.slice(1, -1);
-        result += `<code class="terminal-inline-code">${this.escapeHtml(code)}</code>`;
-      } else {
-        // Regular text
-        result += this.escapeHtml(part);
+      // Render the markdown
+      try {
+        const html = marked.parse(text);
+        element.innerHTML = html;
+      } catch (e) {
+        console.error('Markdown rendering error:', e);
+        // Fallback to plain text
+        element.textContent = text;
       }
+    } else {
+      // Fallback: just show plain text if marked is not available
+      element.textContent = text;
     }
-
-    return result;
   }
 
   escapeHtml(text) {
