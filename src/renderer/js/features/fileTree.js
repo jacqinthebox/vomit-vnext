@@ -11,6 +11,7 @@ class FileTreeManager {
     this.sidebarFiles = dom.sidebarFiles;
     this.sidebarOutline = dom.sidebarOutline;
     this.sidebarSearch = dom.sidebarSearch;
+    this.sidebarTags = dom.sidebarTags;
     this.fileTreeContainer = dom.fileTree;
     this.sidebarResize = dom.sidebarResize;
 
@@ -45,8 +46,10 @@ class FileTreeManager {
       // Hide other sidebars
       this.editorState.isOutlineVisible = false;
       this.editorState.isSearchVisible = false;
+      this.editorState.isTagExplorerVisible = false;
       this.sidebarOutline.classList.add('hidden');
       this.sidebarSearch.classList.add('hidden');
+      this.sidebarTags.classList.add('hidden');
       this.editorState.focusedPane = 'sidebar';
 
       // Load tree if needed
@@ -67,8 +70,10 @@ class FileTreeManager {
     if (this.editorState.isOutlineVisible) {
       this.editorState.isFileTreeVisible = false;
       this.editorState.isSearchVisible = false;
+      this.editorState.isTagExplorerVisible = false;
       this.sidebarFiles.classList.add('hidden');
       this.sidebarSearch.classList.add('hidden');
+      this.sidebarTags.classList.add('hidden');
       this.previewManager.updateOutline();
     }
   }
@@ -76,7 +81,8 @@ class FileTreeManager {
   updateResizeHandle() {
     const anySidebarVisible = this.editorState.isFileTreeVisible ||
                                this.editorState.isOutlineVisible ||
-                               this.editorState.isSearchVisible;
+                               this.editorState.isSearchVisible ||
+                               this.editorState.isTagExplorerVisible;
     this.sidebarResize.classList.toggle('hidden', !anySidebarVisible);
   }
 

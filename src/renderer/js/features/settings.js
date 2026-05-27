@@ -10,6 +10,7 @@ class SettingsManager {
     this.sidebarFiles = dom.sidebarFiles;
     this.sidebarOutline = dom.sidebarOutline;
     this.sidebarSearch = dom.sidebarSearch;
+    this.sidebarTags = dom.sidebarTags;
     this.rightSidebarResize = dom.rightSidebarResize;
     this.rightOutline = dom.rightOutline;
 
@@ -245,6 +246,7 @@ class SettingsManager {
       if (this.state.isFileTreeVisible) currentSidebar = this.sidebarFiles;
       else if (this.state.isOutlineVisible) currentSidebar = this.sidebarOutline;
       else if (this.state.isSearchVisible) currentSidebar = this.sidebarSearch;
+      else if (this.state.isTagExplorerVisible) currentSidebar = this.sidebarTags;
     });
 
     document.addEventListener('mousemove', (e) => {

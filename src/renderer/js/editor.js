@@ -11,6 +11,7 @@ class Editor {
     this.sidebarFiles = document.getElementById('sidebar-files');
     this.sidebarOutline = document.getElementById('sidebar-outline');
     this.sidebarSearch = document.getElementById('sidebar-search');
+    this.sidebarTags = document.getElementById('sidebar-tags');
     this.outlineList = document.getElementById('outline-list');
     this.rightOutline = document.getElementById('right-outline');
     this.rightOutlineList = document.getElementById('right-outline-list');
@@ -36,6 +37,7 @@ class Editor {
         sidebarSearch: this.sidebarSearch,
         sidebarFiles: this.sidebarFiles,
         sidebarOutline: this.sidebarOutline,
+        sidebarTags: this.sidebarTags,
         fileTree: this.fileTree,
         outlineList: this.outlineList,
         previewPane: this.previewPane
@@ -85,11 +87,23 @@ class Editor {
         sidebarFiles: this.sidebarFiles,
         sidebarOutline: this.sidebarOutline,
         sidebarSearch: this.sidebarSearch,
+        sidebarTags: this.sidebarTags,
         fileTree: this.fileTree,
         sidebarResize: this.sidebarResize
       },
       getTabManager: () => this.tabManager,
       getPreviewManager: () => this.previewManager
+    });
+    this.tagExplorerManager = new TagExplorerManager({
+      state: this.state,
+      dom: {
+        sidebarTags: this.sidebarTags,
+        sidebarFiles: this.sidebarFiles,
+        sidebarOutline: this.sidebarOutline,
+        sidebarSearch: this.sidebarSearch,
+        sidebarResize: this.sidebarResize,
+        tagList: document.getElementById('tag-list')
+      }
     });
     this.settingsManager = new SettingsManager({
       state: this.state,
@@ -99,6 +113,7 @@ class Editor {
         sidebarFiles: this.sidebarFiles,
         sidebarOutline: this.sidebarOutline,
         sidebarSearch: this.sidebarSearch,
+        sidebarTags: this.sidebarTags,
         rightSidebarResize: this.rightSidebarResize,
         rightOutline: this.rightOutline
       },
@@ -536,6 +551,10 @@ class Editor {
 
     window.addEventListener('vomit:toggle-search', () => {
       this.searchManager.toggleSearch();
+    });
+
+    window.addEventListener('vomit:toggle-tags', () => {
+      this.tagExplorerManager.toggleTagExplorer();
     });
 
     window.addEventListener('vomit:find-in-file', () => {

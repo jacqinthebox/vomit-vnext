@@ -39,6 +39,7 @@ class CommandPaletteManager {
       { section: 'View', label: 'Find in File', shortcut: '⌘F', action: () => this.host.cm.execCommand('find') },
       { section: 'View', label: 'Find and Replace', shortcut: '⌘⌥F', action: () => this.host.cm.execCommand('replace') },
       { section: 'View', label: 'Search in Files', shortcut: '⌘⇧F', action: () => actions.searchManager.toggleSearch() },
+      { section: 'View', label: 'Toggle Tag Explorer', action: () => actions.tagExplorerManager.toggleTagExplorer() },
       { section: 'View', label: 'Sort by Name', action: async () => {
         await window.vomit.setFileSortOrder('name');
         window.dispatchEvent(new CustomEvent('vomit:sort-order-changed', { detail: 'name' }));

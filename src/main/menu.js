@@ -432,6 +432,12 @@ function createMenu() {
           }
         },
         {
+          label: 'Toggle Tags',
+          click: () => {
+            _bus.send('toggle-tags');
+          }
+        },
+        {
           label: 'Show Images Folder',
           type: 'checkbox',
           checked: _configStore.getShowImagesFolder(),

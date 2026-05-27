@@ -25,6 +25,7 @@ class EditorState extends EventTarget {
     this._isFileTreeVisible = false;
     this._isOutlineVisible = false;
     this._isSearchVisible = false;
+    this._isTagExplorerVisible = false;
     this._isRightOutlineVisible = false;
     this._focusedPane = 'editor'; // 'editor' | 'sidebar'
 
@@ -146,6 +147,13 @@ class EditorState extends EventTarget {
     const old = this._isSearchVisible;
     this._isSearchVisible = !!v;
     if (!!v !== old) this._notify('isSearchVisible', !!v, old);
+  }
+
+  get isTagExplorerVisible() { return this._isTagExplorerVisible; }
+  set isTagExplorerVisible(v) {
+    const old = this._isTagExplorerVisible;
+    this._isTagExplorerVisible = !!v;
+    if (!!v !== old) this._notify('isTagExplorerVisible', !!v, old);
   }
 
   get isRightOutlineVisible() { return this._isRightOutlineVisible; }

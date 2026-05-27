@@ -508,6 +508,67 @@ Questions?
       configStore.setFileSortOrder(order);
     });
 
+    // Scan all markdown files for tags
+    ipcMain.handle('get-all-tags', async () => {
+      const bucketPath = configStore.getBucketPath();
+      if (!bucketPath) return { tags: [] };
+
+      const tagMap = new Map(); // tag -> [{ name, path }]
+
+      function parseTags(content) {
+        const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
+        if (!match) return [];
+
+        const fm = match[1];
+        // Inline format: tags: [a, b, c]
+        const inlineMatch = fm.match(/^tags:\s*\[([^\]]*)\]/m);
+        if (inlineMatch) {
+          return inlineMatch[1].split(',').map(t => t.trim()).filter(Boolean);
+        }
+        // Multiline format: tags:\n  - a\n  - b
+        const multiMatch = fm.match(/^tags:\s*\n((?:\s+-\s+.+\n?)*)/m);
+        if (multiMatch) {
+          return multiMatch[1].split('\n')
+            .map(l => l.replace(/^\s*-\s*/, '').trim())
+            .filter(Boolean);
+        }
+        return [];
+      }
+
+      function walk(dir) {
+        try {
+          const entries = fs.readdirSync(dir, { withFileTypes: true });
+          for (const entry of entries) {
+            if (entry.name.startsWith('.') || entry.name === 'node_modules') continue;
+            const fullPath = path.join(dir, entry.name);
+            if (entry.isDirectory()) {
+              walk(fullPath);
+            } else if (entry.name.endsWith('.md') || entry.name.endsWith('.markdown')) {
+              try {
+                const content = fs.readFileSync(fullPath, 'utf-8');
+                const tags = parseTags(content);
+                const seen = new Set();
+                for (const tag of tags) {
+                  if (seen.has(tag)) continue;
+                  seen.add(tag);
+                  if (!tagMap.has(tag)) tagMap.set(tag, []);
+                  tagMap.get(tag).push({ name: entry.name, path: fullPath });
+                }
+              } catch (e) {}
+            }
+          }
+        } catch (e) {}
+      }
+
+      walk(bucketPath);
+
+      const tags = Array.from(tagMap.entries())
+        .map(([name, files]) => ({ name, files }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+      return { tags };
+    });
+
     // Rename file or folder
     ipcMain.handle('rename-item', async (event, oldPath, newName) => {
       try {
