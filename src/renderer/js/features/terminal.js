@@ -11,6 +11,7 @@ class TerminalManager {
     this.terminalClear = dom.terminalClear;
     this.terminalStop = dom.terminalStop;
     this.terminalClose = dom.terminalClose;
+    this.terminalDetach = dom.terminalDetach;
     this.terminalTabs = dom.terminalTabs;
     this.aiTerminalContent = dom.aiTerminalContent;
     this.terminalOutput = dom.terminalOutput;
@@ -121,12 +122,52 @@ class TerminalManager {
         this.appendTerminalOutput(`✗ Error: ${progress.error}`, 'error');
       }
     });
+
+    window.addEventListener('vomit:wiki-progress', (e) => {
+      const progress = e.detail;
+      if (progress.status === 'indexing' && progress.current === progress.total) {
+        this.appendTerminalOutput(`Indexed ${progress.total} notes for wikilinks.`, 'system');
+      }
+    });
+
+    window.addEventListener('vomit:terminal-detached', () => {
+      this.onTerminalDetached();
+    });
+
+    window.addEventListener('vomit:terminal-reattached', () => {
+      this.onTerminalReattached();
+    });
+
+    window.addEventListener('vomit:terminal-input-synced', (e) => {
+      // Display user input from detached terminal in main terminal
+      const input = e.detail;
+      this.appendTerminalOutput(`> ${input}`, 'input');
+    });
+
+    window.addEventListener('vomit:terminal-cleared', () => {
+      // Clear main terminal when detached terminal is cleared
+      this.clearTerminal();
+      this.appendTerminalOutput('Conversation cleared.', 'system');
+    });
+
+    // Commands that need CodeMirror access (the editor) are forwarded from
+    // the detached terminal window to here, so the main TerminalManager runs
+    // them with full host access. Output streams back to both windows via
+    // syncTerminalOutput, so the user sees the response wherever they typed.
+    window.addEventListener('vomit:execute-detached-command', (e) => {
+      const command = e.detail;
+      if (!command) return;
+      this.appendTerminalOutput(`> ${command}`, 'input');
+      this.executeClaudeCommand(command);
+    });
   }
 
   // --- Terminal setup and UI ---
 
   setupTerminal() {
     if (!this.terminalInput) return;
+
+    this.showWelcomeBanner();
 
     // Load persisted command history
     window.vomit.getTerminalHistory().then(history => {
@@ -230,10 +271,12 @@ class TerminalManager {
         e.preventDefault();
         this.clearTerminal();
         window.vomit.claudeClearHistory();
+        window.vomit.agentClearHistory();
         this.state.terminalHistory = [];
         this.state.terminalHistoryIndex = 0;
         window.vomit.clearTerminalHistory();
         this.appendTerminalOutput('Conversation and command history cleared.', 'system');
+        this.updateContextBar();
       }
     });
 
@@ -242,7 +285,9 @@ class TerminalManager {
       if (this.state.activeTerminalTab === 'ai') {
         this.clearTerminal();
         window.vomit.claudeClearHistory();
+        window.vomit.agentClearHistory();
         this.appendTerminalOutput('Conversation cleared.', 'system');
+        this.updateContextBar();
       } else {
         this.clearShellTerminal();
       }
@@ -261,6 +306,15 @@ class TerminalManager {
       const mainContainer = document.getElementById('main-container');
       if (mainContainer) mainContainer.style.paddingBottom = '';
       this.host.focus();
+    });
+
+    // Detach/Reattach button - toggle between detached and attached states
+    this.terminalDetach.addEventListener('click', () => {
+      if (this.state.isTerminalDetached) {
+        window.vomit.reattachTerminal();
+      } else {
+        this.detachTerminal();
+      }
     });
 
     // Terminal resize
@@ -302,6 +356,23 @@ class TerminalManager {
       this.appendTerminalOutput(`  ${c.name}${args}  —  ${c.description}`, 'system');
     });
     this.appendTerminalOutput('', 'system');
+  }
+
+  showWelcomeBanner() {
+    if (this.terminalOutput.querySelector('.terminal-banner')) return;
+    const banner = document.createElement('pre');
+    banner.className = 'terminal-line terminal-banner';
+    banner.textContent =
+      '\n' +
+      '  ██╗   ██╗ ██████╗ ███╗   ███╗██╗████████╗      ╭─────────╮\n' +
+      '  ██║   ██║██╔═══██╗████╗ ████║██║╚══██╔══╝      │  ×   ×  │\n' +
+      '  ██║   ██║██║   ██║██╔████╔██║██║   ██║         │         │\n' +
+      '  ╚██╗ ██╔╝██║   ██║██║╚██╔╝██║██║   ██║         │  ─────  │\n' +
+      '   ╚████╔╝ ╚██████╔╝██║ ╚═╝ ██║██║   ██║         ╰─────────╯\n' +
+      '    ╚═══╝   ╚═════╝ ╚═╝     ╚═╝╚═╝   ╚═╝\n' +
+      '\n' +
+      '   keyboard-first markdown · type / for commands · Cmd+J to toggle\n';
+    this.terminalOutput.insertBefore(banner, this.terminalOutput.firstChild);
   }
 
   _openPicker(inputValue) {
@@ -473,6 +544,12 @@ class TerminalManager {
   }
 
   toggleTerminal() {
+    // If terminal is detached, focus the terminal window instead of toggling
+    if (this.state.isTerminalDetached) {
+      window.vomit.focusTerminalWindow();
+      return;
+    }
+
     const mainContainer = document.getElementById('main-container');
     if (this.state.isTerminalPanelVisible && this.state.activeTerminalTab === 'ai') {
       // Already showing AI terminal, close the panel
@@ -1266,16 +1343,51 @@ File content:
   async indexFolderForRAG(projectRoot, targetPath, subpath) {
     const displayPath = subpath ? `/index ${subpath}` : '/index';
     this.appendTerminalOutput(`❯ ${displayPath}`, 'input');
-    this.appendTerminalOutput(`Indexing ${subpath || 'folder'} for RAG...`, 'system');
+    this.appendTerminalOutput(
+      subpath
+        ? `Refreshing ${subpath} in the bucket RAG index...`
+        : 'Indexing current bucket for RAG...',
+      'system'
+    );
     this.appendTerminalOutput('This requires the nomic-embed-text model. Run: ollama pull nomic-embed-text', 'system');
 
     try {
       const result = await window.vomit.ragIndex(projectRoot, targetPath);
       if (result.success) {
-        this.appendTerminalOutput(`✓ Index complete! ${result.indexed} chunks from ${result.files} files.`, 'output');
-        this.appendTerminalOutput('Use /rag <query> to search with context.', 'system');
+        this.appendTerminalOutput(`✓ Bucket index updated! ${result.indexed} chunks from ${result.files} files.`, 'output');
+        this.appendTerminalOutput('Use /rag <query> to search the current bucket with context.', 'system');
       } else {
         this.appendTerminalOutput(`✗ Indexing failed: ${result.error}`, 'error');
+      }
+    } catch (err) {
+      this.appendTerminalOutput(`Error: ${err.message}`, 'error');
+    }
+  }
+
+  async reindexRAG(cwd) {
+    this.appendTerminalOutput('❯ /reindex', 'input');
+    this.appendTerminalOutput('Clearing current bucket RAG index...', 'system');
+
+    try {
+      const clearResult = await window.vomit.ragClear(cwd);
+      if (!clearResult.success) {
+        this.appendTerminalOutput(`✗ Cleanup failed: ${clearResult.error}`, 'error');
+        return;
+      }
+
+      const removed = clearResult.deleted > 0
+        ? `Removed ${clearResult.deleted} database file${clearResult.deleted === 1 ? '' : 's'}.`
+        : 'No existing RAG database found.';
+      this.appendTerminalOutput(removed, 'system');
+      this.appendTerminalOutput('Rebuilding full bucket index...', 'system');
+      this.appendTerminalOutput('This requires the nomic-embed-text model. Run: ollama pull nomic-embed-text', 'system');
+
+      const result = await window.vomit.ragIndex(cwd, cwd);
+      if (result.success) {
+        this.appendTerminalOutput(`✓ Reindex complete! ${result.indexed} chunks from ${result.files} files.`, 'output');
+        this.appendTerminalOutput('Use /rag <query> to search the current bucket with fresh context.', 'system');
+      } else {
+        this.appendTerminalOutput(`✗ Reindex failed: ${result.error}`, 'error');
       }
     } catch (err) {
       this.appendTerminalOutput(`Error: ${err.message}`, 'error');
@@ -1291,7 +1403,7 @@ File content:
 
       if (!results.success) {
         if (results.error === 'not_indexed') {
-          this.appendTerminalOutput('No index found. Run /index first to index your folder.', 'error');
+          this.appendTerminalOutput('No bucket index found. Run /index first to index the current bucket.', 'error');
         } else {
           this.appendTerminalOutput(`Search failed: ${results.error}`, 'error');
         }
@@ -1306,14 +1418,15 @@ File content:
       // Build context from search results
       this.appendTerminalOutput(`Found ${results.chunks.length} relevant chunks. Querying AI...`, 'system');
 
-      const contextParts = results.chunks.map((chunk, i) =>
-        `[Source: ${chunk.file}]\n${chunk.content}`
-      );
+      const contextParts = results.chunks.map((chunk) => {
+        const tag = chunk.source === 'wikilink' ? ' (via wikilink)' : '';
+        return `[Source: ${chunk.file}${tag}]\n${chunk.content}`;
+      });
       const context = contextParts.join('\n\n---\n\n');
 
-      const ragPrompt = `You are a helpful assistant. Answer the user's question based on the following context from their project files.
+      const ragPrompt = `You are a helpful assistant. Answer the user's question based on the following context from their bucket files.
 
-Context from project:
+Context from bucket:
 ---
 ${context}
 ---
@@ -1329,6 +1442,27 @@ Provide a helpful, accurate answer based on the context above. If the context do
       await window.vomit.agentExecute(ragPrompt, cwd);
     } catch (err) {
       this.hideThinkingIndicator();
+      this.appendTerminalOutput(`Error: ${err.message}`, 'error');
+    }
+  }
+
+  async reindexWiki(cwd) {
+    this.appendTerminalOutput('❯ /wiki reindex', 'input');
+    this.appendTerminalOutput('Rebuilding wikilink index for current bucket...', 'system');
+    try {
+      const result = await window.vomit.wikiIndex(cwd);
+      if (result.success) {
+        const broken = result.brokenLinks > 0
+          ? ` (${result.brokenLinks} broken)`
+          : '';
+        this.appendTerminalOutput(
+          `✓ Wiki index built: ${result.linksIndexed} links across ${result.filesProcessed} notes${broken}.`,
+          'output'
+        );
+      } else {
+        this.appendTerminalOutput(`✗ Wiki index failed: ${result.error}`, 'error');
+      }
+    } catch (err) {
       this.appendTerminalOutput(`Error: ${err.message}`, 'error');
     }
   }
@@ -1570,5 +1704,85 @@ Provide a helpful, accurate answer based on the context above. If the context do
     } catch (e) {
       // Silently fail — stats are informational only
     }
+  }
+
+  // --- Terminal detach/reattach ---
+
+  detachTerminal() {
+    // Save current terminal height before detaching
+    this.state.terminalHeight = this.terminalPanel.offsetHeight;
+
+    // Get the current terminal output HTML to transfer to detached window
+    const terminalOutputHTML = this.terminalOutput.innerHTML;
+
+    // Pass the renderer's file/project context — main's SessionState doesn't
+    // track projectRoot/currentDirectory, so the detached terminal would
+    // otherwise not know which doc/folder is open and slash-commands like
+    // /doc or /agent would fail the "No project folder open" guard.
+    window.vomit.detachTerminal({
+      terminalHTML: terminalOutputHTML,
+      currentFilePath: this.state.currentFilePath,
+      basePath: this.state.basePath,
+      projectRoot: this.state.projectRoot,
+      currentDirectory: this.state.currentDirectory
+    });
+  }
+
+  // Sync file/project context to the detached terminal whenever it changes in
+  // the main window (tab switch, file open, bucket switch).
+  _syncDetachedContext() {
+    if (!this.state.isTerminalDetached) return;
+    window.vomit.syncTerminalContext({
+      currentFilePath: this.state.currentFilePath,
+      basePath: this.state.basePath,
+      projectRoot: this.state.projectRoot,
+      currentDirectory: this.state.currentDirectory
+    });
+  }
+
+  _setupDetachedContextSync() {
+    const sync = () => this._syncDetachedContext();
+    this.state.addEventListener('change:currentFilePath', sync);
+    this.state.addEventListener('change:basePath', sync);
+    this.state.addEventListener('change:projectRoot', sync);
+    this.state.addEventListener('change:currentDirectory', sync);
+  }
+
+  onTerminalDetached() {
+    this.state.isTerminalDetached = true;
+    this.state.isTerminalPanelVisible = false;
+    this.terminalPanel.classList.add('hidden');
+
+    // Update detach button to show reattach state
+    this.terminalDetach.textContent = '↩';
+    this.terminalDetach.title = 'Reattach terminal';
+
+    // Clear inline padding style
+    const mainContainer = document.getElementById('main-container');
+    if (mainContainer) mainContainer.style.paddingBottom = '';
+    this.host.focus();
+  }
+
+  onTerminalReattached() {
+    this.state.isTerminalDetached = false;
+    this.state.isTerminalPanelVisible = true;
+    this.terminalPanel.classList.remove('hidden');
+
+    // Update detach button back to detach state
+    this.terminalDetach.textContent = '⧉';
+    this.terminalDetach.title = 'Detach terminal';
+
+    // Restore terminal height
+    if (this.state.terminalHeight) {
+      this.terminalPanel.style.height = `${this.state.terminalHeight}px`;
+    }
+
+    // Set padding to match restored terminal height
+    const mainContainer = document.getElementById('main-container');
+    if (mainContainer) {
+      mainContainer.style.paddingBottom = `${this.terminalPanel.offsetHeight}px`;
+    }
+
+    this.terminalInput.focus();
   }
 }

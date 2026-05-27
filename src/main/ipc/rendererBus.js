@@ -17,6 +17,8 @@ class RendererBus {
     this._editorWindows = [];
     /** @type {import('electron').BrowserWindow|null} */
     this._documentationWindow = null;
+    /** @type {import('electron').BrowserWindow|null} */
+    this._terminalWindow = null;
   }
 
   /** @param {import('electron').BrowserWindow|null} win */
@@ -41,6 +43,11 @@ class RendererBus {
   setDocumentationWindow(win) { this._documentationWindow = win; }
   /** @returns {import('electron').BrowserWindow|null} */
   getDocumentationWindow() { return this._documentationWindow; }
+
+  /** @param {import('electron').BrowserWindow|null} win */
+  setTerminalWindow(win) { this._terminalWindow = win; }
+  /** @returns {import('electron').BrowserWindow|null} */
+  getTerminalWindow() { return this._terminalWindow; }
 
   /**
    * Send a message to the main renderer window.
@@ -83,6 +90,17 @@ class RendererBus {
   sendToDocumentation(channel, ...args) {
     if (this._documentationWindow?.webContents) {
       this._documentationWindow.webContents.send(channel, ...args);
+    }
+  }
+
+  /**
+   * Send a message to the terminal window.
+   * @param {string} channel
+   * @param {...any} args
+   */
+  sendToTerminal(channel, ...args) {
+    if (this._terminalWindow?.webContents) {
+      this._terminalWindow.webContents.send(channel, ...args);
     }
   }
 

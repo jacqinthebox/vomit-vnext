@@ -99,6 +99,7 @@ function setOllamaModel(model) {
 
   // Notify renderer and show terminal
   _bus.send('ai-provider-changed', { provider: 'ollama', model });
+  _bus.sendToTerminal('ai-provider-changed', { provider: 'ollama', model });
   _bus.send('show-terminal');
 }
 
@@ -334,6 +335,10 @@ function createMenu() {
           accelerator: 'CmdOrCtrl+Shift+T',
           click: () => _actions.sendFormatCommand('formatTable')
         },
+        {
+          label: 'Toggle Todo',
+          click: () => _actions.sendFormatCommand('todo')
+        },
         { type: 'separator' },
         {
           label: 'Heading 1',
@@ -418,6 +423,13 @@ function createMenu() {
           }
         },
         {
+          label: 'Wiki Graph',
+          accelerator: 'CmdOrCtrl+Shift+G',
+          click: () => {
+            _bus.send('toggle-wiki-graph');
+          }
+        },
+        {
           label: 'Toggle Files',
           accelerator: 'CmdOrCtrl+E',
           click: () => {
@@ -435,6 +447,12 @@ function createMenu() {
           label: 'Toggle Tags',
           click: () => {
             _bus.send('toggle-tags');
+          }
+        },
+        {
+          label: 'Toggle Todos',
+          click: () => {
+            _bus.send('toggle-todos');
           }
         },
         {

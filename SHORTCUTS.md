@@ -65,7 +65,8 @@ Press **Cmd+/** to open this help at any time.
 | Cmd+` | Inline code |
 | Cmd+M | Code block |
 | Cmd+K | Insert link |
-| Cmd+Shift+T | Insert table |
+| Cmd+Shift+T | Format table |
+| Cmd+Shift+Enter | Toggle todo line / selected lines |
 | Cmd+Shift+1 | Heading 1 |
 | Cmd+Shift+2 | Heading 2 |
 | Cmd+Shift+3 | Heading 3 |
@@ -73,6 +74,25 @@ Press **Cmd+/** to open this help at any time.
 | Cmd+- | Horizontal rule |
 | Cmd+Shift+D | Insert date heading (## YYYY-MM-DD) |
 | Cmd+Enter | Insert new slide |
+
+---
+
+## Todos
+
+Todos are plain markdown checkboxes, so they stay in your notes:
+
+```markdown
+- [ ] Open task #follow-up @2026-06-01 !high
+- [x] Finished task
+```
+
+| Shortcut / Command | Action |
+|--------------------|--------|
+| Cmd+Shift+Enter | Toggle current line or selected lines as todos |
+| View > Toggle Todos | Open the Todo Explorer |
+| Command Palette > Toggle Todo Explorer | Open the Todo Explorer |
+
+Todo Explorer scans saved markdown files in the current bucket. It parses `@YYYY-MM-DD` due dates, `!high`/`!medium`/`!low` priorities, and `#tags`.
 
 ---
 
@@ -89,10 +109,12 @@ Press **Cmd+/** to open this help at any time.
 
 ## Multi-Cursor
 
+Double-tap **Option**, then press **Option+Up** or **Option+Down** to add cursors. Empty lines are skipped when adding cursors.
+
 | Shortcut | Action |
 |----------|--------|
-| Option Option ↑ | Add cursor above (double-tap Option, then arrow) |
-| Option Option ↓ | Add cursor below (double-tap Option, then arrow) |
+| Option, Option, then Option+↑ | Add cursor above |
+| Option, Option, then Option+↓ | Add cursor below |
 | Escape | Clear extra cursors |
 
 ---
@@ -169,9 +191,10 @@ When the picker is closed, `↑`/`↓` navigate command history (persisted acros
 | `/pseudo` | Pseudonymize current document (names, emails, IPs) |
 | `/pseudo all` | Pseudonymize all files in current folder |
 | `/depseudo` | Restore original data from mapping |
-| `/index` | Index current file's folder for RAG (recursive) |
-| `/index <subfolder>` | Index a specific subfolder |
-| `/rag <query>` | Search indexed docs and ask AI with context |
+| `/index` | Index the current bucket for RAG |
+| `/index <folder>` | Refresh a specific folder in the bucket index |
+| `/reindex` | Clear and rebuild current bucket's RAG index |
+| `/rag <query>` | Search current bucket index and ask AI with context |
 | `/presentation <topic>` | Generate a presentation on the topic |
 | `/agent <prompt>` | Agentic mode with tools (bash, file read/write, web search) |
 
@@ -185,6 +208,7 @@ When the picker is closed, `↑`/`↓` navigate command history (persisted acros
 - **Emoji shortcodes** like `:smile:` are automatically converted
 - **Speaker notes** go after `???` on a slide
 - **Slide separator** is `---` on its own line
-- **Frontmatter** supports `theme:`, `font-size:`, `title`, `created`, `modified`, `draft`, and `tags` metadata
+- **Frontmatter** supports `theme:`, `font-size:`, `title`, `folder`, `created`, `modified`, `draft`, and `tags` metadata
+- **Todos** use markdown checkboxes: `- [ ] open` and `- [x] done`
 - **Privacy first** - All AI runs locally via Ollama, your data never leaves your machine
 - **Scroll sync** - In split view, scrolling the editor or preview keeps them aligned

@@ -8,6 +8,7 @@ class TagExplorerManager {
     this.sidebarFiles = dom.sidebarFiles;
     this.sidebarOutline = dom.sidebarOutline;
     this.sidebarSearch = dom.sidebarSearch;
+    this.sidebarTodos = dom.sidebarTodos;
     this.sidebarResize = dom.sidebarResize;
     this.tagList = dom.tagList;
     this.expandedTags = new Set();
@@ -23,9 +24,11 @@ class TagExplorerManager {
       this.state.isFileTreeVisible = false;
       this.state.isOutlineVisible = false;
       this.state.isSearchVisible = false;
+      this.state.isTodoExplorerVisible = false;
       this.sidebarFiles.classList.add('hidden');
       this.sidebarOutline.classList.add('hidden');
       this.sidebarSearch.classList.add('hidden');
+      this.sidebarTodos.classList.add('hidden');
 
       this.loadTags();
     }
@@ -132,7 +135,8 @@ class TagExplorerManager {
     const anySidebarVisible = this.state.isFileTreeVisible ||
                                this.state.isOutlineVisible ||
                                this.state.isSearchVisible ||
-                               this.state.isTagExplorerVisible;
+                               this.state.isTagExplorerVisible ||
+                               this.state.isTodoExplorerVisible;
     this.sidebarResize.classList.toggle('hidden', !anySidebarVisible);
   }
 }

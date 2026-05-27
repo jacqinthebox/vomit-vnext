@@ -11,6 +11,7 @@ class SettingsManager {
     this.sidebarOutline = dom.sidebarOutline;
     this.sidebarSearch = dom.sidebarSearch;
     this.sidebarTags = dom.sidebarTags;
+    this.sidebarTodos = dom.sidebarTodos;
     this.rightSidebarResize = dom.rightSidebarResize;
     this.rightOutline = dom.rightOutline;
 
@@ -73,6 +74,7 @@ class SettingsManager {
             <div class="shortcut-row"><kbd>Cmd+F</kbd> Find in file</div>
             <div class="shortcut-row"><kbd>Cmd+Option+F</kbd> Find and replace</div>
             <div class="shortcut-row"><kbd>Cmd+Shift+F</kbd> Search in files</div>
+            <div class="shortcut-row"><kbd>View menu</kbd> Toggle tags / todos</div>
             <div class="shortcut-row"><kbd>Cmd+/</kbd> Show shortcuts</div>
           </div>
           <div class="shortcuts-section">
@@ -81,13 +83,20 @@ class SettingsManager {
             <div class="shortcut-row"><kbd>Cmd+I</kbd> Italic</div>
             <div class="shortcut-row"><kbd>Cmd+\`</kbd> Code</div>
             <div class="shortcut-row"><kbd>Cmd+K</kbd> Insert link</div>
-            <div class="shortcut-row"><kbd>Cmd+Shift+T</kbd> Insert table</div>
+            <div class="shortcut-row"><kbd>Cmd+Shift+T</kbd> Format table</div>
             <div class="shortcut-row"><kbd>Cmd+Shift+1/2/3</kbd> Headings</div>
             <div class="shortcut-row"><kbd>Cmd+Shift+8</kbd> Bullet list</div>
             <div class="shortcut-row"><kbd>Cmd+Shift+9</kbd> Numbered list</div>
+            <div class="shortcut-row"><kbd>Cmd+Shift+Enter</kbd> Toggle todo</div>
             <div class="shortcut-row"><kbd>Cmd+'</kbd> Quote</div>
             <div class="shortcut-row"><kbd>Cmd+-</kbd> Horizontal rule</div>
             <div class="shortcut-row"><kbd>Cmd+Enter</kbd> New slide</div>
+          </div>
+          <div class="shortcuts-section">
+            <h3>Multi-Cursor</h3>
+            <div class="shortcut-row"><kbd>Option</kbd> <kbd>Option</kbd> then <kbd>Option+↑</kbd> Add cursor above</div>
+            <div class="shortcut-row"><kbd>Option</kbd> <kbd>Option</kbd> then <kbd>Option+↓</kbd> Add cursor below</div>
+            <div class="shortcut-row"><kbd>Escape</kbd> Clear extra cursors</div>
           </div>
           <div class="shortcuts-section">
             <h3>Code</h3>
@@ -113,7 +122,8 @@ class SettingsManager {
           </div>
           <div class="shortcuts-section">
             <h3>AI Terminal</h3>
-            <div class="shortcut-row"><kbd>Ctrl+\`</kbd> Toggle AI terminal</div>
+            <div class="shortcut-row"><kbd>Cmd+J</kbd> Toggle AI terminal</div>
+            <div class="shortcut-row"><kbd>Cmd+\`</kbd> Toggle shell terminal</div>
             <div class="shortcut-row"><kbd>Ctrl+C</kbd> Stop AI response</div>
             <div class="shortcut-row"><kbd>Cmd+K</kbd> Clear terminal</div>
           </div>
@@ -247,6 +257,7 @@ class SettingsManager {
       else if (this.state.isOutlineVisible) currentSidebar = this.sidebarOutline;
       else if (this.state.isSearchVisible) currentSidebar = this.sidebarSearch;
       else if (this.state.isTagExplorerVisible) currentSidebar = this.sidebarTags;
+      else if (this.state.isTodoExplorerVisible) currentSidebar = this.sidebarTodos;
     });
 
     document.addEventListener('mousemove', (e) => {
@@ -268,6 +279,14 @@ class SettingsManager {
   }
 
   setupRightSidebarResize() {
+    // Restore last-used width from localStorage so resize survives reloads.
+    try {
+      const stored = parseInt(localStorage.getItem('vomit.rightSidebar.width'), 10);
+      if (!isNaN(stored) && stored >= 150 && stored <= 800) {
+        this.rightOutline.style.width = `${stored}px`;
+      }
+    } catch {}
+
     let isResizing = false;
 
     this.rightSidebarResize.addEventListener('mousedown', (e) => {
@@ -281,7 +300,7 @@ class SettingsManager {
       if (!isResizing) return;
 
       const windowWidth = window.innerWidth;
-      const newWidth = Math.max(150, Math.min(500, windowWidth - e.clientX));
+      const newWidth = Math.max(150, Math.min(800, windowWidth - e.clientX));
       this.rightOutline.style.width = `${newWidth}px`;
     });
 
@@ -291,6 +310,11 @@ class SettingsManager {
         this.rightSidebarResize.classList.remove('dragging');
         document.body.style.cursor = '';
         document.body.style.userSelect = '';
+        // Persist the chosen width.
+        try {
+          const w = parseInt(this.rightOutline.style.width, 10);
+          if (!isNaN(w)) localStorage.setItem('vomit.rightSidebar.width', String(w));
+        } catch {}
       }
     });
   }

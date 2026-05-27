@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data: file: blob: https://www.plantuml.com;">
+  <title>Terminal</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/themes.css">
+  <link rel="stylesheet" href="css/highlight.css">
+  <link rel="stylesheet" href="css/katex.min.css">
+  <link rel="stylesheet" href="css/xterm.css">
+</head>
+<body class="theme-dark">
+  <div id="terminal-window">
+    <div id="terminal-header">
+      <div class="terminal-tabs">
+        <button class="terminal-tab active" data-terminal="ai">AI</button>
+        <button class="terminal-tab" data-terminal="shell">Shell</button>
+      </div>
+      <div class="terminal-actions">
+        <button id="terminal-clear" title="Clear">Clear</button>
+        <button id="terminal-stop" title="Stop" class="hidden">Stop</button>
+        <button id="terminal-reattach" title="Reattach to main window">↩</button>
+      </div>
+    </div>
+    <!-- AI Terminal Content -->
+    <div id="ai-terminal-content" class="terminal-content active">
+      <div id="terminal-output"></div>
+      <div id="terminal-context-bar"></div>
+      <div id="terminal-input-container">
+        <span class="terminal-prompt">❯</span>
+        <input type="text" id="terminal-input" placeholder="Ask AI... (use /doc to include document)" autocomplete="off">
+      </div>
+    </div>
+    <!-- Shell Terminal Content -->
+    <div id="shell-terminal-content" class="terminal-content">
+      <div id="shell-terminal-container"></div>
+    </div>
+  </div>
+
+  <script src="js/marked.min.js"></script>
+  <script src="js/highlight.min.js"></script>
+  <script src="js/hljs-bash.min.js"></script>
+  <script src="js/hljs-yaml.min.js"></script>
+  <script src="js/hljs-python.min.js"></script>
+  <script src="js/hljs-json.min.js"></script>
+  <script src="js/hljs-typescript.min.js"></script>
+  <script src="js/hljs-go.min.js"></script>
+  <script src="js/hljs-dockerfile.min.js"></script>
+  <script src="js/hljs-sql.min.js"></script>
+  <script src="js/hljs-csharp.min.js"></script>
+  <script src="js/hljs-lua.min.js"></script>
+  <script src="js/katex.min.js"></script>
+  <script src="js/katex-auto-render.min.js"></script>
+  <script src="js/plantuml-encoder.min.js"></script>
+  <script src="js/mermaid.min.js"></script>
+  <script src="js/emoji.js"></script>
+  <script src="js/xterm.min.js"></script>
+  <script src="js/xterm-addon-fit.min.js"></script>
+  <script src="js/features/terminal-commands.js"></script>
+  <script src="js/terminal-window.js"></script>
+</body>
+</html>

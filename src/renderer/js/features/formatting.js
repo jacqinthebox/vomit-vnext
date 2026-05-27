@@ -74,6 +74,102 @@ class FormattingManager {
     cm.setOption('lineWrapping', !currentWrap);
   }
 
+  toggleTodoLine() {
+    const cm = this.host.cm;
+    const selections = cm.listSelections();
+    const lines = new Set();
+
+    for (const selection of selections) {
+      const start = Math.min(selection.anchor.line, selection.head.line);
+      let end = Math.max(selection.anchor.line, selection.head.line);
+      const endCursor = selection.anchor.line > selection.head.line ? selection.anchor : selection.head;
+      if (end > start && endCursor.ch === 0) end--;
+      for (let line = start; line <= end; line++) {
+        lines.add(line);
+      }
+    }
+
+    const targetLines = [...lines].sort((a, b) => a - b);
+    const checkboxStates = targetLines
+      .filter(line => !this._isLineInFence(line))
+      .map(line => this._parseTodoLine(cm.getLine(line)))
+      .filter(parsed => parsed.type === 'checkbox')
+      .map(parsed => parsed.checked);
+    const shouldCheck = checkboxStates.length > 0 && checkboxStates.some(checked => !checked);
+
+    cm.operation(() => {
+      for (const line of targetLines) {
+        if (this._isLineInFence(line)) continue;
+
+        const text = cm.getLine(line);
+        const parsed = this._parseTodoLine(text);
+        let replacement = null;
+
+        if (parsed.type === 'checkbox') {
+          const mark = shouldCheck ? 'x' : ' ';
+          replacement = `${parsed.indent}${parsed.marker} [${mark}] ${parsed.text}`;
+        } else if (parsed.type === 'bullet') {
+          replacement = `${parsed.indent}${parsed.marker} [ ] ${parsed.text}`;
+        } else if (parsed.type === 'numbered') {
+          replacement = `${parsed.indent}- [ ] ${parsed.text}`;
+        } else if (parsed.type === 'plain') {
+          replacement = `${parsed.indent}- [ ] ${parsed.text}`;
+        } else if (parsed.type === 'empty') {
+          replacement = `${parsed.indent}- [ ] `;
+        }
+
+        if (replacement !== null) {
+          cm.replaceRange(replacement, { line, ch: 0 }, { line, ch: text.length });
+        }
+      }
+    });
+
+    if (targetLines.length === 1 && cm.getLine(targetLines[0]).endsWith('- [ ] ')) {
+      cm.setCursor({ line: targetLines[0], ch: cm.getLine(targetLines[0]).length });
+    }
+    cm.focus();
+  }
+
+  _parseTodoLine(line) {
+    const checkbox = line.match(/^(\s*)([-*+])\s+\[([ xX])\]\s?(.*)$/);
+    if (checkbox) {
+      return {
+        type: 'checkbox',
+        indent: checkbox[1],
+        marker: checkbox[2],
+        checked: checkbox[3].toLowerCase() === 'x',
+        text: checkbox[4]
+      };
+    }
+
+    const bullet = line.match(/^(\s*)([-*+])\s+(.*)$/);
+    if (bullet) {
+      return { type: 'bullet', indent: bullet[1], marker: bullet[2], text: bullet[3] };
+    }
+
+    const numbered = line.match(/^(\s*)\d+[.)]\s+(.*)$/);
+    if (numbered) {
+      return { type: 'numbered', indent: numbered[1], text: numbered[2] };
+    }
+
+    const plain = line.match(/^(\s*)(.*)$/);
+    if (plain && plain[2].length > 0) {
+      return { type: 'plain', indent: plain[1], text: plain[2] };
+    }
+
+    return { type: 'empty', indent: line.match(/^\s*/)[0] };
+  }
+
+  _isLineInFence(lineNumber) {
+    let inFence = false;
+    for (let line = 0; line < lineNumber; line++) {
+      if (/^\s*(```|~~~)/.test(this.host.cm.getLine(line) || '')) {
+        inFence = !inFence;
+      }
+    }
+    return inFence;
+  }
+
   formatTable() {
     const cm = this.host.cm;
     const cursor = cm.getCursor();

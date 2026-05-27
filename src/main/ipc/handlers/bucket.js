@@ -5,6 +5,7 @@ const { dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
+const wiki = require('../../wiki');
 
 /**
  * Create bucket service with all bucket operations and IPC handlers.
@@ -37,6 +38,14 @@ function createBucketService({ state, bus, configStore, menuModule }) {
     bus.getMainWindow()?.setTitle(`${bucket.name} - Vomit`);
 
     menuModule.createMenu();
+
+    // Rebuild the wiki index for the new bucket in the background.
+    setTimeout(() => {
+      wiki.indexBucket(bucket.path).then(() => {
+        bus.send('wiki-changed', { type: 'reindex' });
+        bus.sendToTerminal('wiki-changed', { type: 'reindex' });
+      }).catch(() => {});
+    }, 500);
 
     return { success: true, bucket };
   }

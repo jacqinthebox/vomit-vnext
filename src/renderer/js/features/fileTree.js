@@ -12,6 +12,7 @@ class FileTreeManager {
     this.sidebarOutline = dom.sidebarOutline;
     this.sidebarSearch = dom.sidebarSearch;
     this.sidebarTags = dom.sidebarTags;
+    this.sidebarTodos = dom.sidebarTodos;
     this.fileTreeContainer = dom.fileTree;
     this.sidebarResize = dom.sidebarResize;
 
@@ -47,9 +48,11 @@ class FileTreeManager {
       this.editorState.isOutlineVisible = false;
       this.editorState.isSearchVisible = false;
       this.editorState.isTagExplorerVisible = false;
+      this.editorState.isTodoExplorerVisible = false;
       this.sidebarOutline.classList.add('hidden');
       this.sidebarSearch.classList.add('hidden');
       this.sidebarTags.classList.add('hidden');
+      this.sidebarTodos.classList.add('hidden');
       this.editorState.focusedPane = 'sidebar';
 
       // Load tree if needed
@@ -71,9 +74,11 @@ class FileTreeManager {
       this.editorState.isFileTreeVisible = false;
       this.editorState.isSearchVisible = false;
       this.editorState.isTagExplorerVisible = false;
+      this.editorState.isTodoExplorerVisible = false;
       this.sidebarFiles.classList.add('hidden');
       this.sidebarSearch.classList.add('hidden');
       this.sidebarTags.classList.add('hidden');
+      this.sidebarTodos.classList.add('hidden');
       this.previewManager.updateOutline();
     }
   }
@@ -82,7 +87,8 @@ class FileTreeManager {
     const anySidebarVisible = this.editorState.isFileTreeVisible ||
                                this.editorState.isOutlineVisible ||
                                this.editorState.isSearchVisible ||
-                               this.editorState.isTagExplorerVisible;
+                               this.editorState.isTagExplorerVisible ||
+                               this.editorState.isTodoExplorerVisible;
     this.sidebarResize.classList.toggle('hidden', !anySidebarVisible);
   }
 
@@ -771,7 +777,8 @@ class FileTreeManager {
             const day = String(d.getDate()).padStart(2, '0');
             const today = `${y}-${m}-${day}`;
             const title = name.replace(/\.(md|markdown)$/i, '').replace(/[-_]/g, ' ');
-            initialContent = `---\ntitle: ${title}\ncreated: ${today}\nmodified: ${today}\ndraft: true\ntags: []\n---\n\n`;
+            const folder = targetDir.split('/').filter(Boolean).pop() || '';
+            initialContent = `---\ntitle: ${title}\nfolder: ${folder}\ncreated: ${today}\nmodified: ${today}\ndraft: true\ntags: []\n---\n\n`;
           }
           await window.vomit.writeFile(newPath, initialContent);
           await this.refreshFolder(targetDir);
@@ -926,6 +933,17 @@ class FileTreeManager {
             this.treeState.focusedPath = result.newPath;
             if (this.treeState.selectedPath === path) {
               this.treeState.selectedPath = result.newPath;
+            }
+            if (typeof result.wikilinksUpdated === 'number' && result.wikilinksUpdated > 0) {
+              // Surface the rename refactor count so the user knows backlinks
+              // were rewritten across the bucket. Falls back to console-only
+              // when an alert would be too noisy for big renames.
+              console.log(`Wikilinks updated in ${result.wikilinksUpdated} file(s)`);
+              try {
+                window.dispatchEvent(new CustomEvent('vomit:status-message', {
+                  detail: { text: `Wikilinks updated in ${result.wikilinksUpdated} file(s)` }
+                }));
+              } catch {}
             }
           } else if (result.error) {
             alert(result.error);

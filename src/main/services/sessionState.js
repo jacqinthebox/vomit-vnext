@@ -34,6 +34,10 @@ class SessionState extends EventEmitter {
     this._agentConversationHistory = [];
     /** @type {Array<{role: 'user'|'assistant', content: string}>} */
     this._chatHistory = [];
+    /** @type {boolean} */
+    this._isTerminalDetached = false;
+    /** @type {number} */
+    this._terminalHeight = 300;
   }
 
   // --- File state ---
@@ -102,6 +106,18 @@ class SessionState extends EventEmitter {
 
   clearChatHistory() {
     this._chatHistory = [];
+  }
+
+  // --- Terminal state ---
+
+  get isTerminalDetached() { return this._isTerminalDetached; }
+  set isTerminalDetached(v) {
+    this._isTerminalDetached = v;
+  }
+
+  get terminalHeight() { return this._terminalHeight; }
+  set terminalHeight(v) {
+    this._terminalHeight = v;
   }
 }
 

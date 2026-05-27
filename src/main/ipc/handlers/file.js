@@ -5,6 +5,7 @@ const { dialog, shell, app } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const chokidar = require('chokidar');
+const wiki = require('../../wiki');
 
 /**
  * Create file service with all file operations and IPC handlers.
@@ -33,6 +34,59 @@ function updateModifiedDate(content) {
   const today = localDateString();
   const updated = frontmatter.replace(/^modified:.*$/m, `modified: ${today}`);
   return updated + content.substring(frontmatter.length);
+}
+
+const SKIP_RENAME_DIRS = new Set(['node_modules', 'pseudonymized', '.git', '.obsidian']);
+
+function escapeRegExp(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Replace every [[oldName]], [[oldName|alias]], [[oldName#heading]] occurrence
+ * with the new basename across the bucket. Returns the number of files
+ * modified. Matching is case-insensitive on the target name and preserves
+ * the alias/heading suffix exactly.
+ */
+function updateWikilinkReferences(bucketRoot, oldBasename, newBasename) {
+  if (!bucketRoot || !oldBasename || !newBasename) return 0;
+
+  // [[oldName]] | [[oldName|alias]] | [[oldName#heading]] | [[oldName#h|alias]]
+  const re = new RegExp(
+    `\\[\\[(${escapeRegExp(oldBasename)})((?:#[^\\]|\\n]+)?(?:\\|[^\\]\\n]+)?)\\]\\]`,
+    'gi'
+  );
+
+  let modified = 0;
+  const walk = (dir) => {
+    let items;
+    try { items = fs.readdirSync(dir); } catch { return; }
+    for (const item of items) {
+      if (item.startsWith('.') || SKIP_RENAME_DIRS.has(item)) continue;
+      const fullPath = path.join(dir, item);
+      let stat;
+      try { stat = fs.statSync(fullPath); } catch { continue; }
+      if (stat.isDirectory()) {
+        walk(fullPath);
+        continue;
+      }
+      if (!isMarkdownPath(fullPath)) continue;
+      let content;
+      try { content = fs.readFileSync(fullPath, 'utf-8'); } catch { continue; }
+      if (!re.test(content)) continue;
+      re.lastIndex = 0;
+      const updated = content.replace(re, (_m, _name, suffix) => `[[${newBasename}${suffix || ''}]]`);
+      if (updated !== content) {
+        try {
+          fs.writeFileSync(fullPath, updated, 'utf-8');
+          modified++;
+        } catch {}
+      }
+      re.lastIndex = 0;
+    }
+  };
+  walk(bucketRoot);
+  return modified;
 }
 
 function createFileService({ state, bus, configStore }) {
@@ -342,7 +396,18 @@ Questions?
       // Update mtime to avoid detecting our own save as external change
       state.lastKnownMtime = fs.statSync(state.currentFilePath).mtimeMs;
 
+      // Live-index wikilinks for the active document.
+      try {
+        const bucketRoot = state.currentProjectRoot;
+        if (bucketRoot && isMarkdownPath(state.currentFilePath) && state.currentFilePath.startsWith(bucketRoot)) {
+          wiki.indexSingleFile(bucketRoot, state.currentFilePath);
+          bus.send('wiki-changed', { type: 'file', path: state.currentFilePath });
+          bus.sendToTerminal('wiki-changed', { type: 'file', path: state.currentFilePath });
+        }
+      } catch {}
+
       bus.getMainWindow()?.setTitle(`${path.basename(state.currentFilePath)} - Vomit`);
+      bus.send('file-saved', { filePath: state.currentFilePath });
     } catch (err) {
       dialog.showErrorBox('Error', `Failed to save file: ${err.message}`);
     }
@@ -569,6 +634,125 @@ Questions?
       return { tags };
     });
 
+    // Scan all markdown files for checkbox todos
+    ipcMain.handle('get-all-todos', async () => {
+      const bucketPath = configStore.getBucketPath();
+      if (!bucketPath) return { open: [], done: [], counts: { open: 0, done: 0, total: 0 } };
+
+      const todos = [];
+      const maxFileSize = 1024 * 1024;
+
+      function stripFrontmatter(lines) {
+        if (lines[0]?.trim() !== '---') return new Set();
+        const skip = new Set([0]);
+        for (let i = 1; i < lines.length; i++) {
+          skip.add(i);
+          if (lines[i].trim() === '---') break;
+        }
+        return skip;
+      }
+
+      function parseTodoText(rawText) {
+        const dueMatch = rawText.match(/(?:^|\s)@(\d{4}-\d{2}-\d{2})(?=\s|$)/);
+        const priorityMatch = rawText.match(/(?:^|\s)!(high|medium|low)(?=\s|$)/i);
+        const tags = Array.from(rawText.matchAll(/(?:^|\s)#([A-Za-z0-9_-]+)/g)).map(match => match[1]);
+        const text = rawText
+          .replace(/(?:^|\s)@\d{4}-\d{2}-\d{2}(?=\s|$)/g, ' ')
+          .replace(/(?:^|\s)!(high|medium|low)(?=\s|$)/gi, ' ')
+          .replace(/(?:^|\s)#[A-Za-z0-9_-]+/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+
+        return {
+          text: text || rawText.trim(),
+          due: dueMatch ? dueMatch[1] : null,
+          priority: priorityMatch ? priorityMatch[1].toLowerCase() : null,
+          tags
+        };
+      }
+
+      function parseTodos(content, filePath) {
+        const lines = content.split(/\r?\n/);
+        const frontmatterLines = stripFrontmatter(lines);
+        const found = [];
+        let inFence = false;
+
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i];
+          if (frontmatterLines.has(i)) continue;
+
+          if (/^\s*(```|~~~)/.test(line)) {
+            inFence = !inFence;
+            continue;
+          }
+          if (inFence) continue;
+
+          const match = line.match(/^(\s*)[-*+]\s+\[([ xX])\]\s?(.*)$/);
+          if (!match) continue;
+
+          const metadata = parseTodoText(match[3]);
+          const checked = match[2].toLowerCase() === 'x';
+          found.push({
+            text: metadata.text,
+            rawText: match[3],
+            checked,
+            due: metadata.due,
+            priority: metadata.priority,
+            tags: metadata.tags,
+            line: i + 1,
+            indent: match[1].length,
+            file: path.basename(filePath),
+            relativePath: path.relative(bucketPath, filePath),
+            path: filePath
+          });
+        }
+
+        return found;
+      }
+
+      function walk(dir) {
+        try {
+          const entries = fs.readdirSync(dir, { withFileTypes: true });
+          for (const entry of entries) {
+            if (entry.name.startsWith('.') || entry.name === 'node_modules' || entry.name === 'pseudonymized') continue;
+            const fullPath = path.join(dir, entry.name);
+            if (entry.isDirectory()) {
+              walk(fullPath);
+            } else if (entry.name.endsWith('.md') || entry.name.endsWith('.markdown')) {
+              try {
+                const stat = fs.statSync(fullPath);
+                if (stat.size > maxFileSize) continue;
+                const content = fs.readFileSync(fullPath, 'utf-8');
+                todos.push(...parseTodos(content, fullPath));
+              } catch (e) {}
+            }
+          }
+        } catch (e) {}
+      }
+
+      walk(bucketPath);
+
+      const priorityRank = { high: 0, medium: 1, low: 2 };
+      const sortTodos = (a, b) => {
+        if (!!a.due !== !!b.due) return a.due ? -1 : 1;
+        if (a.due && b.due && a.due !== b.due) return a.due.localeCompare(b.due);
+        const ap = priorityRank[a.priority] ?? 3;
+        const bp = priorityRank[b.priority] ?? 3;
+        if (ap !== bp) return ap - bp;
+        const fileCompare = a.relativePath.localeCompare(b.relativePath);
+        if (fileCompare !== 0) return fileCompare;
+        return a.line - b.line;
+      };
+
+      const open = todos.filter(todo => !todo.checked).sort(sortTodos);
+      const done = todos.filter(todo => todo.checked).sort(sortTodos);
+      return {
+        open,
+        done,
+        counts: { open: open.length, done: done.length, total: todos.length }
+      };
+    });
+
     // Rename file or folder
     ipcMain.handle('rename-item', async (event, oldPath, newName) => {
       try {
@@ -579,6 +763,10 @@ Questions?
           return { success: false, error: 'A file with that name already exists' };
         }
 
+        const wasMarkdown = isMarkdownPath(oldPath);
+        const oldBasename = path.basename(oldPath, path.extname(oldPath));
+        const newBasename = path.basename(newName, path.extname(newName));
+
         fs.renameSync(oldPath, newPath);
 
         // Update currentFilePath if we renamed the open file
@@ -587,7 +775,29 @@ Questions?
           bus.getMainWindow()?.setTitle(`${path.basename(newPath)} - Vomit`);
         }
 
-        return { success: true, newPath };
+        // Wikilink rename refactor: update every [[oldBasename]] reference
+        // inside the active bucket so links keep resolving. Only for
+        // markdown→markdown renames and only when the basename actually
+        // changed (case-sensitive match for safety).
+        let updatedFiles = 0;
+        const bucketRoot = state.currentProjectRoot;
+        const stillMarkdown = isMarkdownPath(newPath);
+        const inBucket = bucketRoot && newPath.startsWith(bucketRoot);
+        if (wasMarkdown && stillMarkdown && inBucket && oldBasename !== newBasename) {
+          updatedFiles = updateWikilinkReferences(bucketRoot, oldBasename, newBasename);
+          // Reindex the renamed file under its new path and re-resolve
+          // anything that referenced the old name.
+          try {
+            wiki.indexSingleFile(bucketRoot, newPath);
+            // Also clean up the old path's notes row if it still hangs around.
+            // indexSingleFile handles deletion when the file is missing.
+            wiki.indexSingleFile(bucketRoot, oldPath);
+            bus.send('wiki-changed', { type: 'rename', oldPath, newPath });
+            bus.sendToTerminal('wiki-changed', { type: 'rename', oldPath, newPath });
+          } catch {}
+        }
+
+        return { success: true, newPath, wikilinksUpdated: updatedFiles };
       } catch (err) {
         return { success: false, error: err.message };
       }
@@ -769,6 +979,18 @@ Questions?
           fs.mkdirSync(dir, { recursive: true });
         }
         fs.writeFileSync(filePath, content, 'utf-8');
+
+        // Live-index this file for wikilinks (only markdown, only inside the
+        // active bucket). Best-effort — never block the save.
+        try {
+          const bucketRoot = state.currentProjectRoot;
+          if (bucketRoot && isMarkdownPath(filePath) && filePath.startsWith(bucketRoot)) {
+            wiki.indexSingleFile(bucketRoot, filePath);
+            bus.send('wiki-changed', { type: 'file', path: filePath });
+            bus.sendToTerminal('wiki-changed', { type: 'file', path: filePath });
+          }
+        } catch {}
+
         return true;
       } catch (err) {
         throw new Error(`Failed to write file: ${err.message}`);

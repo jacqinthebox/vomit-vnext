@@ -40,6 +40,7 @@ class CommandPaletteManager {
       { section: 'View', label: 'Find and Replace', shortcut: '⌘⌥F', action: () => this.host.cm.execCommand('replace') },
       { section: 'View', label: 'Search in Files', shortcut: '⌘⇧F', action: () => actions.searchManager.toggleSearch() },
       { section: 'View', label: 'Toggle Tag Explorer', action: () => actions.tagExplorerManager.toggleTagExplorer() },
+      { section: 'View', label: 'Toggle Todo Explorer', action: () => actions.todoExplorerManager.toggleTodoExplorer() },
       { section: 'View', label: 'Sort by Name', action: async () => {
         await window.vomit.setFileSortOrder('name');
         window.dispatchEvent(new CustomEvent('vomit:sort-order-changed', { detail: 'name' }));
@@ -56,6 +57,7 @@ class CommandPaletteManager {
       { section: 'Format', label: 'Link', shortcut: '⌘K', action: () => actions.formatting.insertLink() },
       { section: 'Format', label: 'Insert Table', action: () => actions.formatting.insertTable() },
       { section: 'Format', label: 'Format Table', shortcut: '⌘⇧T', action: () => actions.formatting.formatTable() },
+      { section: 'Format', label: 'Toggle Todo', shortcut: '⌘⇧↵', action: () => actions.formatting.toggleTodoLine() },
       { section: 'Format', label: 'Heading 1', shortcut: '⌘⇧1', action: () => actions.formatting.insertAtLineStart('# ') },
       { section: 'Format', label: 'Heading 2', shortcut: '⌘⇧2', action: () => actions.formatting.insertAtLineStart('## ') },
       { section: 'Format', label: 'Heading 3', shortcut: '⌘⇧3', action: () => actions.formatting.insertAtLineStart('### ') },

@@ -32,3 +32,9 @@ dist/
 .omegon/
 ai/
 SCR-*.png
+
+# Internal reports / planning docs (not shipped)
+SHIPPING_PLAN.md
+
+# Local screenshots used while iterating
+terminal.png

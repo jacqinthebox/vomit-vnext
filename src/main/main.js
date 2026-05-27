@@ -9,10 +9,12 @@ const { createWindowManager } = require('./services/windowManager');
 const { createFileService } = require('./ipc/handlers/file');
 const { createPresentationService } = require('./ipc/handlers/presentation');
 const { createBucketService } = require('./ipc/handlers/bucket');
+const { createTerminalService } = require('./ipc/handlers/terminal');
 const aiHandlers = require('./ipc/handlers/ai');
 const agentHandlers = require('./ipc/handlers/agent');
 const shellHandlers = require('./ipc/handlers/shell');
 const rag = require('./rag');
+const wiki = require('./wiki');
 const menuModule = require('./menu');
 
 // Set app name for About dialog
@@ -41,6 +43,10 @@ const presentationService = createPresentationService({
 
 const bucketService = createBucketService({
   state, bus, configStore, menuModule
+});
+
+const terminalService = createTerminalService({
+  state, bus, windowManager
 });
 
 // Register menu module with all action references
@@ -73,10 +79,12 @@ menuModule.register({
 fileService.registerHandlers(ipcMain);
 presentationService.registerHandlers(ipcMain);
 bucketService.registerHandlers(ipcMain);
-aiHandlers.registerHandlers(ipcMain, { state, bus, configStore });
-agentHandlers.registerHandlers(ipcMain, { state, bus, configStore });
-shellHandlers.registerHandlers(ipcMain, { state, bus });
+terminalService.registerHandlers(ipcMain);
+aiHandlers.registerHandlers(ipcMain, { state, bus, configStore, terminalService });
+agentHandlers.registerHandlers(ipcMain, { state, bus, configStore, terminalService });
+shellHandlers.registerHandlers(ipcMain, { state, bus, terminalService });
 rag.registerHandlers(ipcMain, { state, bus });
+wiki.registerHandlers(ipcMain, { state, bus });
 
 // App info handler
 ipcMain.handle('get-app-version', () => app.getVersion());
@@ -200,6 +208,15 @@ app.whenReady().then(async () => {
   bus.getMainWindow().webContents.on('did-finish-load', () => {
     bus.send('open-folder', activeBucket.path);
     bus.getMainWindow()?.setTitle(`${activeBucket.name} - Vomit`);
+
+    // Build the wikilink index in the background so [[ autocomplete and the
+    // backlinks panel work immediately. Best-effort — never blocks startup.
+    setTimeout(() => {
+      wiki.indexBucket(activeBucket.path).then(() => {
+        bus.send('wiki-changed', { type: 'reindex' });
+        bus.sendToTerminal('wiki-changed', { type: 'reindex' });
+      }).catch(() => {});
+    }, 500);
   });
 
   // Check for updates after a short delay (only once on startup)

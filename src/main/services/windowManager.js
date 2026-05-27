@@ -68,6 +68,7 @@ function createWindowManager({ state, bus, getSaveFileAs }) {
       bus.setMainWindow(null);
       if (bus.getPresentationWindow()) bus.getPresentationWindow().close();
       if (bus.getPresenterWindow()) bus.getPresenterWindow().close();
+      if (bus.getTerminalWindow()) bus.getTerminalWindow().close();
     });
 
     bus.getMainWindow().webContents.on('did-finish-load', () => {
@@ -196,7 +197,36 @@ function createWindowManager({ state, bus, getSaveFileAs }) {
     return bus.getDocumentationWindow();
   }
 
-  return { createMainWindow, createNewEditorWindow, createPresentationWindow, createPresenterWindow, createDocumentationWindow };
+  function createTerminalWindow() {
+    bus.setTerminalWindow(new BrowserWindow({
+      width: 900,
+      height: 500,
+      minWidth: 600,
+      minHeight: 300,
+      title: 'Terminal',
+      webPreferences: {
+        preload: path.join(mainDir, 'preload.js'),
+        contextIsolation: true,
+        nodeIntegration: false
+      },
+      backgroundColor: '#1e1e1e'
+    }));
+
+    bus.getTerminalWindow().loadFile(path.join(mainDir, '../renderer/terminal.html'));
+
+    bus.getTerminalWindow().on('closed', () => {
+      bus.setTerminalWindow(null);
+      state.isTerminalDetached = false;
+      // Notify the main renderer so it restores the in-window terminal panel
+      // and the detach/reattach button — without this, closing the detached
+      // window via the OS X button leaves main stuck in "detached" mode.
+      bus.send('terminal-reattached');
+    });
+
+    return bus.getTerminalWindow();
+  }
+
+  return { createMainWindow, createNewEditorWindow, createPresentationWindow, createPresenterWindow, createDocumentationWindow, createTerminalWindow };
 }
 
 module.exports = { createWindowManager };

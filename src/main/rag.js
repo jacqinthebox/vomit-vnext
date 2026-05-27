@@ -52,7 +52,14 @@ async function getEmbedding(text) {
   }
 }
 
-// Get or create SQLite database for a folder
+function getRAGDatabasePath(folderPath) {
+  const configDir = path.join(os.homedir(), '.config', 'vomit', 'rag');
+  const pathHash = crypto.createHash('md5').update(folderPath).digest('hex').substring(0, 12);
+  const folderName = path.basename(folderPath);
+  return path.join(configDir, `${folderName}-${pathHash}.db`);
+}
+
+// Get or create SQLite database for a bucket
 function getRAGDatabase(folderPath) {
   // Store in ~/.config/vomit/rag/ using hash of project path
   const configDir = path.join(os.homedir(), '.config', 'vomit', 'rag');
@@ -60,10 +67,7 @@ function getRAGDatabase(folderPath) {
     fs.mkdirSync(configDir, { recursive: true });
   }
 
-  // Create a short hash of the folder path for the db filename
-  const pathHash = crypto.createHash('md5').update(folderPath).digest('hex').substring(0, 12);
-  const folderName = path.basename(folderPath);
-  const dbPath = path.join(configDir, `${folderName}-${pathHash}.db`);
+  const dbPath = getRAGDatabasePath(folderPath);
 
   const db = new Database(dbPath);
 
@@ -83,10 +87,25 @@ function getRAGDatabase(folderPath) {
   return db;
 }
 
-// Index all documents in a folder
+function clearRAGDatabase(folderPath) {
+  const dbPath = getRAGDatabasePath(folderPath);
+  const files = [dbPath, `${dbPath}-wal`, `${dbPath}-shm`];
+  let deleted = 0;
+
+  for (const filePath of files) {
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+      deleted++;
+    }
+  }
+
+  return { deleted, dbPath };
+}
+
+// Index all documents in a bucket, or refresh one folder/file within the bucket.
 async function indexFolder(projectRoot, targetPath, progressCallback) {
   const extensions = ['.md', '.txt', '.js', '.ts', '.py', '.json', '.yaml', '.yml', '.xml', '.html', '.css', '.tf', '.sh', '.tpl'];
-  // Always store database in project root
+  // Always store database at bucket scope
   const db = getRAGDatabase(projectRoot);
 
   // Check if targetPath is a single file or a directory
@@ -95,7 +114,7 @@ async function indexFolder(projectRoot, targetPath, progressCallback) {
     targetStat = fs.statSync(targetPath);
   } catch (err) {
     if (err.code === 'ENOENT') {
-      throw new Error(`Path not found: "${targetPath}"\nUse /index without arguments to index the entire project.`);
+      throw new Error(`Path not found: "${targetPath}"\nUse /index without arguments to index the current bucket.`);
     }
     throw err;
   }
@@ -106,11 +125,11 @@ async function indexFolder(projectRoot, targetPath, progressCallback) {
     const relativePath = path.relative(projectRoot, targetPath);
     db.prepare('DELETE FROM chunks WHERE file_path = ?').run(relativePath);
   } else {
-    // If indexing a subfolder, only clear chunks from that subfolder
-    const isSubfolder = targetPath !== projectRoot;
-    if (isSubfolder) {
-      const subfolderPrefix = path.relative(projectRoot, targetPath);
-      db.prepare('DELETE FROM chunks WHERE file_path LIKE ?').run(`${subfolderPrefix}%`);
+    // If refreshing a folder, only clear chunks from that folder.
+    const isFolderRefresh = targetPath !== projectRoot;
+    if (isFolderRefresh) {
+      const folderPrefix = path.relative(projectRoot, targetPath);
+      db.prepare('DELETE FROM chunks WHERE file_path LIKE ?').run(`${folderPrefix}%`);
     } else {
       // Clear entire index when indexing full project
       db.exec('DELETE FROM chunks');
@@ -184,13 +203,12 @@ async function indexFolder(projectRoot, targetPath, progressCallback) {
   return { chunksIndexed, filesProcessed: processed };
 }
 
-// Search for similar chunks
-async function searchIndex(query, folderPath, topK = 5) {
+// Search for similar chunks. Optionally expands results with one hop of
+// wikilink neighbours so questions about a note pick up context from the
+// notes it references (and that reference it).
+async function searchIndex(query, folderPath, topK = 5, opts = {}) {
   // Check if db exists in ~/.config/vomit/rag/
-  const configDir = path.join(os.homedir(), '.config', 'vomit', 'rag');
-  const pathHash = crypto.createHash('md5').update(folderPath).digest('hex').substring(0, 12);
-  const folderName = path.basename(folderPath);
-  const dbPath = path.join(configDir, `${folderName}-${pathHash}.db`);
+  const dbPath = getRAGDatabasePath(folderPath);
 
   if (!fs.existsSync(dbPath)) {
     return { error: 'not_indexed' };
@@ -208,21 +226,85 @@ async function searchIndex(query, folderPath, topK = 5) {
   const similarities = rows.map(row => ({
     similarity: cosineSimilarity(queryEmbedding, JSON.parse(row.embedding)),
     chunk: row.content,
-    metadata: { file: row.file_path, chunkIndex: row.chunk_index }
+    metadata: { file: row.file_path, chunkIndex: row.chunk_index, source: 'similarity' }
   }));
 
   db.close();
 
   // Sort by similarity and take top K
   similarities.sort((a, b) => b.similarity - a.similarity);
-  return similarities.slice(0, topK);
+  const top = similarities.slice(0, topK);
+
+  // Wiki-link expansion: include one extra chunk per neighbour note (out- and
+  // in-links of the files in `top`). Capped to avoid exploding the prompt.
+  if (opts.expandWithWiki !== false) {
+    const wiki = require('./wiki');
+    const wikiDbPath = wiki.getWikiDatabasePath(folderPath);
+    if (fs.existsSync(wikiDbPath)) {
+      try {
+        const wDb = new Database(wikiDbPath);
+        try {
+          const seenFiles = new Set(top.map(t => t.metadata.file));
+          const neighbourPaths = new Set();
+
+          for (const t of top) {
+            const absSource = path.resolve(folderPath, t.metadata.file);
+            // Outbound: links from this file to resolved targets
+            const outRows = wDb.prepare(
+              'SELECT DISTINCT target_path FROM wikilinks WHERE source_path = ? AND target_path IS NOT NULL'
+            ).all(absSource);
+            for (const r of outRows) {
+              const rel = path.relative(folderPath, r.target_path);
+              if (!seenFiles.has(rel)) neighbourPaths.add(rel);
+            }
+            // Inbound: files that link to this file
+            const inRows = wDb.prepare(
+              'SELECT DISTINCT source_path FROM wikilinks WHERE target_path = ?'
+            ).all(absSource);
+            for (const r of inRows) {
+              const rel = path.relative(folderPath, r.source_path);
+              if (!seenFiles.has(rel)) neighbourPaths.add(rel);
+            }
+          }
+
+          const maxExtra = typeof opts.maxNeighbourChunks === 'number' ? opts.maxNeighbourChunks : 3;
+          if (neighbourPaths.size > 0 && maxExtra > 0) {
+            // For each neighbour, pick its single best-scoring chunk.
+            const byFile = new Map();
+            for (const s of similarities) {
+              const f = s.metadata.file;
+              if (!neighbourPaths.has(f)) continue;
+              if (!byFile.has(f) || byFile.get(f).similarity < s.similarity) {
+                byFile.set(f, s);
+              }
+            }
+            const extras = [...byFile.values()]
+              .sort((a, b) => b.similarity - a.similarity)
+              .slice(0, maxExtra)
+              .map(e => ({
+                similarity: e.similarity,
+                chunk: e.chunk,
+                metadata: { ...e.metadata, source: 'wikilink' }
+              }));
+            top.push(...extras);
+          }
+        } finally {
+          wDb.close();
+        }
+      } catch {
+        // Wiki expansion is best-effort; never fail a RAG search because of it.
+      }
+    }
+  }
+
+  return top;
 }
 
 /**
  * Register RAG IPC handlers
  */
 function registerHandlers(ipcMain, { state, bus }) {
-  // RAG: Index folder
+  // RAG: Index bucket, or refresh one folder/file within the bucket
   ipcMain.handle('rag-index', async (event, projectRoot, targetPath) => {
     if (!state.availableAITools.ollama) {
       return { error: 'Ollama not installed' };
@@ -233,9 +315,12 @@ function registerHandlers(ipcMain, { state, bus }) {
       return { error: 'nomic-embed-text model not found. Run: ollama pull nomic-embed-text' };
     }
 
-    // Send progress updates to renderer
+    // Send progress updates to both the main window and the detached
+    // terminal window so /index status lines appear wherever the user
+    // is looking.
     const progressCallback = (progress) => {
       bus.send('rag-progress', progress);
+      bus.sendToTerminal('rag-progress', progress);
     };
 
     try {
@@ -243,6 +328,16 @@ function registerHandlers(ipcMain, { state, bus }) {
       return { success: true, indexed: result.chunksIndexed, files: result.filesProcessed };
     } catch (e) {
       return { error: e.message };
+    }
+  });
+
+  // RAG: Clear current bucket index
+  ipcMain.handle('rag-clear', async (event, folderPath) => {
+    try {
+      const result = clearRAGDatabase(folderPath);
+      return { success: true, deleted: result.deleted };
+    } catch (e) {
+      return { success: false, error: e.message };
     }
   });
 
@@ -261,7 +356,8 @@ function registerHandlers(ipcMain, { state, bus }) {
       const chunks = results.map(r => ({
         file: r.metadata.file,
         content: r.chunk,
-        similarity: r.similarity
+        similarity: r.similarity,
+        source: r.metadata.source || 'similarity'
       }));
       return { success: true, chunks };
     } catch (e) {
@@ -274,7 +370,9 @@ module.exports = {
   chunkText,
   cosineSimilarity,
   getEmbedding,
+  getRAGDatabasePath,
   getRAGDatabase,
+  clearRAGDatabase,
   indexFolder,
   searchIndex,
   registerHandlers

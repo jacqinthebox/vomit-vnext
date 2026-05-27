@@ -240,7 +240,7 @@ async function executeAgentTool(toolName, args, cwd, configStore) {
 }
 
 // Streaming Ollama request that collects the full response
-function streamOllamaChat(model, messages, tools, bus, abortCheck) {
+function streamOllamaChat(model, messages, tools, sendOutput, abortCheck) {
   return new Promise((resolve, reject) => {
     const requestBody = JSON.stringify({
       model,
@@ -290,7 +290,7 @@ function streamOllamaChat(model, messages, tools, bus, abortCheck) {
             const json = JSON.parse(line);
             if (json.message && json.message.content) {
               contentSoFar += json.message.content;
-              bus.send('claude-output', json.message.content);
+              sendOutput('claude-output', json.message.content);
             }
             if (json.message && json.message.tool_calls) {
               toolCalls = json.message.tool_calls;
@@ -315,7 +315,7 @@ function streamOllamaChat(model, messages, tools, bus, abortCheck) {
             const json = JSON.parse(buffer);
             if (json.message && json.message.content) {
               contentSoFar += json.message.content;
-              bus.send('claude-output', json.message.content);
+              sendOutput('claude-output', json.message.content);
             }
             if (json.message && json.message.tool_calls) {
               toolCalls = json.message.tool_calls;
@@ -346,9 +346,14 @@ const MAX_HISTORY = 40;
 /**
  * Register agent IPC handlers.
  * @param {import('electron').IpcMain} ipcMain
- * @param {{ state: import('../../services/sessionState').SessionState, bus: import('../rendererBus').RendererBus, configStore: typeof import('../../services/configStore') }} deps
+ * @param {{ state: import('../../services/sessionState').SessionState, bus: import('../rendererBus').RendererBus, configStore: typeof import('../../services/configStore'), terminalService: ReturnType<import('./terminal').createTerminalService> }} deps
  */
-function registerHandlers(ipcMain, { state, bus, configStore }) {
+function registerHandlers(ipcMain, { state, bus, configStore, terminalService }) {
+  // Broadcast helper — sends to both the main window and the detached terminal
+  // window so that streamed agent output shows up wherever the user is looking.
+  const sendOutput = terminalService
+    ? (channel, ...args) => terminalService.syncTerminalOutput(channel, ...args)
+    : (channel, ...args) => bus.send(channel, ...args);
   // Cache for model context lengths
   const modelContextCache = {};
 
@@ -418,8 +423,8 @@ function registerHandlers(ipcMain, { state, bus, configStore }) {
   ipcMain.handle('agent-execute', async (event, prompt, cwd) => {
     const ollamaModel = configStore.getOllamaModel();
     if (!ollamaModel) {
-      bus.send('claude-error', 'No AI model selected. Select one from the AI menu.\n');
-      bus.send('claude-done', 1);
+      sendOutput('claude-error', 'No AI model selected. Select one from the AI menu.\n');
+      sendOutput('claude-done', 1);
       return 1;
     }
 
@@ -429,8 +434,8 @@ function registerHandlers(ipcMain, { state, bus, configStore }) {
     // Check for /clear command to reset conversation
     if (prompt.trim().toLowerCase() === 'clear' || prompt.trim().toLowerCase() === '/clear') {
       state.agentConversationHistory = [];
-      bus.send('claude-output', 'Conversation history cleared.\n');
-      bus.send('claude-done', 0);
+      sendOutput('claude-output', 'Conversation history cleared.\n');
+      sendOutput('claude-done', 0);
       return 0;
     }
 
@@ -460,7 +465,7 @@ After using tools, provide a summary of what you did. You have access to convers
 
         // Stream Ollama response
         const assistantMessage = await streamOllamaChat(
-          ollamaModel, messages, agentTools, bus,
+          ollamaModel, messages, agentTools, sendOutput,
           () => state.agentAborted
         );
 
@@ -511,7 +516,7 @@ After using tools, provide a summary of what you did. You have access to convers
             const toolArgs = toolCall.function.arguments;
 
             // Show tool call in terminal
-            bus.send('claude-output', `\n▶ ${toolName}: ${JSON.stringify(toolArgs)}\n`);
+            sendOutput('claude-output', `\n▶ ${toolName}: ${JSON.stringify(toolArgs)}\n`);
 
             // Execute the tool
             const toolResult = await executeAgentTool(toolName, toolArgs, workingDir, configStore);
@@ -520,7 +525,7 @@ After using tools, provide a summary of what you did. You have access to convers
             const displayResult = toolResult.length > 2000
               ? toolResult.substring(0, 2000) + '\n... (truncated)'
               : toolResult;
-            bus.send('claude-output', `${displayResult}\n`);
+            sendOutput('claude-output', `${displayResult}\n`);
 
             // Add tool result to messages (for current loop)
             messages.push({
@@ -547,7 +552,7 @@ After using tools, provide a summary of what you did. You have access to convers
       }
 
       if (iterations >= maxIterations) {
-        bus.send('claude-output', '\n(Reached maximum iterations)\n');
+        sendOutput('claude-output', '\n(Reached maximum iterations)\n');
       }
 
       // Limit conversation history to prevent context overflow
@@ -557,11 +562,12 @@ After using tools, provide a summary of what you did. You have access to convers
 
       // Notify renderer to update context stats
       bus.send('context-stats-updated');
-      bus.send('claude-done', 0);
+      bus.sendToTerminal('context-stats-updated');
+      sendOutput('claude-done', 0);
       return 0;
     } catch (e) {
-      bus.send('claude-error', `Agent error: ${e.message}\n`);
-      bus.send('claude-done', 1);
+      sendOutput('claude-error', `Agent error: ${e.message}\n`);
+      sendOutput('claude-done', 1);
       return 1;
     }
   });
@@ -570,6 +576,7 @@ After using tools, provide a summary of what you did. You have access to convers
   ipcMain.on('agent-clear-history', () => {
     state.agentConversationHistory = [];
     bus.send('context-stats-updated');
+    bus.sendToTerminal('context-stats-updated');
   });
 }
 

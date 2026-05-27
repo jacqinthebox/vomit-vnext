@@ -26,6 +26,7 @@ class EditorState extends EventTarget {
     this._isOutlineVisible = false;
     this._isSearchVisible = false;
     this._isTagExplorerVisible = false;
+    this._isTodoExplorerVisible = false;
     this._isRightOutlineVisible = false;
     this._focusedPane = 'editor'; // 'editor' | 'sidebar'
 
@@ -34,6 +35,8 @@ class EditorState extends EventTarget {
     this._activeTerminalTab = 'ai'; // 'ai' | 'shell'
     this._isClaudeRunning = false;
     this._isShellRunning = false;
+    this._isTerminalDetached = false;
+    this._terminalHeight = 300;
 
     // File tree cache
     this.expandedFolders = new Set();
@@ -156,6 +159,13 @@ class EditorState extends EventTarget {
     if (!!v !== old) this._notify('isTagExplorerVisible', !!v, old);
   }
 
+  get isTodoExplorerVisible() { return this._isTodoExplorerVisible; }
+  set isTodoExplorerVisible(v) {
+    const old = this._isTodoExplorerVisible;
+    this._isTodoExplorerVisible = !!v;
+    if (!!v !== old) this._notify('isTodoExplorerVisible', !!v, old);
+  }
+
   get isRightOutlineVisible() { return this._isRightOutlineVisible; }
   set isRightOutlineVisible(v) {
     const old = this._isRightOutlineVisible;
@@ -197,5 +207,19 @@ class EditorState extends EventTarget {
     const old = this._isShellRunning;
     this._isShellRunning = !!v;
     if (!!v !== old) this._notify('isShellRunning', !!v, old);
+  }
+
+  get isTerminalDetached() { return this._isTerminalDetached; }
+  set isTerminalDetached(v) {
+    const old = this._isTerminalDetached;
+    this._isTerminalDetached = !!v;
+    if (!!v !== old) this._notify('isTerminalDetached', !!v, old);
+  }
+
+  get terminalHeight() { return this._terminalHeight; }
+  set terminalHeight(v) {
+    const old = this._terminalHeight;
+    this._terminalHeight = v;
+    if (v !== old) this._notify('terminalHeight', v, old);
   }
 }

@@ -6,9 +6,9 @@ const pty = require('node-pty');
 /**
  * Register shell terminal IPC handlers.
  * @param {import('electron').IpcMain} ipcMain
- * @param {{ state: import('../../services/sessionState').SessionState, bus: import('../../ipc/rendererBus').RendererBus }} deps
+ * @param {{ state: import('../../services/sessionState').SessionState, bus: import('../../ipc/rendererBus').RendererBus, terminalService: ReturnType<import('./terminal').createTerminalService> }} deps
  */
-function registerHandlers(ipcMain, { state, bus }) {
+function registerHandlers(ipcMain, { state, bus, terminalService }) {
   ipcMain.handle('shell-spawn', async (event, cwd) => {
     // Kill any existing shell process
     if (state.shellProcess) {
@@ -28,12 +28,12 @@ function registerHandlers(ipcMain, { state, bus }) {
     });
 
     state.shellProcess.onData((data) => {
-      bus.send('shell-output', data);
+      terminalService.syncTerminalOutput('shell-output', data);
     });
 
     state.shellProcess.onExit(({ exitCode }) => {
       state.shellProcess = null;
-      bus.send('shell-exit', exitCode);
+      terminalService.syncTerminalOutput('shell-exit', exitCode);
     });
 
     return 0;
@@ -49,7 +49,7 @@ function registerHandlers(ipcMain, { state, bus }) {
     if (state.shellProcess) {
       state.shellProcess.kill();
       state.shellProcess = null;
-      bus.send('shell-exit', -1);
+      terminalService.syncTerminalOutput('shell-exit', -1);
     }
   });
 

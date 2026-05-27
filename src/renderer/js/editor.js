@@ -12,6 +12,7 @@ class Editor {
     this.sidebarOutline = document.getElementById('sidebar-outline');
     this.sidebarSearch = document.getElementById('sidebar-search');
     this.sidebarTags = document.getElementById('sidebar-tags');
+    this.sidebarTodos = document.getElementById('sidebar-todos');
     this.outlineList = document.getElementById('outline-list');
     this.rightOutline = document.getElementById('right-outline');
     this.rightOutlineList = document.getElementById('right-outline-list');
@@ -38,6 +39,7 @@ class Editor {
         sidebarFiles: this.sidebarFiles,
         sidebarOutline: this.sidebarOutline,
         sidebarTags: this.sidebarTags,
+        sidebarTodos: this.sidebarTodos,
         fileTree: this.fileTree,
         outlineList: this.outlineList,
         previewPane: this.previewPane
@@ -59,6 +61,16 @@ class Editor {
         rightSidebarResize: this.rightSidebarResize
       }
     });
+    this.backlinksManager = new BacklinksManager({
+      state: this.state,
+      host: this.host,
+      dom: {
+        rightOutline: this.rightOutline
+      }
+    });
+    this.wikiGraphManager = new WikiGraphManager({
+      state: this.state
+    });
     this.terminalManager = new TerminalManager({
       state: this.state,
       host: this.host,
@@ -68,6 +80,7 @@ class Editor {
         terminalClear: document.getElementById('terminal-clear'),
         terminalStop: document.getElementById('terminal-stop'),
         terminalClose: document.getElementById('terminal-close'),
+        terminalDetach: document.getElementById('terminal-detach'),
         terminalTabs: document.querySelectorAll('.terminal-tab'),
         aiTerminalContent: document.getElementById('ai-terminal-content'),
         terminalOutput: document.getElementById('terminal-output'),
@@ -88,6 +101,7 @@ class Editor {
         sidebarOutline: this.sidebarOutline,
         sidebarSearch: this.sidebarSearch,
         sidebarTags: this.sidebarTags,
+        sidebarTodos: this.sidebarTodos,
         fileTree: this.fileTree,
         sidebarResize: this.sidebarResize
       },
@@ -101,8 +115,21 @@ class Editor {
         sidebarFiles: this.sidebarFiles,
         sidebarOutline: this.sidebarOutline,
         sidebarSearch: this.sidebarSearch,
+        sidebarTodos: this.sidebarTodos,
         sidebarResize: this.sidebarResize,
         tagList: document.getElementById('tag-list')
+      }
+    });
+    this.todoExplorerManager = new TodoExplorerManager({
+      state: this.state,
+      dom: {
+        sidebarTodos: this.sidebarTodos,
+        sidebarFiles: this.sidebarFiles,
+        sidebarOutline: this.sidebarOutline,
+        sidebarSearch: this.sidebarSearch,
+        sidebarTags: this.sidebarTags,
+        sidebarResize: this.sidebarResize,
+        todoList: document.getElementById('todo-list')
       }
     });
     this.settingsManager = new SettingsManager({
@@ -114,6 +141,7 @@ class Editor {
         sidebarOutline: this.sidebarOutline,
         sidebarSearch: this.sidebarSearch,
         sidebarTags: this.sidebarTags,
+        sidebarTodos: this.sidebarTodos,
         rightSidebarResize: this.rightSidebarResize,
         rightOutline: this.rightOutline
       },
@@ -129,6 +157,8 @@ class Editor {
         searchManager: this.searchManager,
         previewManager: this.previewManager,
         fileTreeManager: this.fileTreeManager,
+        tagExplorerManager: this.tagExplorerManager,
+        todoExplorerManager: this.todoExplorerManager,
         settingsManager: this.settingsManager,
         getValue: () => this.getValue(),
       })
@@ -148,8 +178,10 @@ class Editor {
     this.terminalManager.setupTerminal();
     this.terminalManager.setupShellTerminal();
     this.terminalManager.setupIPC();
+    this.terminalManager._setupDetachedContextSync();
     this.setupIPC();
     this.setupMultiCursor();
+    this._attachWikilinkAutocomplete();
 
     // Display app version in status bar
     this.displayVersion();
@@ -217,6 +249,8 @@ class Editor {
         'Ctrl-K': () => this.formatting.insertLink(),
         'Shift-Cmd-T': () => this.formatting.formatTable(),
         'Shift-Ctrl-T': () => this.formatting.formatTable(),
+        'Shift-Cmd-Enter': () => this.formatting.toggleTodoLine(),
+        'Shift-Ctrl-Enter': () => this.formatting.toggleTodoLine(),
         'Alt-Z': () => this.formatting.toggleLineWrapping(),
         'Ctrl-J': (cm) => this.showHints(cm),
         'Ctrl-Space': (cm) => this.showHints(cm)
@@ -316,6 +350,93 @@ class Editor {
       const cursor = doc.getCursor();
       doc.replaceRange(textToInsert, cursor);
     });
+
+    // Cmd/Ctrl + click on [[wikilink]] opens the target file.
+    this.cm.getWrapperElement().addEventListener('mousedown', (e) => {
+      const isMod = e.metaKey || e.ctrlKey;
+      if (!isMod || e.button !== 0) return;
+
+      const pos = this.cm.coordsChar({ left: e.clientX, top: e.clientY });
+      if (!pos) return;
+
+      const line = this.cm.getLine(pos.line);
+      if (!line || line.indexOf('[[') === -1) return;
+
+      // Find the [[...]] span that contains pos.ch
+      const re = /\[\[([^\[\]\n]+?)\]\]/g;
+      let m;
+      while ((m = re.exec(line)) !== null) {
+        const start = m.index;
+        const end = m.index + m[0].length;
+        if (pos.ch >= start && pos.ch <= end) {
+          e.preventDefault();
+          e.stopPropagation();
+          // The text inside [[ ]] may include an alias (|) — strip it before resolving.
+          const raw = m[1];
+          const pipeIdx = raw.indexOf('|');
+          const target = (pipeIdx === -1 ? raw : raw.substring(0, pipeIdx)).trim();
+          this._openWikilink(target);
+          return;
+        }
+      }
+    });
+  }
+
+  async _openWikilink(target) {
+    const bucketRoot = this.state.projectRoot || this.state.currentDirectory;
+    if (!bucketRoot) return;
+    try {
+      const result = await window.vomit.wikiResolve(bucketRoot, target, this.state.currentFilePath || null);
+      if (result && result.success && result.path) {
+        window.vomit.openFile(result.path);
+        return;
+      }
+      // Broken link — prompt to create a sibling note with this basename.
+      await this._promptCreateNote(bucketRoot, target);
+    } catch {
+      // ignore
+    }
+  }
+
+  async _promptCreateNote(bucketRoot, target) {
+    // Strip alias/heading from the target before using it as a filename.
+    const cleaned = target.split('|')[0].split('#')[0].trim();
+    if (!cleaned) return;
+
+    const sanitized = cleaned.replace(/[\\:*?"<>]/g, '').trim();
+    const willCreate = window.confirm(
+      `"${sanitized}" does not exist yet.\nCreate it now?`
+    );
+    if (!willCreate) return;
+
+    // Place the new note next to the current file when possible, else at the
+    // bucket root.
+    const currentFile = this.state.currentFilePath;
+    let baseDir = bucketRoot;
+    if (currentFile && currentFile.startsWith(bucketRoot)) {
+      const sep = currentFile.includes('\\') ? '\\' : '/';
+      const idx = currentFile.lastIndexOf(sep);
+      if (idx > -1) baseDir = currentFile.substring(0, idx);
+    }
+
+    const sep = baseDir.includes('\\') ? '\\' : '/';
+    const filename = sanitized.endsWith('.md') ? sanitized : `${sanitized}.md`;
+    const newPath = `${baseDir}${sep}${filename}`;
+
+    const stub = `# ${sanitized}\n\n`;
+    try {
+      await window.vomit.writeFile(newPath, stub);
+      window.vomit.openFile(newPath);
+    } catch (err) {
+      window.alert(`Failed to create note: ${err.message || err}`);
+    }
+  }
+
+  _attachWikilinkAutocomplete() {
+    if (!window.VomitWikilinkHint) return;
+    window.VomitWikilinkHint.attachWikilinkHint(this.cm, () =>
+      this.state.projectRoot || this.state.currentDirectory
+    );
   }
 
   // Extract links from HTML and convert to markdown, preserving plain text structure
@@ -502,6 +623,7 @@ class Editor {
       if (this.tabManager) {
         this.tabManager.updateCurrentTabPath(filePath);
       }
+      this.todoExplorerManager.scheduleLoad();
     });
 
     window.addEventListener('vomit:file-saved', (e) => {
@@ -511,6 +633,7 @@ class Editor {
         this.tabManager.updateCurrentTabPath(filePath);
         this.tabManager.markCurrentTabClean();
       }
+      this.todoExplorerManager.scheduleLoad();
     });
 
     window.addEventListener('vomit:toggle-preview', () => {
@@ -555,6 +678,10 @@ class Editor {
 
     window.addEventListener('vomit:toggle-tags', () => {
       this.tagExplorerManager.toggleTagExplorer();
+    });
+
+    window.addEventListener('vomit:toggle-todos', () => {
+      this.todoExplorerManager.toggleTodoExplorer();
     });
 
     window.addEventListener('vomit:find-in-file', () => {
@@ -656,6 +783,7 @@ class Editor {
         case 'quote': this.formatting.insertAtLineStart('> '); break;
         case 'hr': this.formatting.insertText('\n---\n'); break;
         case 'slide': this.formatting.insertSlide(); break;
+        case 'todo': this.formatting.toggleTodoLine(); break;
         case 'dateHeading': this.formatting.insertDateHeading(); break;
       }
     });

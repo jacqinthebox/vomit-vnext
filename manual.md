@@ -12,7 +12,7 @@ Vomit uses "buckets" - dedicated folders to store your notes and presentations. 
 
 - **Multiple buckets** - Add as many project folders as you need via the Buckets menu
 - **Quick switching** - Switch between buckets from the menu
-- New files are automatically created in the active bucket
+- New markdown files are automatically created with frontmatter metadata: title, folder, created date, modified date, draft status, and tags
 - Images are saved to `bucket/images/`
 
 **Managing buckets:**
@@ -25,10 +25,27 @@ Vomit uses "buckets" - dedicated folders to store your notes and presentations. 
 - **Cmd+N** - New file (created in current folder within bucket)
 - **Cmd+O** - Open a specific file
 - **Cmd+E** - Toggle file explorer
+- **Cmd+Shift+Enter** - Toggle the current line or selected lines as todos
 
 ### Basic Editing
 
 The editor uses Markdown syntax with live preview. Toggle the preview pane with **Cmd+P**.
+
+### Todos
+
+Todos are plain markdown checkboxes. Your markdown files are the source of truth; the Todo Explorer is a bucket-wide view over saved notes.
+
+```markdown
+- [ ] Send migration plan to Acme #follow-up @2026-06-01 !high
+- [ ] Check Kubernetes ingress config #tech
+- [x] Confirm project owner
+```
+
+- **Cmd+Shift+Enter** toggles the current line or selected lines as todos
+- **View > Toggle Todos** opens the Todo Explorer
+- Click a todo in the explorer to open the note at that line
+- Optional tokens are shown as badges: `@YYYY-MM-DD`, `!high`/`!medium`/`!low`, and `#tag`
+- Todo Explorer scans saved markdown files in the current bucket; save or wait for auto-save after editing todos
 
 ---
 
@@ -106,7 +123,9 @@ Notes only you can see while presenting
 | Cmd+I | Italic |
 | Cmd+` | Inline code |
 | Cmd+K | Insert link |
-| Cmd+T | Insert table |
+| Cmd+Shift+T | Format table |
+| Cmd+Shift+Enter | Toggle todo line / selected lines |
+| Cmd+Enter | Insert new slide |
 
 ### Tabs
 
@@ -147,35 +166,37 @@ Vomit includes a built-in AI terminal powered by Ollama. All processing happens 
 | `/rewrite <prompt>` | Replace selection with AI response |
 | `/append <prompt>` | Add AI response at end of document |
 | `/pseudo` | Pseudonymize current document (names, emails, IPs) |
+| `/pseudo all` | Pseudonymize all files in current folder |
 | `/depseudo` | Restore original data from pseudonymized file |
-| `/index` | Index all documents for RAG search |
-| `/index subfolder` | Index only a specific subfolder |
-| `/index file.xml` | Index a single file |
-| `/rag <query>` | Search indexed documents and ask AI with context |
+| `/index` | Index the current bucket for RAG search |
+| `/index <folder>` | Refresh a specific folder inside the current bucket index |
+| `/reindex` | Clear and rebuild the current bucket's RAG index |
+| `/rag <query>` | Search the current bucket index and ask AI with context |
 | `/presentation <topic>` | Generate a presentation with slides and speaker notes |
-| `/agent <prompt>` | Agentic mode with tools (bash, file read/write) |
-| `/agent clear` | Clear agent conversation history |
+| `/agent <prompt>` | Agentic mode with tools (bash, file read/write, web search) |
+| `/new` | Start a new conversation and clear AI history |
+| `/help` | Show all available terminal commands |
 
 ### RAG (Retrieval Augmented Generation)
 
-RAG lets the AI answer questions using your project documents as context:
+RAG lets the AI answer questions using documents from the current bucket as context:
 
 ```bash
 # First, pull the embedding model
 ollama pull nomic-embed-text
 
 # In Vomit AI terminal
-/index                              # Index entire project
-/index subfolder                    # Index specific subfolder
-/index file.xml                     # Index a single file
-/rag how does authentication work?  # Search and ask
+/index                              # Index the current bucket
+/index customers/acme               # Refresh one folder in the bucket
+/reindex                            # Clear and rebuild the current bucket index
+/rag how does authentication work?  # Search the bucket and ask
 ```
 
 **How it works:**
 
-1. `/index` chunks your documents and creates embeddings using `nomic-embed-text`
+1. `/index` chunks your bucket documents and creates embeddings using `nomic-embed-text`
 2. Embeddings are stored in a SQLite database at `~/.config/vomit/rag/`
-3. The database is **tied to your bucket** - the index persists across sessions
+3. Each bucket has its own database - the index persists across sessions
 4. `/rag <query>` finds similar chunks and includes them as context for the AI
 
 **Supported file types:** `.md`, `.txt`, `.js`, `.ts`, `.py`, `.json`, `.yaml`, `.yml`, `.xml`, `.html`, `.css`, `.tf`, `.sh`, `.tpl`
@@ -188,7 +209,7 @@ Use `/agent` for agentic AI with tool calling - the AI can run commands, read/wr
 /agent list the files in this directory
 /agent run kubectl get pods
 /agent create a hello world script in hello.py
-/agent clear                        # Clear conversation history
+/new                                # Clear conversation history
 ```
 
 **Available tools:**
@@ -276,12 +297,12 @@ Change themes from the **View** menu:
 
 ## Multi-Cursor Editing
 
-Vomit supports PyCharm-style multi-cursor editing:
+Vomit supports PyCharm-style multi-cursor editing. Double-tap **Option**, then press **Option+Up** or **Option+Down**. Empty lines are skipped when adding cursors.
 
 | Shortcut | Action |
 |----------|--------|
-| Option Option ↑ | Add cursor above (double-tap Option, then arrow) |
-| Option Option ↓ | Add cursor below (double-tap Option, then arrow) |
+| Option, Option, then Option+↑ | Add cursor above |
+| Option, Option, then Option+↓ | Add cursor below |
 | Escape | Clear all extra cursors |
 
 This allows you to edit multiple lines simultaneously - great for renaming variables or adding/removing text on multiple lines at once.

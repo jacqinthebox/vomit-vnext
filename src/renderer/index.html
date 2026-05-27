@@ -36,6 +36,10 @@
         <div class="sidebar-header">Tags</div>
         <div id="tag-list"></div>
       </div>
+      <div id="sidebar-todos" class="sidebar hidden">
+        <div class="sidebar-header">Todos</div>
+        <div id="todo-list"></div>
+      </div>
       <div id="sidebar-resize" class="hidden"></div>
       <div id="editor-wrapper">
         <div id="tab-bar"></div>
@@ -50,8 +54,16 @@
       </div>
       <div id="right-sidebar-resize" class="hidden"></div>
       <div id="right-outline" class="right-sidebar hidden">
-        <div class="sidebar-header">Outline</div>
-        <div id="right-outline-list"></div>
+        <div class="sidebar-tabs">
+          <button class="sidebar-tab active" data-tab="outline">Outline</button>
+          <button class="sidebar-tab" data-tab="backlinks">Backlinks</button>
+        </div>
+        <div class="sidebar-tab-pane active" data-pane="outline">
+          <div id="right-outline-list"></div>
+        </div>
+        <div class="sidebar-tab-pane" data-pane="backlinks">
+          <div id="right-backlinks-list"></div>
+        </div>
       </div>
     </div>
 
@@ -64,6 +76,7 @@
         </div>
         <div class="terminal-actions">
           <button id="terminal-clear" title="Clear">Clear</button>
+          <button id="terminal-detach" title="Detach terminal" class="terminal-detach-btn">⧉</button>
           <button id="terminal-stop" title="Stop" class="hidden">Stop</button>
           <button id="terminal-close" title="Close">&times;</button>
         </div>
@@ -90,6 +103,25 @@
       <span id="status-version"></span>
     </div>
     <div id="toast-container"></div>
+
+    <!-- Wiki graph modal -->
+    <div id="wiki-graph-modal" class="modal-overlay wiki-graph-modal hidden">
+      <div class="modal-panel wiki-graph-panel">
+        <div class="modal-header">
+          <span>Wiki Graph</span>
+          <label class="wiki-graph-toggle">
+            <input type="checkbox" id="wiki-graph-hide-orphans" />
+            Hide orphans
+          </label>
+          <button id="wiki-graph-close" class="modal-close" aria-label="Close">&times;</button>
+        </div>
+        <div id="wiki-graph-canvas" class="wiki-graph-canvas"></div>
+        <div class="modal-footer wiki-graph-footer">
+          <span id="wiki-graph-stats"></span>
+          <span class="wiki-graph-hint">Click a node to open · drag header to move · resize from bottom-right · double-click header to reset</span>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="js/marked.min.js"></script>
@@ -133,6 +165,8 @@
   <script src="js/codemirror-show-hint.min.js"></script>
   <script src="js/codemirror-anyword-hint.min.js"></script>
   <script src="js/hints.js"></script>
+  <script src="js/wikilink-hint.js"></script>
+  <script src="js/vis-network.min.js"></script>
   <script src="js/emoji.js"></script>
   <script src="js/xterm.min.js"></script>
   <script src="js/xterm-addon-fit.min.js"></script>
@@ -141,6 +175,8 @@
   <script src="js/features/formatting.js"></script>
   <script src="js/features/search.js"></script>
   <script src="js/features/preview.js"></script>
+  <script src="js/features/backlinks.js"></script>
+  <script src="js/features/wikiGraph.js"></script>
   <script src="js/features/terminal-commands.js"></script>
   <script src="js/features/terminal.js"></script>
   <script src="js/state/fileTreeState.js"></script>
@@ -148,6 +184,7 @@
   <script src="js/features/treeView.js"></script>
   <script src="js/features/fileTree.js"></script>
   <script src="js/features/tagExplorer.js"></script>
+  <script src="js/features/todoExplorer.js"></script>
   <script src="js/features/settings.js"></script>
   <script src="js/features/commandPalette.js"></script>
   <script src="js/features/inlineImages.js"></script>

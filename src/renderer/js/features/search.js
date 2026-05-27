@@ -94,9 +94,11 @@ class SearchManager {
       this.state.isFileTreeVisible = false;
       this.state.isOutlineVisible = false;
       this.state.isTagExplorerVisible = false;
+      this.state.isTodoExplorerVisible = false;
       this.dom.sidebarFiles.classList.add('hidden');
       this.dom.sidebarOutline.classList.add('hidden');
       if (this.dom.sidebarTags) this.dom.sidebarTags.classList.add('hidden');
+      if (this.dom.sidebarTodos) this.dom.sidebarTodos.classList.add('hidden');
       this.dom.searchInput.focus();
     }
   }
@@ -164,7 +166,11 @@ class SearchManager {
   }
 
   togglePaneFocus() {
-    const anySidebarOpen = this.state.isFileTreeVisible || this.state.isOutlineVisible || this.state.isSearchVisible;
+    const anySidebarOpen = this.state.isFileTreeVisible ||
+                           this.state.isOutlineVisible ||
+                           this.state.isSearchVisible ||
+                           this.state.isTagExplorerVisible ||
+                           this.state.isTodoExplorerVisible;
     const isPreviewOnly = this.state.viewMode === 'preview';
 
     if (!anySidebarOpen) {
@@ -197,7 +203,7 @@ class SearchManager {
 
   // Internal helper — keeps resize handle in sync
   _updateResizeHandle() {
-    const anySidebarVisible = this.state.isFileTreeVisible || this.state.isOutlineVisible || this.state.isSearchVisible || this.state.isTagExplorerVisible;
+    const anySidebarVisible = this.state.isFileTreeVisible || this.state.isOutlineVisible || this.state.isSearchVisible || this.state.isTagExplorerVisible || this.state.isTodoExplorerVisible;
     const handle = document.getElementById('sidebar-resize');
     if (handle) handle.classList.toggle('hidden', !anySidebarVisible);
   }

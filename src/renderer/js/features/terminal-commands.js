@@ -90,27 +90,52 @@ const COMMAND_REGISTRY = [
   },
   {
     name: '/index',
-    description: 'Index folder for RAG search',
+    description: 'Index bucket for RAG search',
     args: 'optional',
-    argsHint: '[subfolder]',
+    argsHint: '[folder]',
     requiresCwd: true,
     async handler(args, ctx, cwd) {
-      // Default to the current file's directory, not the whole bucket root
-      const currentFile = ctx.state.currentFilePath;
-      const currentDir = currentFile ? currentFile.substring(0, currentFile.lastIndexOf('/')) : cwd;
-      const base = args ? cwd : currentDir;
-      const targetPath = args ? `${cwd}/${args.replace(/^\//, '')}` : base;
+      const targetPath = args ? `${cwd}/${args.replace(/^\//, '')}` : cwd;
       await ctx.indexFolderForRAG(cwd, targetPath, args || null);
     }
   },
   {
+    name: '/reindex',
+    description: 'Clear and rebuild bucket RAG index',
+    args: 'none',
+    argsHint: '',
+    requiresCwd: true,
+    async handler(args, ctx, cwd) {
+      await ctx.reindexRAG(cwd);
+    }
+  },
+  {
     name: '/rag',
-    description: 'Search with RAG context',
+    description: 'Search bucket RAG context',
     args: 'required',
     argsHint: '<query>',
     requiresCwd: true,
     async handler(args, ctx, cwd) {
       await ctx.searchWithRAG(args, cwd);
+    }
+  },
+  {
+    name: '/wiki',
+    description: 'Wikilink commands (reindex, graph)',
+    args: 'optional',
+    argsHint: '[reindex|graph]',
+    requiresCwd: true,
+    async handler(args, ctx, cwd) {
+      const sub = (args || '').trim().toLowerCase();
+      if (sub === '' || sub === 'reindex' || sub === 'index') {
+        await ctx.reindexWiki(cwd);
+      } else if (sub === 'graph') {
+        ctx.appendTerminalOutput('❯ /wiki graph', 'input');
+        window.dispatchEvent(new CustomEvent('vomit:toggle-wiki-graph'));
+      } else {
+        ctx.appendTerminalOutput(`❯ /wiki ${args}`, 'input');
+        ctx.appendTerminalOutput(`Unknown /wiki subcommand: ${sub}. Try: /wiki reindex | /wiki graph`, 'error');
+      }
     }
   },
   {

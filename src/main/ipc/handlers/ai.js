@@ -61,9 +61,9 @@ function detectAITools(state) {
 /**
  * Register AI IPC handlers.
  * @param {import('electron').IpcMain} ipcMain
- * @param {{ state: import('../../services/sessionState').SessionState, bus: import('../rendererBus').RendererBus, configStore: typeof import('../../services/configStore') }} deps
+ * @param {{ state: import('../../services/sessionState').SessionState, bus: import('../rendererBus').RendererBus, configStore: typeof import('../../services/configStore'), terminalService: ReturnType<import('./terminal').createTerminalService> }} deps
  */
-function registerHandlers(ipcMain, { state, bus, configStore }) {
+function registerHandlers(ipcMain, { state, bus, configStore, terminalService }) {
   // Ollama execution using HTTP API with conversation history
   ipcMain.handle('claude-execute', async (event, command, cwd) => {
     const ollamaModel = configStore.getOllamaModel();
@@ -76,18 +76,18 @@ function registerHandlers(ipcMain, { state, bus, configStore }) {
 
     const execPath = state.availableAITools.ollama;
     if (!execPath) {
-      bus.send('claude-error', 'Ollama is not installed. Install it from https://ollama.ai\n');
-      bus.send('claude-done', 1);
+      terminalService.syncTerminalOutput('claude-error', 'Ollama is not installed. Install it from https://ollama.ai\n');
+      terminalService.syncTerminalOutput('claude-done', 1);
       return 1;
     }
     if (state.availableAITools.ollamaModels.length === 0) {
-      bus.send('claude-error', `No Ollama models found. Run: ollama pull llama3.2\n`);
-      bus.send('claude-done', 1);
+      terminalService.syncTerminalOutput('claude-error', `No Ollama models found. Run: ollama pull llama3.2\n`);
+      terminalService.syncTerminalOutput('claude-done', 1);
       return 1;
     }
     if (!ollamaModel) {
-      bus.send('claude-error', 'No AI model selected. Select one from the AI menu.\n');
-      bus.send('claude-done', 1);
+      terminalService.syncTerminalOutput('claude-error', 'No AI model selected. Select one from the AI menu.\n');
+      terminalService.syncTerminalOutput('claude-done', 1);
       return 1;
     }
 
@@ -133,14 +133,14 @@ function registerHandlers(ipcMain, { state, bus, configStore }) {
               if (json.message && json.message.content) {
                 const content = json.message.content;
                 assistantResponse += content;
-                bus.send('claude-output', content);
+                terminalService.syncTerminalOutput('claude-output', content);
               }
               if (json.done) {
                 // Save assistant response to history
                 if (assistantResponse) {
                   state.chatHistory.push({ role: 'assistant', content: assistantResponse });
                 }
-                bus.send('claude-done', 0);
+                terminalService.syncTerminalOutput('claude-done', 0);
                 resolve(0);
               }
             } catch (e) {
@@ -157,7 +157,7 @@ function registerHandlers(ipcMain, { state, bus, configStore }) {
                 const json = JSON.parse(buffer);
                 if (json.message && json.message.content) {
                   assistantResponse += json.message.content;
-                  bus.send('claude-output', json.message.content);
+                  terminalService.syncTerminalOutput('claude-output', json.message.content);
                 }
               } catch (e) {
                 // Ignore
@@ -167,7 +167,7 @@ function registerHandlers(ipcMain, { state, bus, configStore }) {
             if (assistantResponse && !state.chatHistory.some(m => m.role === 'assistant' && m.content === assistantResponse)) {
               state.chatHistory.push({ role: 'assistant', content: assistantResponse });
             }
-            bus.send('claude-done', 0);
+            terminalService.syncTerminalOutput('claude-done', 0);
             resolve(0);
           }
         });
@@ -177,8 +177,8 @@ function registerHandlers(ipcMain, { state, bus, configStore }) {
         if (!aborted) {
           // Remove the user message if request failed
           state.chatHistory.pop();
-          bus.send('claude-error', `Connection error: ${err.message}\nMake sure Ollama is running: ollama serve\n`);
-          bus.send('claude-done', 1);
+          terminalService.syncTerminalOutput('claude-error', `Connection error: ${err.message}\nMake sure Ollama is running: ollama serve\n`);
+          terminalService.syncTerminalOutput('claude-done', 1);
           resolve(1);
         }
       });
@@ -204,7 +204,7 @@ function registerHandlers(ipcMain, { state, bus, configStore }) {
     if (state.ollamaAbortController) {
       state.ollamaAbortController.abort();
       state.ollamaAbortController = null;
-      bus.send('claude-done', -1);
+      terminalService.syncTerminalOutput('claude-done', -1);
     }
     // Also stop agent mode
     state.agentAborted = true;

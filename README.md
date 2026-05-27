@@ -32,16 +32,18 @@ An opinionated, keyboard-centric markdown editor for presentations and notes wit
 
 - **Markdown Editor** - Live preview, syntax highlighting, outline sidebar
 - **Right Outline Bar** - Always-visible document outline on the right (Cmd+Alt+O)
-- **Multi-Cursor Editing** - PyCharm-style multi-cursor with double-tap Option + arrows
+- **Multi-Cursor Editing** - PyCharm-style multi-cursor: double-tap Option, then use Option+Up/Down
 - **Drag & Drop** - Drag files and folders to reorganize your file tree
 - **Presenter View** - Current slide, next slide preview, speaker notes, timer
 - **Local AI (Privacy First)** - Built-in AI terminal powered by Ollama - your data stays on your machine
-- **RAG Search** - Index your documents and ask AI questions with context from your files
+- **RAG Search** - Index a bucket and ask AI questions with context from that bucket
+- **Markdown Todos** - Track `- [ ]` tasks in notes with a bucket-wide Todo Explorer
 - **Pseudonymization** - Anonymize sensitive data (names, emails, IPs) with AI, reversible with `/depseudo`
 - **LaTeX Math** - Render formulas with KaTeX (`$inline$` and `$$display$$`)
 - **PlantUML & Mermaid** - Render sequence diagrams, flowcharts, and more
 - **Emoji Shortcodes** - Use `:smile:` syntax like GitHub/Slack
 - **File Tree** - Browse and open files in your bucket (Cmd+E)
+- **Tag & Todo Explorers** - Browse tags and open todos across the current bucket
 - **Search in Files** - Search across all markdown files (Cmd+Shift+F)
 - **Laser Pointer** - Press L during presentation to highlight
 - **PDF Export** - Export slides to PDF for sharing
@@ -55,11 +57,27 @@ Vomit uses "buckets" - dedicated folders to store your notes and presentations. 
 
 - **Multiple buckets** - Add as many project folders as you need via the Buckets menu
 - **Quick switching** - Switch between buckets with a single click
-- New files are automatically created in the active bucket
+- New markdown files are automatically created with frontmatter metadata: title, folder, created date, modified date, draft status, and tags
 - Images are saved to `bucket/images/`
 - No need to manually open folders - just select a bucket and write
 
 Manage buckets from the **Buckets** menu: add new buckets, switch between them, or remove ones you no longer need.
+
+## Todos
+
+Todos are markdown-native. Your notes remain the source of truth; Vomit scans the current bucket and shows matching checkbox items in the Todo Explorer.
+
+```markdown
+- [ ] Send migration plan to Acme #follow-up @2026-06-01 !high
+- [ ] Check Kubernetes ingress config #tech
+- [x] Confirm project owner
+```
+
+- Use **Cmd+Shift+Enter** to toggle the current line or selected lines between todo states
+- Use **View > Toggle Todos** or the command palette to open the Todo Explorer
+- Click a todo in the explorer to open the note at that line
+- Optional tokens are parsed as badges: `@YYYY-MM-DD` for due date, `!high`/`!medium`/`!low` for priority, and `#tag` for tags
+- Todo Explorer reads saved markdown files in the current bucket; save or wait for auto-save after editing todos
 
 ## Installation
 
@@ -186,9 +204,10 @@ Type `/` in the AI terminal to open an inline command picker. Navigate with `↑
 - `/pseudo` - Pseudonymize the current document (names, emails, IPs, secrets)
 - `/pseudo all` - Pseudonymize all files in the current folder
 - `/depseudo` - Restore original data from pseudonymized file using the mapping
-- `/index` - Index the current file's folder for RAG search (recursive)
-- `/index <subfolder>` - Index only a specific subfolder
-- `/rag <query>` - Search indexed documents and ask AI with context
+- `/index` - Index the current bucket for RAG search
+- `/index <folder>` - Refresh only a specific folder inside the current bucket
+- `/reindex` - Clear and rebuild the current bucket's RAG index
+- `/rag <query>` - Search the current bucket index and ask AI with context
 - `/agent <prompt>` - Agentic mode with tools (bash, file read/write, web search)
 - `/new` - Start a new conversation (clear history)
 - `/help` - Show all available commands
@@ -199,19 +218,20 @@ The `/agent` command supports real-time web search via [Tavily](https://tavily.c
 
 **RAG (Retrieval Augmented Generation):**
 
-RAG allows the AI to answer questions using all your project documents as context. First index your folder with `/index`, then use `/rag <question>` to query with relevant context automatically retrieved.
+RAG allows the AI to answer questions using documents from the current bucket as context. First index the bucket with `/index`, then use `/rag <question>` to query that bucket with relevant context automatically retrieved.
 
 ```bash
 # First, pull the embedding model
 ollama pull nomic-embed-text
 
 # In Vomit AI terminal
-/index                              # Index current file's folder (recursive)
-/index src/docs                     # Index only a subfolder
-/rag how does authentication work?  # Search and ask with context
+/index                              # Index the current bucket
+/index customers/acme               # Refresh one folder inside the bucket
+/reindex                            # Clear and rebuild the current bucket index
+/rag how does authentication work?  # Search the bucket and ask with context
 ```
 
-The index is stored in `~/.config/vomit/rag/` to keep your project clean.
+The index is stored in `~/.config/vomit/rag/` to keep your bucket clean. Each bucket has its own RAG database. Use `/index <folder>` for a faster partial refresh after changing one folder, or `/reindex` after deleting, moving, or heavily reorganizing notes.
 
 **Command history:**
 
@@ -239,7 +259,8 @@ Press **Cmd+/** to view all shortcuts in the app. See [SHORTCUTS.md](SHORTCUTS.m
 | | Cmd+I | Italic |
 | | Cmd+K | Insert link |
 | | Cmd+M | Code block |
-| **Multi-Cursor** | Option Option ↑/↓ | Add cursor above/below |
+| | Cmd+Shift+Enter | Toggle todo |
+| **Multi-Cursor** | Option, Option, then Option+↑/↓ | Add cursor above/below |
 | | Escape | Clear extra cursors |
 | **Code** | Ctrl+J | Autocomplete |
 | **Explorer** | ↑↓ | Navigate files |

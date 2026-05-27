@@ -26,6 +26,10 @@ ipcRenderer.on('toggle-right-outline', () => {
   window.dispatchEvent(new CustomEvent('vomit:toggle-right-outline'));
 });
 
+ipcRenderer.on('toggle-wiki-graph', () => {
+  window.dispatchEvent(new CustomEvent('vomit:toggle-wiki-graph'));
+});
+
 ipcRenderer.on('toggle-files', () => {
   window.dispatchEvent(new CustomEvent('vomit:toggle-files'));
 });
@@ -144,6 +148,10 @@ ipcRenderer.on('toggle-tags', () => {
   window.dispatchEvent(new CustomEvent('vomit:toggle-tags'));
 });
 
+ipcRenderer.on('toggle-todos', () => {
+  window.dispatchEvent(new CustomEvent('vomit:toggle-todos'));
+});
+
 // File watching events
 ipcRenderer.on('file-changed-externally', (event, filePath) => {
   window.dispatchEvent(new CustomEvent('vomit:file-changed-externally', { detail: filePath }));
@@ -184,6 +192,14 @@ ipcRenderer.on('rag-progress', (event, progress) => {
   window.dispatchEvent(new CustomEvent('vomit:rag-progress', { detail: progress }));
 });
 
+ipcRenderer.on('wiki-progress', (event, progress) => {
+  window.dispatchEvent(new CustomEvent('vomit:wiki-progress', { detail: progress }));
+});
+
+ipcRenderer.on('wiki-changed', (event, data) => {
+  window.dispatchEvent(new CustomEvent('vomit:wiki-changed', { detail: data }));
+});
+
 ipcRenderer.on('ai-provider-changed', (event, data) => {
   window.dispatchEvent(new CustomEvent('vomit:ai-provider-changed', { detail: data }));
 });
@@ -217,6 +233,39 @@ ipcRenderer.on('shell-exit', (event, code) => {
   window.dispatchEvent(new CustomEvent('vomit:shell-exit', { detail: code }));
 });
 
+// Terminal window events
+ipcRenderer.on('load-terminal', (event, state) => {
+  window.dispatchEvent(new CustomEvent('vomit:load-terminal', { detail: state }));
+});
+
+ipcRenderer.on('terminal-detached', () => {
+  window.dispatchEvent(new CustomEvent('vomit:terminal-detached'));
+});
+
+ipcRenderer.on('terminal-reattached', () => {
+  window.dispatchEvent(new CustomEvent('vomit:terminal-reattached'));
+});
+
+ipcRenderer.on('terminal-tab-changed', (event, tab) => {
+  window.dispatchEvent(new CustomEvent('vomit:terminal-tab-changed', { detail: tab }));
+});
+
+ipcRenderer.on('terminal-input-synced', (event, input) => {
+  window.dispatchEvent(new CustomEvent('vomit:terminal-input-synced', { detail: input }));
+});
+
+ipcRenderer.on('terminal-cleared', () => {
+  window.dispatchEvent(new CustomEvent('vomit:terminal-cleared'));
+});
+
+ipcRenderer.on('terminal-context-update', (event, ctx) => {
+  window.dispatchEvent(new CustomEvent('vomit:terminal-context-update', { detail: ctx }));
+});
+
+ipcRenderer.on('execute-detached-command', (event, command) => {
+  window.dispatchEvent(new CustomEvent('vomit:execute-detached-command', { detail: command }));
+});
+
 // Bucket management events
 ipcRenderer.on('bucket-switched', (event, bucket) => {
   window.dispatchEvent(new CustomEvent('vomit:bucket-switched', { detail: bucket }));
@@ -239,6 +288,7 @@ contextBridge.exposeInMainWorld('vomit', {
   getFileSortOrder: () => ipcRenderer.invoke('get-file-sort-order'),
   setFileSortOrder: (order) => ipcRenderer.invoke('set-file-sort-order', order),
   getAllTags: () => ipcRenderer.invoke('get-all-tags'),
+  getAllTodos: () => ipcRenderer.invoke('get-all-todos'),
   getCurrentDirectory: () => ipcRenderer.invoke('get-current-directory'),
   searchInFiles: (dirPath, query) => ipcRenderer.invoke('search-in-files', dirPath, query),
   renameItem: (oldPath, newName) => ipcRenderer.invoke('rename-item', oldPath, newName),
@@ -282,7 +332,16 @@ contextBridge.exposeInMainWorld('vomit', {
   createDirectory: (dirPath) => ipcRenderer.invoke('create-directory', dirPath),
   // RAG methods
   ragIndex: (projectRoot, targetPath) => ipcRenderer.invoke('rag-index', projectRoot, targetPath),
+  ragClear: (folderPath) => ipcRenderer.invoke('rag-clear', folderPath),
   ragSearch: (query, folderPath) => ipcRenderer.invoke('rag-search', query, folderPath),
+  // Wiki methods
+  wikiIndex: (bucketRoot) => ipcRenderer.invoke('wiki-index', bucketRoot),
+  wikiClear: (bucketRoot) => ipcRenderer.invoke('wiki-clear', bucketRoot),
+  wikiIndexFile: (bucketRoot, filePath) => ipcRenderer.send('wiki-index-file', bucketRoot, filePath),
+  wikiBacklinks: (bucketRoot, targetPath) => ipcRenderer.invoke('wiki-backlinks', bucketRoot, targetPath),
+  wikiResolve: (bucketRoot, target, sourcePath) => ipcRenderer.invoke('wiki-resolve', bucketRoot, target, sourcePath),
+  wikiListNotes: (bucketRoot) => ipcRenderer.invoke('wiki-list-notes', bucketRoot),
+  wikiGraph: (bucketRoot) => ipcRenderer.invoke('wiki-graph', bucketRoot),
   // Shell terminal methods
   shellSpawn: (cwd) => ipcRenderer.invoke('shell-spawn', cwd),
   shellWrite: (data) => ipcRenderer.send('shell-write', data),
@@ -297,6 +356,16 @@ contextBridge.exposeInMainWorld('vomit', {
   getTerminalHistory: () => ipcRenderer.invoke('get-terminal-history'),
   setTerminalHistory: (history) => ipcRenderer.invoke('set-terminal-history', history),
   clearTerminalHistory: () => ipcRenderer.invoke('clear-terminal-history'),
+  // Terminal window methods
+  detachTerminal: (payload) => ipcRenderer.send('detach-terminal', payload),
+  reattachTerminal: () => ipcRenderer.send('reattach-terminal'),
+  focusTerminalWindow: () => ipcRenderer.send('focus-terminal-window'),
+  syncTerminalTab: (tab) => ipcRenderer.send('sync-terminal-tab', tab),
+  syncTerminalInput: (input) => ipcRenderer.send('sync-terminal-input', input),
+  syncTerminalClear: () => ipcRenderer.send('sync-terminal-clear'),
+  syncTerminalContext: (ctx) => ipcRenderer.send('sync-terminal-context', ctx),
+  executeInMainTerminal: (command) => ipcRenderer.send('execute-in-main-terminal', command),
+  getEditorContent: () => ipcRenderer.invoke('get-editor-content'),
   // App info
   getAppVersion: () => ipcRenderer.invoke('get-app-version')
 });

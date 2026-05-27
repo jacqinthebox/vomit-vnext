@@ -16,6 +16,22 @@ class CodemirrorHost {
       extraKeys: options.extraKeys || {},
       placeholder: options.placeholder || ''
     });
+
+    // Highlight [[wikilink]] / [[target|alias]] / [[target#heading]] with the
+    // `cm-wikilink` token so styles.css can color them distinctly. This is a
+    // pure overlay — it doesn't affect the underlying markdown mode.
+    this.cm.addOverlay({
+      token: (stream) => {
+        if (stream.match(/\[\[[^\[\]\n]+?\]\]/)) {
+          return 'wikilink';
+        }
+        // Advance the stream until we see a potential link or end of line.
+        while (stream.next() != null) {
+          if (stream.peek() === '[') break;
+        }
+        return null;
+      }
+    });
   }
 
   // --- Content ---
