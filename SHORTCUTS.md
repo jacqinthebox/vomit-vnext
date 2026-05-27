@@ -17,7 +17,7 @@ Press **Cmd+/** to open this help at any time.
 | Cmd+W | Close tab |
 | Cmd+S | Save |
 | Cmd+Shift+S | Save as |
-| Cmd+E | Export to PDF |
+| Cmd+E | Toggle file explorer |
 
 ---
 
@@ -40,15 +40,18 @@ Press **Cmd+/** to open this help at any time.
 |----------|--------|
 | Cmd+P | Toggle preview pane |
 | Cmd+\\ | Toggle focus between editor and preview (split view) |
+| Cmd+. | Command palette |
 | Cmd+Shift+O | Toggle outline sidebar (left) |
 | Cmd+Alt+O | Toggle right outline |
 | Cmd+E | Toggle file explorer |
 | Cmd+Shift+R | Refresh file tree |
 | Cmd+L | Toggle line numbers |
+| Alt+Z | Toggle word wrap |
 | Cmd+F | Find in file |
 | Cmd+Option+F | Find and replace |
 | Cmd+Shift+F | Search in files |
 | Cmd+Up | Go to parent folder |
+| Cmd+` | Toggle shell terminal |
 | Cmd+/ | Show keyboard shortcuts |
 
 ---
@@ -182,6 +185,6 @@ When the picker is closed, `↑`/`↓` navigate command history (persisted acros
 - **Emoji shortcodes** like `:smile:` are automatically converted
 - **Speaker notes** go after `???` on a slide
 - **Slide separator** is `---` on its own line
-- **Frontmatter** supports `theme:` and `font-size:` settings
+- **Frontmatter** supports `theme:`, `font-size:`, `title`, `created`, `modified`, `draft`, and `tags` metadata
 - **Privacy first** - All AI runs locally via Ollama, your data never leaves your machine
 - **Scroll sync** - In split view, scrolling the editor or preview keeps them aligned
