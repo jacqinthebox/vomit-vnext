@@ -3,17 +3,36 @@
 // Follows VS Code TreeDataProvider pattern
 
 class TreeDataModel extends EventTarget {
-  #nodes = new Map();      // path -> { name, path, isDirectory, isMarkdown, parentPath }
+  #nodes = new Map();      // path -> { name, path, isDirectory, isMarkdown, parentPath, mtimeMs }
   #children = new Map();   // path -> [childPaths]
   #rootPath = null;
   #loadingPaths = new Set(); // Prevent duplicate concurrent loads
   #dirtyPaths = new Set();   // Paths invalidated while a load was in flight
+  #sortOrder = 'name';       // 'name' or 'modified'
 
   // ─────────────────────────────────────────────────────────────
   // Root management
   // ─────────────────────────────────────────────────────────────
 
   get rootPath() { return this.#rootPath; }
+  get sortOrder() { return this.#sortOrder; }
+
+  set sortOrder(order) {
+    this.#sortOrder = order;
+  }
+
+  #sortSiblings(siblings) {
+    siblings.sort((a, b) => {
+      const aNode = this.#nodes.get(a);
+      const bNode = this.#nodes.get(b);
+      if (aNode?.isDirectory && !bNode?.isDirectory) return -1;
+      if (!aNode?.isDirectory && bNode?.isDirectory) return 1;
+      if (this.#sortOrder === 'modified') {
+        return (bNode?.mtimeMs || 0) - (aNode?.mtimeMs || 0);
+      }
+      return (aNode?.name || '').localeCompare(bNode?.name || '');
+    });
+  }
 
   setRoot(path) {
     this.#rootPath = path;
@@ -74,7 +93,8 @@ class TreeDataModel extends EventTarget {
           path: item.path,
           isDirectory: item.isDirectory,
           isMarkdown: item.isMarkdown,
-          parentPath: parentPath
+          parentPath: parentPath,
+          mtimeMs: item.mtimeMs || 0
         });
       }
 
@@ -111,14 +131,7 @@ class TreeDataModel extends EventTarget {
       const siblings = this.#children.get(parentPath) || [];
       if (!siblings.includes(path)) {
         siblings.push(path);
-        // Sort: directories first, then alphabetically
-        siblings.sort((a, b) => {
-          const aNode = this.#nodes.get(a);
-          const bNode = this.#nodes.get(b);
-          if (aNode?.isDirectory && !bNode?.isDirectory) return -1;
-          if (!aNode?.isDirectory && bNode?.isDirectory) return 1;
-          return (aNode?.name || '').localeCompare(bNode?.name || '');
-        });
+        this.#sortSiblings(siblings);
         this.#children.set(parentPath, siblings);
       }
     }
@@ -181,14 +194,7 @@ class TreeDataModel extends EventTarget {
       const idx = siblings.indexOf(oldPath);
       if (idx !== -1) {
         siblings[idx] = newPath;
-        // Re-sort
-        siblings.sort((a, b) => {
-          const aNode = this.#nodes.get(a);
-          const bNode = this.#nodes.get(b);
-          if (aNode?.isDirectory && !bNode?.isDirectory) return -1;
-          if (!aNode?.isDirectory && bNode?.isDirectory) return 1;
-          return (aNode?.name || '').localeCompare(bNode?.name || '');
-        });
+        this.#sortSiblings(siblings);
         this.#children.set(parentPath, siblings);
       }
     }
@@ -238,14 +244,7 @@ class TreeDataModel extends EventTarget {
     const newSiblings = this.#children.get(newParentPath) || [];
     if (!newSiblings.includes(newPath)) {
       newSiblings.push(newPath);
-      // Sort: directories first, then alphabetically
-      newSiblings.sort((a, b) => {
-        const aNode = this.#nodes.get(a);
-        const bNode = this.#nodes.get(b);
-        if (aNode?.isDirectory && !bNode?.isDirectory) return -1;
-        if (!aNode?.isDirectory && bNode?.isDirectory) return 1;
-        return (aNode?.name || '').localeCompare(bNode?.name || '');
-      });
+      this.#sortSiblings(newSiblings);
       this.#children.set(newParentPath, newSiblings);
     }
 

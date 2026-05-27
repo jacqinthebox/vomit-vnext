@@ -441,6 +441,27 @@ function createMenu() {
             _bus.send('refresh-file-tree');
           }
         },
+        { type: 'separator' },
+        {
+          label: 'Sort by Name',
+          type: 'radio',
+          checked: _configStore.getFileSortOrder() === 'name',
+          click: () => {
+            _configStore.setFileSortOrder('name');
+            createMenu();
+            _bus.send('sort-order-changed', 'name');
+          }
+        },
+        {
+          label: 'Sort by Modified Date',
+          type: 'radio',
+          checked: _configStore.getFileSortOrder() === 'modified',
+          click: () => {
+            _configStore.setFileSortOrder('modified');
+            createMenu();
+            _bus.send('sort-order-changed', 'modified');
+          }
+        },
         {
           label: 'Toggle Word Wrap',
           accelerator: 'Alt+Z',

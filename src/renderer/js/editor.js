@@ -150,6 +150,14 @@ class Editor {
     // Load and apply saved font size
     await this.loadFontSize();
 
+    // Load sort order preference
+    try {
+      const sortOrder = await window.vomit.getFileSortOrder();
+      if (sortOrder) {
+        this.fileTreeManager.dataModel.sortOrder = sortOrder;
+      }
+    } catch (err) {}
+
     // Bucket auto-opens from main process via open-folder event
     // Create an empty tab initially - it will be replaced when bucket loads
     // or used if no files exist yet
@@ -564,6 +572,13 @@ class Editor {
       } else {
         this.fileTreeManager.loadFileTree();
       }
+    });
+
+    window.addEventListener('vomit:sort-order-changed', (e) => {
+      this.fileTreeManager.dataModel.sortOrder = e.detail;
+      this.fileTreeManager.openFolder(
+        this.state.projectRoot || this.state.currentDirectory
+      );
     });
 
     window.addEventListener('vomit:new-folder', () => {

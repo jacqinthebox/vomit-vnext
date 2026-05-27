@@ -136,6 +136,10 @@ ipcRenderer.on('toggle-pane-focus', () => {
   window.dispatchEvent(new CustomEvent('vomit:toggle-pane-focus'));
 });
 
+ipcRenderer.on('sort-order-changed', (event, order) => {
+  window.dispatchEvent(new CustomEvent('vomit:sort-order-changed', { detail: order }));
+});
+
 // File watching events
 ipcRenderer.on('file-changed-externally', (event, filePath) => {
   window.dispatchEvent(new CustomEvent('vomit:file-changed-externally', { detail: filePath }));
@@ -228,6 +232,8 @@ contextBridge.exposeInMainWorld('vomit', {
   setCurrentFile: (filePath) => ipcRenderer.send('set-current-file', filePath),
   openExternal: (url) => ipcRenderer.invoke('open-external', url),
   getDirectoryContents: (dirPath) => ipcRenderer.invoke('get-directory-contents', dirPath),
+  getFileSortOrder: () => ipcRenderer.invoke('get-file-sort-order'),
+  setFileSortOrder: (order) => ipcRenderer.invoke('set-file-sort-order', order),
   getCurrentDirectory: () => ipcRenderer.invoke('get-current-directory'),
   searchInFiles: (dirPath, query) => ipcRenderer.invoke('search-in-files', dirPath, query),
   renameItem: (oldPath, newName) => ipcRenderer.invoke('rename-item', oldPath, newName),

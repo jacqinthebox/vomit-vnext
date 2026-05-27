@@ -16,7 +16,8 @@ const store = new Store({
     mermaidCurve: 'linear',
     fontSize: 14,
     tavilyApiKey: '',
-    showImagesFolder: false
+    showImagesFolder: false,
+    fileSortOrder: 'name'
   }
 });
 
@@ -78,6 +79,11 @@ function setTavilyApiKey(key) { store.set('tavilyApiKey', key); }
 function getShowImagesFolder() { return store.get('showImagesFolder') === true; }
 /** @param {boolean} value */
 function setShowImagesFolder(value) { store.set('showImagesFolder', value); }
+
+/** @returns {string} 'name' or 'modified' */
+function getFileSortOrder() { return store.get('fileSortOrder') || 'name'; }
+/** @param {string} order */
+function setFileSortOrder(order) { store.set('fileSortOrder', order); }
 
 const TERMINAL_HISTORY_MAX = 100;
 /** @returns {string[]} */
@@ -171,6 +177,8 @@ module.exports = {
   setTavilyApiKey,
   getShowImagesFolder,
   setShowImagesFolder,
+  getFileSortOrder,
+  setFileSortOrder,
   getTerminalHistory,
   setTerminalHistory,
   clearTerminalHistory,

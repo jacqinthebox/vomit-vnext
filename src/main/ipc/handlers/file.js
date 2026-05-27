@@ -459,19 +459,29 @@ Questions?
           startDirectoryWatcher(bucketPath);
         }
 
+        const sortOrder = configStore.getFileSortOrder();
         const entries = fs.readdirSync(dirPath, { withFileTypes: true });
         const items = entries
           .filter(entry => !entry.name.startsWith('.') && (configStore.getShowImagesFolder() || entry.name !== 'images')) // Hide hidden files; hide images folder unless toggled on
-          .map(entry => ({
-            name: entry.name,
-            path: path.join(dirPath, entry.name),
-            isDirectory: entry.isDirectory(),
-            isMarkdown: !entry.isDirectory() && (entry.name.endsWith('.md') || entry.name.endsWith('.markdown'))
-          }))
+          .map(entry => {
+            const fullPath = path.join(dirPath, entry.name);
+            let mtimeMs = 0;
+            try { mtimeMs = fs.statSync(fullPath).mtimeMs; } catch (e) {}
+            return {
+              name: entry.name,
+              path: fullPath,
+              isDirectory: entry.isDirectory(),
+              isMarkdown: !entry.isDirectory() && (entry.name.endsWith('.md') || entry.name.endsWith('.markdown')),
+              mtimeMs
+            };
+          })
           .sort((a, b) => {
             // Directories first, then files
             if (a.isDirectory && !b.isDirectory) return -1;
             if (!a.isDirectory && b.isDirectory) return 1;
+            if (sortOrder === 'modified') {
+              return b.mtimeMs - a.mtimeMs; // newest first
+            }
             return a.name.localeCompare(b.name);
           });
         return items;
@@ -486,6 +496,16 @@ Questions?
         return path.dirname(state.currentFilePath);
       }
       return null;
+    });
+
+    // Get file sort order
+    ipcMain.handle('get-file-sort-order', () => {
+      return configStore.getFileSortOrder();
+    });
+
+    // Set file sort order
+    ipcMain.handle('set-file-sort-order', (event, order) => {
+      configStore.setFileSortOrder(order);
     });
 
     // Rename file or folder
