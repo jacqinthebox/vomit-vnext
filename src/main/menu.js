@@ -544,14 +544,6 @@ function createMenu() {
         },
         { type: 'separator' },
         {
-          label: 'Go to Parent Folder',
-          accelerator: 'CmdOrCtrl+Up',
-          click: () => {
-            _bus.send('navigate-parent');
-          }
-        },
-        { type: 'separator' },
-        {
           label: 'Toggle Shell Terminal',
           accelerator: 'CmdOrCtrl+`',
           click: () => {
@@ -573,7 +565,6 @@ function createMenu() {
             _bus.send('prev-tab');
           }
         },
-        { type: 'separator' },
         {
           label: 'Toggle Sidebar Focus',
           accelerator: 'CmdOrCtrl+1',
@@ -581,19 +572,32 @@ function createMenu() {
             _bus.send('toggle-pane-focus');
           }
         },
-        ...[2,3,4,5,6,7,8].map(n => ({
-          label: `Go to Tab ${n - 1}`,
-          accelerator: `CmdOrCtrl+${n}`,
-          click: () => {
-            _bus.send('go-to-tab', n - 1);
-          }
-        })),
         {
-          label: 'Go to Last Tab',
-          accelerator: 'CmdOrCtrl+9',
-          click: () => {
-            _bus.send('go-to-tab', 9);
-          }
+          label: 'Go to...',
+          submenu: [
+            {
+              label: 'Parent Folder',
+              accelerator: 'CmdOrCtrl+Up',
+              click: () => {
+                _bus.send('navigate-parent');
+              }
+            },
+            { type: 'separator' },
+            ...[2,3,4,5,6,7,8].map(n => ({
+              label: `Tab ${n - 1}`,
+              accelerator: `CmdOrCtrl+${n}`,
+              click: () => {
+                _bus.send('go-to-tab', n - 1);
+              }
+            })),
+            {
+              label: 'Last Tab',
+              accelerator: 'CmdOrCtrl+9',
+              click: () => {
+                _bus.send('go-to-tab', 9);
+              }
+            }
+          ]
         },
         { type: 'separator' },
         { role: 'reload' },
