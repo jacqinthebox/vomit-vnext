@@ -247,7 +247,7 @@ function createMenu() {
         { type: 'separator' },
         {
           label: 'Export to PDF...',
-          accelerator: 'CmdOrCtrl+E',
+          accelerator: 'CmdOrCtrl+Shift+E',
           click: () => _actions.exportToPDF()
         },
         { type: 'separator' },

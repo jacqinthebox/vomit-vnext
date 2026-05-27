@@ -17,7 +17,7 @@ Press **Cmd+/** to open this help at any time.
 | Cmd+W | Close tab |
 | Cmd+S | Save |
 | Cmd+Shift+S | Save as |
-| Cmd+E | Toggle file explorer |
+| Cmd+Shift+E | Export to PDF |
 
 ---
 
