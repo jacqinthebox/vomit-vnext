@@ -1,3 +1,10 @@
+# [1.12.0](https://github.com/jacqinthebox/vomit-vnext/compare/v1.11.4...v1.12.0) (2026-05-27)
+
+
+### Features
+
+* **wiki:** obsidian-style wikilinks, backlinks, graph + UI polish ([435d082](https://github.com/jacqinthebox/vomit-vnext/commit/435d0827e1a3320a582de75e97c0db0ba43a171c)), closes [#heading](https://github.com/jacqinthebox/vomit-vnext/issues/heading)
+
 ## [1.11.4](https://github.com/jacqinthebox/vomit-vnext/compare/v1.11.3...v1.11.4) (2026-05-19)
 
 
