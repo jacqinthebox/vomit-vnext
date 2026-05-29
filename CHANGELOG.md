@@ -1,3 +1,10 @@
+## [1.12.1](https://github.com/jacqinthebox/vomit-vnext/compare/v1.12.0...v1.12.1) (2026-05-29)
+
+
+### Bug Fixes
+
+* **ai:** stream reasoning chunks and add openai-compatible provider ([bf131ee](https://github.com/jacqinthebox/vomit-vnext/commit/bf131ee79fd61c0a489fd72ffafab046c200a452))
+
 # [1.12.0](https://github.com/jacqinthebox/vomit-vnext/compare/v1.11.4...v1.12.0) (2026-05-27)
 
 
