@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const http = require('http');
 const { execSync } = require('child_process');
+const aiProviders = require('../../services/aiProviders');
 
 // Tool definitions for Ollama
 const agentTools = [
@@ -239,105 +240,19 @@ async function executeAgentTool(toolName, args, cwd, configStore) {
   }
 }
 
-// Streaming Ollama request that collects the full response
-function streamOllamaChat(model, messages, tools, sendOutput, abortCheck) {
-  return new Promise((resolve, reject) => {
-    const requestBody = JSON.stringify({
-      model,
-      messages,
-      tools,
-      stream: true
-    });
-
-    const req = http.request({
-      hostname: '127.0.0.1',
-      port: 11434,
-      path: '/api/chat',
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(requestBody)
-      }
-    }, (res) => {
-      if (res.statusCode !== 200) {
-        let body = '';
-        res.on('data', chunk => body += chunk);
-        res.on('end', () => {
-          if (res.statusCode === 400) {
-            reject(new Error(`Model may not support tool calling. Try llama3.2, llama3.1, mistral, or qwen2.5.\n\nDetails: ${body}`));
-          } else {
-            reject(new Error(`Ollama API error: ${res.statusCode} - ${body}`));
-          }
-        });
-        return;
-      }
-
-      res.setEncoding('utf8');
-      let buffer = '';
-      let contentSoFar = '';
-      let toolCalls = null;
-
-      res.on('data', (chunk) => {
-        if (abortCheck()) return;
-
-        buffer += chunk;
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          try {
-            const json = JSON.parse(line);
-            if (json.message && json.message.content) {
-              contentSoFar += json.message.content;
-              sendOutput('claude-output', json.message.content);
-            }
-            if (json.message && json.message.tool_calls) {
-              toolCalls = json.message.tool_calls;
-            }
-            if (json.done) {
-              resolve({
-                role: 'assistant',
-                content: contentSoFar || '',
-                tool_calls: toolCalls || undefined
-              });
-            }
-          } catch (e) {
-            // Ignore partial JSON
-          }
-        }
-      });
-
-      res.on('end', () => {
-        // Process remaining buffer
-        if (buffer.trim()) {
-          try {
-            const json = JSON.parse(buffer);
-            if (json.message && json.message.content) {
-              contentSoFar += json.message.content;
-              sendOutput('claude-output', json.message.content);
-            }
-            if (json.message && json.message.tool_calls) {
-              toolCalls = json.message.tool_calls;
-            }
-          } catch (e) {
-            // Ignore
-          }
-        }
-        resolve({
-          role: 'assistant',
-          content: contentSoFar || '',
-          tool_calls: toolCalls || undefined
-        });
-      });
-    });
-
-    req.on('error', (err) => {
-      reject(new Error(`Connection error: ${err.message}\nMake sure Ollama is running: ollama serve`));
-    });
-
-    req.write(requestBody);
-    req.end();
+// Provider-agnostic streaming chat. Delegates to aiProviders.streamChat which
+// handles both Ollama (/api/chat) and OpenAI-compatible (/v1/chat/completions)
+// endpoints and normalizes the returned assistant message + tool_calls shape.
+function streamProviderChat(cfg, messages, tools, sendOutput, abortCheck) {
+  return aiProviders.streamChat({
+    provider: cfg.provider,
+    baseUrl: cfg.baseUrl,
+    apiKey: cfg.apiKey,
+    model: cfg.model,
+    messages,
+    tools,
+    onContent: (chunk) => sendOutput('claude-output', chunk),
+    isAborted: abortCheck
   });
 }
 
@@ -405,11 +320,26 @@ function registerHandlers(ipcMain, { state, bus, configStore, terminalService })
 
   // Context health stats IPC
   ipcMain.handle('get-context-stats', async () => {
-    const model = configStore.getOllamaModel();
+    const model = configStore.getActiveModel();
     const history = state.agentConversationHistory;
     const messageCount = history.length;
     const estimatedTokens = estimateTokens(history);
-    const contextLimit = model ? await getModelContextLength(model) : 32768;
+
+    // Pick the context limit per active provider:
+    // - Ollama: read from /api/show (it exposes context_length in model_info)
+    // - OpenAI-compatible: use the per-endpoint contextLength the user set
+    //   in AI → Add/Edit Endpoint, falling back to 32k. There is no standard
+    //   OpenAI endpoint that reports context length.
+    let contextLimit;
+    if (configStore.getAIProvider() === 'ollama') {
+      contextLimit = model ? await getModelContextLength(model) : 32768;
+    } else {
+      const ep = configStore.getActiveOpenAIEndpoint();
+      contextLimit = ep && typeof ep.contextLength === 'number' && ep.contextLength > 0
+        ? ep.contextLength
+        : 32768;
+    }
+
     return {
       model: model || 'none',
       messageCount,
@@ -419,11 +349,14 @@ function registerHandlers(ipcMain, { state, bus, configStore, terminalService })
     };
   });
 
-  // Agent execution using Ollama HTTP API with streaming and tool calling
+  // Agent execution with streaming and tool calling, provider-agnostic.
   ipcMain.handle('agent-execute', async (event, prompt, cwd) => {
-    const ollamaModel = configStore.getOllamaModel();
-    if (!ollamaModel) {
-      sendOutput('claude-error', 'No AI model selected. Select one from the AI menu.\n');
+    const cfg = aiProviders.getActiveProviderConfig(configStore);
+    if (!cfg.model) {
+      const hint = cfg.provider === 'openai-compatible'
+        ? 'Configure it via AI menu → Configure OpenAI-Compatible Endpoint…'
+        : 'Select one from the AI menu.';
+      sendOutput('claude-error', `No AI model selected. ${hint}\n`);
       sendOutput('claude-done', 1);
       return 1;
     }
@@ -463,9 +396,9 @@ After using tools, provide a summary of what you did. You have access to convers
       while (iterations < maxIterations && !state.agentAborted) {
         iterations++;
 
-        // Stream Ollama response
-        const assistantMessage = await streamOllamaChat(
-          ollamaModel, messages, agentTools, sendOutput,
+        // Stream a chat completion from whichever provider is active.
+        const assistantMessage = await streamProviderChat(
+          cfg, messages, agentTools, sendOutput,
           () => state.agentAborted
         );
 
@@ -527,11 +460,9 @@ After using tools, provide a summary of what you did. You have access to convers
               : toolResult;
             sendOutput('claude-output', `${displayResult}\n`);
 
-            // Add tool result to messages (for current loop)
-            messages.push({
-              role: 'tool',
-              content: toolResult
-            });
+            // Add tool result to messages (for current loop). OpenAI-compatible
+            // providers require a tool_call_id; aiProviders handles that.
+            messages.push(aiProviders.formatToolResultMessage(cfg.provider, toolCall, toolResult));
 
             // Save tool call and result to conversation history
             state.agentConversationHistory.push({

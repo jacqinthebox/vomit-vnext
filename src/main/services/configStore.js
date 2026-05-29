@@ -9,7 +9,15 @@ const store = new Store({
     theme: 'default',
     autoSaveEnabled: true,
     ollamaModel: 'llama3.2',
-    aiProvider: null,
+    aiProvider: 'ollama',
+    // Legacy single-endpoint fields. Kept as defaults for new endpoints and
+    // as a fallback when no endpoints are configured yet.
+    openaiBaseUrl: 'http://127.0.0.1:8000/v1',
+    openaiApiKey: 'dummy',
+    openaiModel: '',
+    // Multi-endpoint list. Each entry: { name, baseUrl, apiKey, model }.
+    openaiEndpoints: [],
+    activeOpenaiEndpointIndex: 0,
     bucketPath: null,
     buckets: [],
     activeBucketIndex: 0,
@@ -40,6 +48,36 @@ function migrateConfig() {
   }
   if (!store.has('activeBucketIndex')) {
     store.set('activeBucketIndex', 0);
+  }
+
+  // Migration: if user previously configured a single OpenAI-compatible
+  // endpoint (i.e. they set openaiModel) and we don't yet have a list,
+  // promote the legacy single-field settings into the new endpoints array.
+  const endpoints = store.get('openaiEndpoints');
+  const legacyModel = store.get('openaiModel');
+  if ((!endpoints || endpoints.length === 0) && legacyModel) {
+    const legacyBaseUrl = store.get('openaiBaseUrl') || 'http://127.0.0.1:8000/v1';
+    const legacyApiKey = store.get('openaiApiKey') || 'dummy';
+    store.set('openaiEndpoints', [{
+      name: deriveEndpointName(legacyBaseUrl, legacyModel),
+      baseUrl: legacyBaseUrl,
+      apiKey: legacyApiKey,
+      model: legacyModel
+    }]);
+    store.set('activeOpenaiEndpointIndex', 0);
+  }
+}
+
+// Pick a friendly default name when the user doesn't provide one.
+function deriveEndpointName(baseUrl, model) {
+  if (model) {
+    const tail = String(model).split('/').pop();
+    return tail || model;
+  }
+  try {
+    return new URL(baseUrl).host;
+  } catch (_) {
+    return baseUrl || 'endpoint';
   }
 }
 
@@ -93,7 +131,156 @@ function setTerminalHistory(history) { store.set('terminalHistory', history.slic
 function clearTerminalHistory() { store.set('terminalHistory', []); }
 
 /** @returns {string} */
-function getAIProvider() { return store.get('aiProvider'); }
+function getAIProvider() {
+  const v = store.get('aiProvider');
+  return v === 'openai-compatible' ? 'openai-compatible' : 'ollama';
+}
+/** @param {string} provider 'ollama' | 'openai-compatible' */
+function setAIProvider(provider) {
+  const normalized = provider === 'openai-compatible' ? 'openai-compatible' : 'ollama';
+  store.set('aiProvider', normalized);
+}
+
+// --- OpenAI-compatible endpoints (multi) ---
+
+/**
+ * @typedef {{ name: string, baseUrl: string, apiKey: string, model: string, contextLength?: number }} OpenAIEndpoint
+ */
+
+/** @returns {OpenAIEndpoint[]} */
+function getOpenAIEndpoints() { return store.get('openaiEndpoints') || []; }
+/** @param {OpenAIEndpoint[]} list */
+function setOpenAIEndpoints(list) { store.set('openaiEndpoints', list || []); }
+
+/** @returns {number} */
+function getActiveOpenAIEndpointIndex() {
+  const idx = store.get('activeOpenaiEndpointIndex');
+  return typeof idx === 'number' ? idx : 0;
+}
+/** @param {number} index */
+function setActiveOpenAIEndpointIndex(index) {
+  store.set('activeOpenaiEndpointIndex', index);
+}
+
+/** @returns {OpenAIEndpoint|null} */
+function getActiveOpenAIEndpoint() {
+  const list = getOpenAIEndpoints();
+  const idx = getActiveOpenAIEndpointIndex();
+  return list[idx] || null;
+}
+
+/**
+ * Add a new endpoint and return its index.
+ * @param {OpenAIEndpoint} ep
+ * @returns {number}
+ */
+function addOpenAIEndpoint(ep) {
+  const list = getOpenAIEndpoints();
+  const entry = {
+    name: ep.name || deriveEndpointName(ep.baseUrl, ep.model),
+    baseUrl: ep.baseUrl || '',
+    apiKey: ep.apiKey || '',
+    model: ep.model || ''
+  };
+  if (typeof ep.contextLength === 'number' && ep.contextLength > 0) {
+    entry.contextLength = ep.contextLength;
+  }
+  list.push(entry);
+  setOpenAIEndpoints(list);
+  return list.length - 1;
+}
+
+/**
+ * Update the endpoint at index in place. Unknown fields are ignored.
+ * @param {number} index
+ * @param {Partial<OpenAIEndpoint>} patch
+ * @returns {boolean}
+ */
+function updateOpenAIEndpoint(index, patch) {
+  const list = getOpenAIEndpoints();
+  if (index < 0 || index >= list.length) return false;
+  const current = list[index];
+  const next = {
+    name: typeof patch.name === 'string' ? patch.name : current.name,
+    baseUrl: typeof patch.baseUrl === 'string' ? patch.baseUrl : current.baseUrl,
+    apiKey: typeof patch.apiKey === 'string' ? patch.apiKey : current.apiKey,
+    model: typeof patch.model === 'string' ? patch.model : current.model
+  };
+  // contextLength is optional. Patch may set a positive number, omit it
+  // (keep current), or set 0/null to clear it.
+  if (Object.prototype.hasOwnProperty.call(patch, 'contextLength')) {
+    if (typeof patch.contextLength === 'number' && patch.contextLength > 0) {
+      next.contextLength = patch.contextLength;
+    }
+  } else if (typeof current.contextLength === 'number' && current.contextLength > 0) {
+    next.contextLength = current.contextLength;
+  }
+  list[index] = next;
+  setOpenAIEndpoints(list);
+  return true;
+}
+
+/**
+ * Remove the endpoint at index, adjusting the active index if needed.
+ * @param {number} index
+ * @returns {boolean}
+ */
+function removeOpenAIEndpoint(index) {
+  const list = getOpenAIEndpoints();
+  if (index < 0 || index >= list.length) return false;
+  list.splice(index, 1);
+  setOpenAIEndpoints(list);
+  const active = getActiveOpenAIEndpointIndex();
+  if (active >= list.length) setActiveOpenAIEndpointIndex(Math.max(0, list.length - 1));
+  else if (index < active) setActiveOpenAIEndpointIndex(active - 1);
+  return true;
+}
+
+// --- Legacy single-endpoint API (read-through to the active endpoint) ---
+// These keep the rest of the codebase (aiProviders, IPC handlers, menu)
+// working unchanged. When there's no active endpoint, fall back to the
+// legacy single-field store so the "Add endpoint…" dialog can pre-fill.
+
+/** @returns {string} */
+function getOpenAIBaseUrl() {
+  const ep = getActiveOpenAIEndpoint();
+  return ep ? ep.baseUrl : (store.get('openaiBaseUrl') || 'http://127.0.0.1:8000/v1');
+}
+/** @param {string} url */
+function setOpenAIBaseUrl(url) {
+  const ep = getActiveOpenAIEndpoint();
+  if (ep) updateOpenAIEndpoint(getActiveOpenAIEndpointIndex(), { baseUrl: url });
+  else store.set('openaiBaseUrl', url);
+}
+
+/** @returns {string} */
+function getOpenAIApiKey() {
+  const ep = getActiveOpenAIEndpoint();
+  return ep ? (ep.apiKey || '') : (store.get('openaiApiKey') || '');
+}
+/** @param {string} key */
+function setOpenAIApiKey(key) {
+  const ep = getActiveOpenAIEndpoint();
+  if (ep) updateOpenAIEndpoint(getActiveOpenAIEndpointIndex(), { apiKey: key });
+  else store.set('openaiApiKey', key);
+}
+
+/** @returns {string} */
+function getOpenAIModel() {
+  const ep = getActiveOpenAIEndpoint();
+  return ep ? (ep.model || '') : (store.get('openaiModel') || '');
+}
+/** @param {string} model */
+function setOpenAIModel(model) {
+  const ep = getActiveOpenAIEndpoint();
+  if (ep) updateOpenAIEndpoint(getActiveOpenAIEndpointIndex(), { model });
+  else store.set('openaiModel', model);
+}
+
+/** @returns {string} Active model id for whichever provider is selected. */
+function getActiveModel() {
+  return getAIProvider() === 'openai-compatible' ? getOpenAIModel() : getOllamaModel();
+}
 
 /** @returns {string|null} Returns active bucket path (backwards compatible) */
 function getBucketPath() {
@@ -173,6 +360,22 @@ module.exports = {
   getFontSize,
   setFontSize,
   getAIProvider,
+  setAIProvider,
+  getOpenAIBaseUrl,
+  setOpenAIBaseUrl,
+  getOpenAIApiKey,
+  setOpenAIApiKey,
+  getOpenAIModel,
+  setOpenAIModel,
+  getOpenAIEndpoints,
+  setOpenAIEndpoints,
+  getActiveOpenAIEndpoint,
+  getActiveOpenAIEndpointIndex,
+  setActiveOpenAIEndpointIndex,
+  addOpenAIEndpoint,
+  updateOpenAIEndpoint,
+  removeOpenAIEndpoint,
+  getActiveModel,
   getTavilyApiKey,
   setTavilyApiKey,
   getShowImagesFolder,

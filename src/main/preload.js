@@ -319,6 +319,9 @@ contextBridge.exposeInMainWorld('vomit', {
   claudeStop: () => ipcRenderer.send('claude-stop'),
   claudeClearHistory: () => ipcRenderer.send('claude-clear-history'),
   getAIProvider: () => ipcRenderer.invoke('get-ai-provider'),
+  getAIProviderConfig: () => ipcRenderer.invoke('get-ai-provider-config'),
+  setAIProviderConfig: (cfg) => ipcRenderer.invoke('set-ai-provider-config', cfg),
+  testAIConnection: () => ipcRenderer.invoke('test-ai-connection'),
   getMermaidCurve: () => ipcRenderer.invoke('get-mermaid-curve'),
   getFontSize: () => ipcRenderer.invoke('get-font-size'),
   // Agent mode with tool calling

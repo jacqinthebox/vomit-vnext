@@ -183,12 +183,39 @@ Over 200 shortcodes are supported including smileys, gestures, objects, animals,
 
 ### Ollama AI Integration (Privacy First)
 
-Vomit includes a built-in AI terminal powered by [Ollama](https://ollama.ai). All AI processing happens locally - your data never leaves your machine.
+Vomit includes a built-in AI terminal that talks to **two kinds of local providers**:
 
-**Setup:**
+- **Ollama** — default, native `/api/chat`.
+- **OpenAI-compatible** — any server that exposes `POST /v1/chat/completions`, including:
+  - [`mlx_lm.server`](https://github.com/ml-explore/mlx-lm) (Apple Silicon, MLX)
+  - vLLM, LM Studio, llama.cpp's `--api-server`, Ollama's own `/v1` shim, etc.
+
+All AI processing happens locally — your data never leaves your machine.
+
+**Setup (Ollama):**
 1. Install Ollama from https://ollama.ai
 2. Pull a model: `ollama pull qwen2.5:14b` (recommended for best results)
-3. Press `Cmd+J` or select a model from the AI menu
+3. Press `Cmd+J` or select a model from the **AI** menu
+
+**Setup (OpenAI-compatible, e.g. MLX):**
+1. Start your local server, for example:
+   ```bash
+   pip install mlx-lm
+   mlx_lm.server --model mlx-community/Qwen3-Coder-Next-4bit
+   ```
+2. In Vomit, open **AI → Add OpenAI-Compatible Endpoint…** and enter:
+   - Name: `MLX Qwen3-Coder` (any label you like)
+   - Base URL: `http://127.0.0.1:8000/v1`
+   - API key: `dummy` (mlx_lm.server ignores it but the field is required)
+   - Model id: `mlx-community/Qwen3-Coder-Next-4bit`
+3. The provider radio in the AI menu flips to **OpenAI-Compatible** and your new endpoint becomes the active one.
+4. Hit **AI → Test AI Connection** to verify the endpoint responds.
+5. Press `Cmd+J` and try `/doc summarize this note`.
+
+**Multiple endpoints:** Repeat step 2 to add more (e.g. a remote vLLM box, a second MLX model). Each endpoint shows up as a radio item in the AI menu — click one to switch. Use **Edit "…"** and **Remove "…"** to manage the active endpoint.
+
+> RAG embeddings still use Ollama's `nomic-embed-text` model — only chat/agent
+> calls go through the OpenAI-compatible endpoint.
 
 **Command picker:**
 

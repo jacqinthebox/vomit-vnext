@@ -2,8 +2,8 @@
 'use strict';
 
 const fs = require('fs');
-const http = require('http');
 const { execSync } = require('child_process');
+const aiProviders = require('../../services/aiProviders');
 
 // Find executable path
 function findExecutable(name) {
@@ -64,9 +64,10 @@ function detectAITools(state) {
  * @param {{ state: import('../../services/sessionState').SessionState, bus: import('../rendererBus').RendererBus, configStore: typeof import('../../services/configStore'), terminalService: ReturnType<import('./terminal').createTerminalService> }} deps
  */
 function registerHandlers(ipcMain, { state, bus, configStore, terminalService }) {
-  // Ollama execution using HTTP API with conversation history
+  // Chat execution — provider-agnostic. The IPC channel name is kept as
+  // `claude-execute` for backward compatibility with the renderer.
   ipcMain.handle('claude-execute', async (event, command, cwd) => {
-    const ollamaModel = configStore.getOllamaModel();
+    const cfg = aiProviders.getActiveProviderConfig(configStore);
 
     // Abort any existing request
     if (state.ollamaAbortController) {
@@ -74,19 +75,26 @@ function registerHandlers(ipcMain, { state, bus, configStore, terminalService })
       state.ollamaAbortController = null;
     }
 
-    const execPath = state.availableAITools.ollama;
-    if (!execPath) {
-      terminalService.syncTerminalOutput('claude-error', 'Ollama is not installed. Install it from https://ollama.ai\n');
-      terminalService.syncTerminalOutput('claude-done', 1);
-      return 1;
+    // Ollama provider also requires the binary so we can detect models, etc.
+    if (cfg.provider === 'ollama') {
+      const execPath = state.availableAITools.ollama;
+      if (!execPath) {
+        terminalService.syncTerminalOutput('claude-error', 'Ollama is not installed. Install it from https://ollama.ai\n');
+        terminalService.syncTerminalOutput('claude-done', 1);
+        return 1;
+      }
+      if (state.availableAITools.ollamaModels.length === 0) {
+        terminalService.syncTerminalOutput('claude-error', `No Ollama models found. Run: ollama pull llama3.2\n`);
+        terminalService.syncTerminalOutput('claude-done', 1);
+        return 1;
+      }
     }
-    if (state.availableAITools.ollamaModels.length === 0) {
-      terminalService.syncTerminalOutput('claude-error', `No Ollama models found. Run: ollama pull llama3.2\n`);
-      terminalService.syncTerminalOutput('claude-done', 1);
-      return 1;
-    }
-    if (!ollamaModel) {
-      terminalService.syncTerminalOutput('claude-error', 'No AI model selected. Select one from the AI menu.\n');
+
+    if (!cfg.model) {
+      const hint = cfg.provider === 'openai-compatible'
+        ? 'Configure it via AI menu → Configure OpenAI-Compatible Endpoint…'
+        : 'Select one from the AI menu.';
+      terminalService.syncTerminalOutput('claude-error', `No AI model selected. ${hint}\n`);
       terminalService.syncTerminalOutput('claude-done', 1);
       return 1;
     }
@@ -94,110 +102,46 @@ function registerHandlers(ipcMain, { state, bus, configStore, terminalService })
     // Add user message to history
     state.chatHistory.push({ role: 'user', content: command });
 
-    // Build request with full conversation history
-    const requestBody = JSON.stringify({
-      model: ollamaModel,
-      messages: state.chatHistory,
-      stream: true
-    });
+    let aborted = false;
+    let activeReq = null;
 
-    return new Promise((resolve) => {
-      let assistantResponse = '';
-      let aborted = false;
-
-      const req = http.request({
-        hostname: '127.0.0.1',
-        port: 11434,
-        path: '/api/chat',
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Content-Length': Buffer.byteLength(requestBody)
-        }
-      }, (res) => {
-        res.setEncoding('utf8');
-        let buffer = '';
-
-        res.on('data', (chunk) => {
-          if (aborted) return;
-
-          buffer += chunk;
-          // Process complete JSON lines
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || ''; // Keep incomplete line in buffer
-
-          for (const line of lines) {
-            if (!line.trim()) continue;
-            try {
-              const json = JSON.parse(line);
-              if (json.message && json.message.content) {
-                const content = json.message.content;
-                assistantResponse += content;
-                terminalService.syncTerminalOutput('claude-output', content);
-              }
-              if (json.done) {
-                // Save assistant response to history
-                if (assistantResponse) {
-                  state.chatHistory.push({ role: 'assistant', content: assistantResponse });
-                }
-                terminalService.syncTerminalOutput('claude-done', 0);
-                resolve(0);
-              }
-            } catch (e) {
-              // Ignore parse errors for incomplete lines
-            }
-          }
-        });
-
-        res.on('end', () => {
-          if (!aborted) {
-            // Process any remaining buffer
-            if (buffer.trim()) {
-              try {
-                const json = JSON.parse(buffer);
-                if (json.message && json.message.content) {
-                  assistantResponse += json.message.content;
-                  terminalService.syncTerminalOutput('claude-output', json.message.content);
-                }
-              } catch (e) {
-                // Ignore
-              }
-            }
-            // Save assistant response if not already done
-            if (assistantResponse && !state.chatHistory.some(m => m.role === 'assistant' && m.content === assistantResponse)) {
-              state.chatHistory.push({ role: 'assistant', content: assistantResponse });
-            }
-            terminalService.syncTerminalOutput('claude-done', 0);
-            resolve(0);
-          }
-        });
-      });
-
-      req.on('error', (err) => {
-        if (!aborted) {
-          // Remove the user message if request failed
+    state.ollamaAbortController = {
+      abort: () => {
+        aborted = true;
+        if (activeReq) activeReq.destroy();
+        if (state.chatHistory.length > 0 && state.chatHistory[state.chatHistory.length - 1].role === 'user') {
           state.chatHistory.pop();
-          terminalService.syncTerminalOutput('claude-error', `Connection error: ${err.message}\nMake sure Ollama is running: ollama serve\n`);
-          terminalService.syncTerminalOutput('claude-done', 1);
-          resolve(1);
         }
+      }
+    };
+
+    try {
+      const assistant = await aiProviders.streamChat({
+        provider: cfg.provider,
+        baseUrl: cfg.baseUrl,
+        apiKey: cfg.apiKey,
+        model: cfg.model,
+        messages: state.chatHistory,
+        onContent: (chunk) => {
+          if (!aborted) terminalService.syncTerminalOutput('claude-output', chunk);
+        },
+        isAborted: () => aborted,
+        onRequest: (req) => { activeReq = req; }
       });
 
-      // Store abort function
-      state.ollamaAbortController = {
-        abort: () => {
-          aborted = true;
-          req.destroy();
-          // Remove the user message if aborted
-          if (state.chatHistory.length > 0 && state.chatHistory[state.chatHistory.length - 1].role === 'user') {
-            state.chatHistory.pop();
-          }
-        }
-      };
-
-      req.write(requestBody);
-      req.end();
-    });
+      if (!aborted && assistant.content) {
+        state.chatHistory.push({ role: 'assistant', content: assistant.content });
+      }
+      terminalService.syncTerminalOutput('claude-done', 0);
+      return 0;
+    } catch (err) {
+      if (!aborted) {
+        state.chatHistory.pop(); // remove the user message that didn't get a response
+        terminalService.syncTerminalOutput('claude-error', `${err.message}\n`);
+        terminalService.syncTerminalOutput('claude-done', 1);
+      }
+      return 1;
+    }
   });
 
   ipcMain.on('claude-stop', () => {
@@ -218,8 +162,42 @@ function registerHandlers(ipcMain, { state, bus, configStore, terminalService })
   ipcMain.handle('get-ai-provider', () => {
     return {
       provider: configStore.getAIProvider(),
-      model: configStore.getOllamaModel()
+      model: configStore.getActiveModel()
     };
+  });
+
+  // Full provider configuration (used by the AI menu and connection test).
+  ipcMain.handle('get-ai-provider-config', () => {
+    return {
+      provider: configStore.getAIProvider(),
+      ollamaModel: configStore.getOllamaModel(),
+      openaiBaseUrl: configStore.getOpenAIBaseUrl(),
+      openaiApiKey: configStore.getOpenAIApiKey(),
+      openaiModel: configStore.getOpenAIModel(),
+      openaiEndpoints: configStore.getOpenAIEndpoints(),
+      activeOpenaiEndpointIndex: configStore.getActiveOpenAIEndpointIndex()
+    };
+  });
+
+  ipcMain.handle('set-ai-provider-config', (event, cfg) => {
+    if (cfg && typeof cfg.provider === 'string') configStore.setAIProvider(cfg.provider);
+    if (cfg && typeof cfg.openaiBaseUrl === 'string') configStore.setOpenAIBaseUrl(cfg.openaiBaseUrl);
+    if (cfg && typeof cfg.openaiApiKey === 'string') configStore.setOpenAIApiKey(cfg.openaiApiKey);
+    if (cfg && typeof cfg.openaiModel === 'string') configStore.setOpenAIModel(cfg.openaiModel);
+
+    const next = {
+      provider: configStore.getAIProvider(),
+      model: configStore.getActiveModel()
+    };
+    bus.send('ai-provider-changed', next);
+    bus.sendToTerminal('ai-provider-changed', next);
+    return next;
+  });
+
+  // Quick non-streaming probe for the active provider.
+  ipcMain.handle('test-ai-connection', async () => {
+    const cfg = aiProviders.getActiveProviderConfig(configStore);
+    return aiProviders.testConnection(cfg);
   });
 }
 

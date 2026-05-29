@@ -1661,8 +1661,10 @@ Provide a helpful, accurate answer based on the context above. If the context do
     if (titleEl) {
       if (aiInfo.provider === 'ollama') {
         titleEl.textContent = `Ollama: ${aiInfo.model}`;
+      } else if (aiInfo.provider === 'openai-compatible') {
+        titleEl.textContent = `OpenAI-Compatible: ${aiInfo.model || '(no model)'}`;
       } else {
-        titleEl.textContent = 'Claude Terminal';
+        titleEl.textContent = 'AI Terminal';
       }
     }
   }

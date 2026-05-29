@@ -148,13 +148,40 @@ Notes only you can see while presenting
 
 ## AI Features (macOS/Linux)
 
-Vomit includes a built-in AI terminal powered by Ollama. All processing happens locally - your data never leaves your machine.
+Vomit includes a built-in AI terminal that talks to two kinds of local providers:
 
-### Setup
+- **Ollama** — the default, via `/api/chat`
+- **OpenAI-compatible** — any server exposing `POST /v1/chat/completions`
+  (MLX via `mlx_lm.server`, vLLM, LM Studio, llama.cpp `--api-server`, …)
+
+All processing happens locally — your data never leaves your machine.
+
+### Setup — Ollama
 
 1. Install Ollama from https://ollama.ai
 2. Pull a model: `ollama pull qwen2.5:14b`
-3. Press **Cmd+J** or select a model from the AI menu
+3. Press **Cmd+J** or select a model from the **AI** menu
+
+### Setup — OpenAI-compatible (example: MLX)
+
+1. Start the server, e.g. with [`mlx_lm`](https://github.com/ml-explore/mlx-lm):
+   ```bash
+   pip install mlx-lm
+   mlx_lm.server --model mlx-community/Qwen3-Coder-Next-4bit
+   ```
+2. In Vomit, **AI → Add OpenAI-Compatible Endpoint…** and enter:
+   - Name: `MLX Qwen3-Coder` (any label)
+   - Base URL: `http://127.0.0.1:8000/v1`
+   - API key: `dummy`
+   - Model id: `mlx-community/Qwen3-Coder-Next-4bit`
+3. The AI menu's provider radio flips to **OpenAI-Compatible** and your endpoint becomes the active one.
+4. **AI → Test AI Connection** verifies the endpoint.
+5. Cmd+J then try e.g. `/doc summarize this note`.
+
+**Multiple endpoints:** add more with **AI → Add OpenAI-Compatible Endpoint…** (one per remote/local server or per model). Each appears as a radio item in the AI menu — click to switch. **Edit "…"** and **Remove "…"** operate on the active endpoint.
+
+> RAG embeddings still go through Ollama's `nomic-embed-text` model regardless
+> of the chat provider.
 
 ### AI Commands
 

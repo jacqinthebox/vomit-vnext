@@ -28,35 +28,82 @@ function buildAISubmenu() {
     { type: 'separator' }
   ];
 
-  // Add Ollama models if available
-  if (_state.availableAITools.ollamaModels.length > 0) {
-    for (const model of _state.availableAITools.ollamaModels) {
-      submenu.push({
-        label: model,
-        type: 'radio',
-        checked: _configStore.getOllamaModel() === model,
-        click: () => setOllamaModel(model)
+  const currentProvider = _configStore.getAIProvider();
+
+  // Provider selection
+  submenu.push({
+    label: 'Ollama (local)',
+    type: 'radio',
+    checked: currentProvider === 'ollama',
+    click: () => setAIProvider('ollama')
+  });
+  submenu.push({
+    label: 'OpenAI-Compatible (e.g. MLX, vLLM, LM Studio)',
+    type: 'radio',
+    checked: currentProvider === 'openai-compatible',
+    click: () => setAIProvider('openai-compatible')
+  });
+  submenu.push({ type: 'separator' });
+
+  if (currentProvider === 'ollama') {
+    // Add Ollama models if available
+    if (_state.availableAITools.ollamaModels.length > 0) {
+      for (const model of _state.availableAITools.ollamaModels) {
+        submenu.push({
+          label: model,
+          type: 'radio',
+          checked: _configStore.getOllamaModel() === model,
+          click: () => setOllamaModel(model)
+        });
+      }
+    } else if (_state.availableAITools.ollama) {
+      submenu.push({ label: 'No models installed', enabled: false });
+      submenu.push({ label: 'Run: ollama pull llama3.2', enabled: false });
+    } else {
+      submenu.push({ label: 'Ollama not installed', enabled: false });
+      submenu.push({ label: 'Install from https://ollama.ai', enabled: false });
+    }
+  } else {
+    // OpenAI-compatible: list saved endpoints as radios.
+    const endpoints = _configStore.getOpenAIEndpoints();
+    const activeIndex = _configStore.getActiveOpenAIEndpointIndex();
+    if (endpoints.length === 0) {
+      submenu.push({ label: 'No endpoints configured', enabled: false });
+      submenu.push({ label: 'Use "Add OpenAI-Compatible Endpoint…" below', enabled: false });
+    } else {
+      endpoints.forEach((ep, idx) => {
+        const label = ep.model ? `${ep.name} — ${ep.model}` : ep.name;
+        submenu.push({
+          label,
+          type: 'radio',
+          checked: idx === activeIndex,
+          click: () => selectOpenAIEndpoint(idx)
+        });
       });
     }
-  } else if (_state.availableAITools.ollama) {
+  }
+
+  submenu.push({ type: 'separator' });
+  submenu.push({
+    label: 'Add OpenAI-Compatible Endpoint…',
+    click: () => addOpenAIEndpoint()
+  });
+
+  const activeEp = _configStore.getActiveOpenAIEndpoint();
+  if (activeEp) {
     submenu.push({
-      label: 'No models installed',
-      enabled: false
+      label: `Edit "${activeEp.name}"…`,
+      click: () => editActiveOpenAIEndpoint()
     });
     submenu.push({
-      label: 'Run: ollama pull llama3.2',
-      enabled: false
-    });
-  } else {
-    submenu.push({
-      label: 'Ollama not installed',
-      enabled: false
-    });
-    submenu.push({
-      label: 'Install from https://ollama.ai',
-      enabled: false
+      label: `Remove "${activeEp.name}"…`,
+      click: () => removeActiveOpenAIEndpoint()
     });
   }
+  submenu.push({
+    label: 'Test AI Connection',
+    click: () => testAIConnection()
+  });
 
   submenu.push({ type: 'separator' });
   const tavilyKey = _configStore.getTavilyApiKey();
@@ -66,6 +113,169 @@ function buildAISubmenu() {
   });
 
   return submenu;
+}
+
+function setAIProvider(provider) {
+  _configStore.setAIProvider(provider);
+  createMenu();
+  const payload = { provider, model: _configStore.getActiveModel() };
+  _bus.send('ai-provider-changed', payload);
+  _bus.sendToTerminal('ai-provider-changed', payload);
+  _bus.send('show-terminal');
+}
+
+function selectOpenAIEndpoint(index) {
+  _configStore.setActiveOpenAIEndpointIndex(index);
+  _configStore.setAIProvider('openai-compatible');
+  createMenu();
+  const ep = _configStore.getActiveOpenAIEndpoint();
+  const payload = { provider: 'openai-compatible', model: ep ? ep.model : '' };
+  _bus.send('ai-provider-changed', payload);
+  _bus.sendToTerminal('ai-provider-changed', payload);
+  _bus.send('show-terminal');
+}
+
+function escapeForAppleScript(s) {
+  return String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
+async function promptString(message, defaultValue, { hidden = false } = {}) {
+  const { exec } = require('child_process');
+  const msg = escapeForAppleScript(message);
+  const def = escapeForAppleScript(defaultValue || '');
+  const hiddenArg = hidden ? ' with hidden answer' : '';
+  const script = `osascript -e 'display dialog "${msg}" default answer "${def}"${hiddenArg}'`;
+  return new Promise((resolve) => {
+    exec(script, (err, stdout) => {
+      if (err) return resolve(null); // cancelled
+      const match = stdout.match(/text returned:(.*)/);
+      resolve(match ? match[1].trim() : null);
+    });
+  });
+}
+
+async function confirmDialog(message, detail) {
+  const { dialog } = require('electron');
+  const r = await dialog.showMessageBox({
+    type: 'warning',
+    buttons: ['Cancel', 'Remove'],
+    defaultId: 0,
+    cancelId: 0,
+    message,
+    detail: detail || ''
+  });
+  return r.response === 1;
+}
+
+// Prompt for a full endpoint (name, baseUrl, apiKey, model, contextLength).
+// Returns the new endpoint object, or null if the user cancels at any step.
+// Default values pre-fill prompts (handy for "Edit" vs. "Add"). The
+// contextLength prompt accepts an empty string to mean "use 32k default".
+async function promptEndpoint(defaults) {
+  const d = defaults || {};
+  const name = await promptString(
+    'Endpoint name (e.g. "MLX Qwen3-Coder"):',
+    d.name || ''
+  );
+  if (name === null) return null;
+
+  const baseUrl = await promptString(
+    'Base URL (e.g. http://127.0.0.1:8000/v1):',
+    d.baseUrl || _configStore.getOpenAIBaseUrl()
+  );
+  if (baseUrl === null) return null;
+
+  const apiKey = await promptString(
+    'API key (use "dummy" for local servers like mlx_lm.server):',
+    d.apiKey || _configStore.getOpenAIApiKey(),
+    { hidden: true }
+  );
+  if (apiKey === null) return null;
+
+  const model = await promptString(
+    'Model id (e.g. mlx-community/Qwen3-Coder-Next-4bit):',
+    d.model || ''
+  );
+  if (model === null) return null;
+
+  const ctxDefault = typeof d.contextLength === 'number' && d.contextLength > 0
+    ? String(d.contextLength)
+    : '';
+  const ctxRaw = await promptString(
+    'Context length in tokens (optional, e.g. 262144; leave empty for 32768 default):',
+    ctxDefault
+  );
+  if (ctxRaw === null) return null;
+  const ctxNum = parseInt(String(ctxRaw).replace(/[_,\s]/g, ''), 10);
+  const contextLength = Number.isFinite(ctxNum) && ctxNum > 0 ? ctxNum : undefined;
+
+  return {
+    name: name || baseUrl,
+    baseUrl,
+    apiKey,
+    model,
+    contextLength
+  };
+}
+
+async function addOpenAIEndpoint() {
+  const ep = await promptEndpoint(null);
+  if (!ep) return;
+  const newIndex = _configStore.addOpenAIEndpoint(ep);
+  _configStore.setActiveOpenAIEndpointIndex(newIndex);
+  _configStore.setAIProvider('openai-compatible');
+  createMenu();
+  const payload = { provider: 'openai-compatible', model: ep.model };
+  _bus.send('ai-provider-changed', payload);
+  _bus.sendToTerminal('ai-provider-changed', payload);
+}
+
+async function editActiveOpenAIEndpoint() {
+  const idx = _configStore.getActiveOpenAIEndpointIndex();
+  const current = _configStore.getActiveOpenAIEndpoint();
+  if (!current) return addOpenAIEndpoint();
+  const ep = await promptEndpoint(current);
+  if (!ep) return;
+  _configStore.updateOpenAIEndpoint(idx, ep);
+  createMenu();
+  const payload = { provider: 'openai-compatible', model: ep.model };
+  _bus.send('ai-provider-changed', payload);
+  _bus.sendToTerminal('ai-provider-changed', payload);
+}
+
+async function removeActiveOpenAIEndpoint() {
+  const current = _configStore.getActiveOpenAIEndpoint();
+  if (!current) return;
+  const ok = await confirmDialog(
+    `Remove endpoint "${current.name}"?`,
+    'This only removes the entry from the AI menu. The remote server is not affected.'
+  );
+  if (!ok) return;
+  _configStore.removeOpenAIEndpoint(_configStore.getActiveOpenAIEndpointIndex());
+  // If no endpoints left, fall back to Ollama so the menu stays usable.
+  if (_configStore.getOpenAIEndpoints().length === 0) {
+    _configStore.setAIProvider('ollama');
+  }
+  createMenu();
+  const payload = {
+    provider: _configStore.getAIProvider(),
+    model: _configStore.getActiveModel()
+  };
+  _bus.send('ai-provider-changed', payload);
+  _bus.sendToTerminal('ai-provider-changed', payload);
+}
+
+async function testAIConnection() {
+  const aiProviders = require('./services/aiProviders');
+  const cfg = aiProviders.getActiveProviderConfig(_configStore);
+  const result = await aiProviders.testConnection(cfg);
+  const { dialog } = require('electron');
+  dialog.showMessageBox({
+    type: result.ok ? 'info' : 'error',
+    title: 'AI Connection Test',
+    message: result.ok ? 'Connection successful' : 'Connection failed',
+    detail: `Provider: ${cfg.provider}\n${result.message}`
+  });
 }
 
 // Prompt user to enter Tavily API key
@@ -95,6 +305,8 @@ async function setTavilyApiKey() {
 // Set Ollama model and show terminal
 function setOllamaModel(model) {
   _configStore.setOllamaModel(model);
+  // Selecting an Ollama model implies the user wants the Ollama provider.
+  _configStore.setAIProvider('ollama');
   createMenu();
 
   // Notify renderer and show terminal
