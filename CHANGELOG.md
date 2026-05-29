@@ -1,3 +1,10 @@
+## [1.12.2](https://github.com/jacqinthebox/vomit-vnext/compare/v1.12.1...v1.12.2) (2026-05-29)
+
+
+### Bug Fixes
+
+* **editor:** strip newlines from selection in Cmd+M codeblock wrap ([f2b8651](https://github.com/jacqinthebox/vomit-vnext/commit/f2b8651b37644adbdcbd2bbda42e47c0b3419979))
+
 ## [1.12.1](https://github.com/jacqinthebox/vomit-vnext/compare/v1.12.0...v1.12.1) (2026-05-29)
 
 
