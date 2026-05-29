@@ -23,10 +23,9 @@ class FormattingManager {
     const selection = cm.getSelection();
 
     if (selection) {
-      // Wrap selected text in code block
-      cm.replaceSelection('```\n' + selection + '\n```');
+      const trimmed = selection.replace(/^\n+/, '').replace(/\n+$/, '');
+      cm.replaceSelection('```\n' + trimmed + '\n```');
     } else {
-      // Insert empty code block and position cursor inside
       const cursor = cm.getCursor();
       cm.replaceSelection('```\n\n```');
       cm.setCursor({ line: cursor.line + 1, ch: 0 });
