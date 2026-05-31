@@ -1572,8 +1572,14 @@ Provide a helpful, accurate answer based on the context above. If the context do
     }
   }
 
+  // Normalize LaTeX delimiters from LLM output.
+  // Many models output [ ... ] instead of \[ ... \] for display math.
+  normalizeLatexDelimiters(text) {
+    return text.replace(/\[\s*((?:[^[\]]*\\(?:text|frac|times|approx|sqrt|sum|prod|int|cdot)[^[\]]*)+)\s*\]/g, '\\[$1\\]');
+  }
+
   renderMarkdown(element) {
-    const text = element.textContent;
+    const text = this.normalizeLatexDelimiters(element.textContent);
 
     if (!text.trim()) {
       return;
@@ -1628,6 +1634,19 @@ Provide a helpful, accurate answer based on the context above. If the context do
       try {
         const html = marked.parse(text);
         element.innerHTML = html;
+
+        // Render LaTeX math formulas with KaTeX
+        if (window.renderMathInElement) {
+          window.renderMathInElement(element, {
+            delimiters: [
+              { left: '$$', right: '$$', display: true },
+              { left: '$', right: '$', display: false },
+              { left: '\\[', right: '\\]', display: true },
+              { left: '\\(', right: '\\)', display: false }
+            ],
+            throwOnError: false
+          });
+        }
       } catch (e) {
         console.error('Markdown rendering error:', e);
         // Fallback to plain text
