@@ -43,8 +43,11 @@ Press **Cmd+/** to open this help at any time.
 | Cmd+. | Command palette |
 | Cmd+Shift+O | Toggle outline sidebar (left) |
 | Cmd+Alt+O | Toggle right outline |
+| Cmd+Shift+G | Toggle wiki graph |
 | Cmd+E | Toggle file explorer |
 | Cmd+Shift+R | Refresh file tree |
+| Cmd+Shift+H | Toggle tag explorer |
+| Cmd+1 | Toggle sidebar focus |
 | Cmd+L | Toggle line numbers |
 | Alt+Z | Toggle word wrap |
 | Cmd+F | Find in file |
@@ -53,6 +56,7 @@ Press **Cmd+/** to open this help at any time.
 | Cmd+Up | Go to parent folder |
 | Cmd+` | Toggle shell terminal |
 | Cmd+/ | Show keyboard shortcuts |
+| Cmd+Shift+/ | Show documentation |
 
 ---
 
@@ -62,7 +66,6 @@ Press **Cmd+/** to open this help at any time.
 |----------|--------|
 | Cmd+B | Bold |
 | Cmd+I | Italic |
-| Cmd+` | Inline code |
 | Cmd+M | Code block |
 | Cmd+K | Insert link |
 | Cmd+Shift+T | Format table |
@@ -70,6 +73,8 @@ Press **Cmd+/** to open this help at any time.
 | Cmd+Shift+1 | Heading 1 |
 | Cmd+Shift+2 | Heading 2 |
 | Cmd+Shift+3 | Heading 3 |
+| Cmd+Shift+8 | Bullet list |
+| Cmd+Shift+9 | Numbered list |
 | Cmd+' | Blockquote |
 | Cmd+- | Horizontal rule |
 | Cmd+Shift+D | Insert date heading (## YYYY-MM-DD) |
@@ -93,6 +98,26 @@ Todos are plain markdown checkboxes, so they stay in your notes:
 | Command Palette > Toggle Todo Explorer | Open the Todo Explorer |
 
 Todo Explorer scans saved markdown files in the current bucket. It parses `@YYYY-MM-DD` due dates, `!high`/`!medium`/`!low` priorities, and `#tags`.
+
+---
+
+## Tags
+
+Tags are declared in the frontmatter of a document:
+
+```yaml
+---
+tags: [project, draft, ideas]
+---
+```
+
+| Shortcut / Command | Action |
+|--------------------|--------|
+| Cmd+Shift+H | Toggle the Tag Explorer |
+| View > Toggle Tags | Open the Tag Explorer |
+| Command Palette > Toggle Tag Explorer | Open the Tag Explorer |
+
+The Tag Explorer scans saved markdown files in the current bucket and groups documents by their frontmatter tags.
 
 ---
 

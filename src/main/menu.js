@@ -657,6 +657,7 @@ function createMenu() {
         },
         {
           label: 'Toggle Tags',
+          accelerator: 'CmdOrCtrl+Shift+H',
           click: () => {
             _bus.send('toggle-tags');
           }

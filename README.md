@@ -280,6 +280,7 @@ Press **Cmd+/** to view all shortcuts in the app. See [SHORTCUTS.md](SHORTCUTS.m
 | **View** | Cmd+P | Toggle preview |
 | | Cmd+E | Toggle file explorer |
 | | Cmd+Alt+O | Toggle right outline |
+| | Cmd+Shift+H | Toggle tag explorer |
 | | Cmd+L | Toggle line numbers |
 | | Cmd+/ | Show all shortcuts |
 | **Format** | Cmd+B | Bold |

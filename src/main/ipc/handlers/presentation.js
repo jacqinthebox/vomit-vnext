@@ -191,6 +191,19 @@ function createPresentationService({ state, bus, configStore, windowManager }) {
       bus.sendToPresentation('go-to-slide', index);
       bus.sendToPresenter('go-to-slide', index);
     });
+
+    // Command palette IPC handlers
+    ipcMain.on('export-to-pdf', () => {
+      exportToPDF();
+    });
+
+    ipcMain.on('palette-set-theme', (event, theme) => {
+      setTheme(theme);
+    });
+
+    ipcMain.on('show-help', () => {
+      showHelp();
+    });
   }
 
   return {

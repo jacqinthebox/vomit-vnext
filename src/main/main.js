@@ -89,6 +89,24 @@ wiki.registerHandlers(ipcMain, { state, bus });
 // App info handler
 ipcMain.handle('get-app-version', () => app.getVersion());
 
+// Command palette IPC handlers (mirroring menu actions that need main-process state)
+ipcMain.on('show-documentation-window', () => {
+  const manualPath = path.join(app.getAppPath(), 'manual.md');
+  try {
+    const content = fs.readFileSync(manualPath, 'utf8');
+    windowManager.createDocumentationWindow(content);
+  } catch (err) {
+    windowManager.createDocumentationWindow('# Documentation\n\nManual not found.');
+  }
+});
+
+ipcMain.on('set-auto-save-enabled', (event, enabled) => {
+  state.autoSaveEnabled = !!enabled;
+  configStore.setAutoSaveEnabled(state.autoSaveEnabled);
+  bus.send('auto-save-changed', state.autoSaveEnabled);
+  createMenu();
+});
+
 // Check for updates via GitHub releases
 async function checkForUpdates() {
   try {

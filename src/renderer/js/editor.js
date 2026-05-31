@@ -160,6 +160,8 @@ class Editor {
         tagExplorerManager: this.tagExplorerManager,
         todoExplorerManager: this.todoExplorerManager,
         settingsManager: this.settingsManager,
+        terminalManager: this.terminalManager,
+        wikiGraphManager: this.wikiGraphManager,
         getValue: () => this.getValue(),
       })
     });

@@ -24,22 +24,34 @@ class CommandPaletteManager {
       { section: 'File', label: 'New File', shortcut: '⌘N', action: () => window.vomit.newFile() },
       { section: 'File', label: 'New Presentation', shortcut: '⌘⌥N', action: () => window.vomit.newPresentation() },
       { section: 'File', label: 'Open File', shortcut: '⌘O', action: () => window.vomit.openFileDialog() },
-      { section: 'File', label: 'New Folder', shortcut: '⌘⇧F', action: () => actions.fileTreeManager.createNewFolder() },
-      { section: 'File', label: 'New File in Folder', shortcut: '⌘⇧N', action: () => actions.fileTreeManager.createNewFile() },
+      { section: 'File', label: 'New Folder', shortcut: '⌘⌥⇧N', action: () => actions.fileTreeManager.createNewFolder() },
+      { section: 'File', label: 'New File in Folder', action: () => actions.fileTreeManager.createNewFile() },
       { section: 'File', label: 'Save', shortcut: '⌘S', action: () => window.vomit.saveContent(actions.getValue()) },
       { section: 'File', label: 'Save As', shortcut: '⌘⇧S', action: () => window.vomit.saveAs() },
+      { section: 'File', label: 'Export to PDF', shortcut: '⌘⇧E', action: () => window.vomit.exportToPDF() },
       { section: 'File', label: 'Close Tab', shortcut: '⌘W', action: () => actions.tabManager.closeCurrentTab() },
+      { section: 'File', label: 'Toggle Auto Save', action: async () => {
+        const enabled = await window.vomit.getAutoSaveEnabled();
+        window.vomit.setAutoSaveEnabled(!enabled);
+      }},
 
       // View commands
       { section: 'View', label: 'Toggle Preview', shortcut: '⌘P', action: () => actions.previewManager.togglePreview() },
       { section: 'View', label: 'Toggle Files', shortcut: '⌘E', action: () => actions.fileTreeManager.toggleFileTree() },
       { section: 'View', label: 'Toggle Outline', shortcut: '⌘⇧O', action: () => actions.fileTreeManager.toggleOutline() },
+      { section: 'View', label: 'Toggle Right Outline', shortcut: '⌘⌥O', action: () => actions.previewManager.toggleRightOutline() },
+      { section: 'View', label: 'Toggle Wiki Graph', shortcut: '⌘⇧G', action: () => actions.wikiGraphManager.toggle() },
+      { section: 'View', label: 'Refresh File Tree', shortcut: '⌘⇧R', action: () => {
+        window.dispatchEvent(new CustomEvent('vomit:refresh-file-tree', { detail: {} }));
+      }},
       { section: 'View', label: 'Toggle Line Numbers', shortcut: '⌘L', action: () => actions.settingsManager.toggleLineNumbers() },
       { section: 'View', label: 'Toggle Word Wrap', shortcut: '⌥Z', action: () => actions.formatting.toggleLineWrapping() },
+      { section: 'View', label: 'Toggle Shell Terminal', shortcut: '⌘`', action: () => actions.terminalManager.toggleShellTerminal() },
+      { section: 'View', label: 'Toggle Sidebar Focus', shortcut: '⌘1', action: () => actions.searchManager.togglePaneFocus() },
       { section: 'View', label: 'Find in File', shortcut: '⌘F', action: () => this.host.cm.execCommand('find') },
       { section: 'View', label: 'Find and Replace', shortcut: '⌘⌥F', action: () => this.host.cm.execCommand('replace') },
       { section: 'View', label: 'Search in Files', shortcut: '⌘⇧F', action: () => actions.searchManager.toggleSearch() },
-      { section: 'View', label: 'Toggle Tag Explorer', action: () => actions.tagExplorerManager.toggleTagExplorer() },
+      { section: 'View', label: 'Toggle Tag Explorer', shortcut: '⌘⇧H', action: () => actions.tagExplorerManager.toggleTagExplorer() },
       { section: 'View', label: 'Toggle Todo Explorer', action: () => actions.todoExplorerManager.toggleTodoExplorer() },
       { section: 'View', label: 'Sort by Name', action: async () => {
         await window.vomit.setFileSortOrder('name');
@@ -53,7 +65,8 @@ class CommandPaletteManager {
       // Format commands
       { section: 'Format', label: 'Bold', shortcut: '⌘B', action: () => actions.formatting.wrapSelection('**', '**') },
       { section: 'Format', label: 'Italic', shortcut: '⌘I', action: () => actions.formatting.wrapSelection('*', '*') },
-      { section: 'Format', label: 'Code', shortcut: '⌘`', action: () => actions.formatting.wrapSelection('`', '`') },
+      { section: 'Format', label: 'Code', action: () => actions.formatting.wrapSelection('`', '`') },
+      { section: 'Format', label: 'Code Block', shortcut: '⌘M', action: () => actions.formatting.wrapCodeBlock() },
       { section: 'Format', label: 'Link', shortcut: '⌘K', action: () => actions.formatting.insertLink() },
       { section: 'Format', label: 'Insert Table', action: () => actions.formatting.insertTable() },
       { section: 'Format', label: 'Format Table', shortcut: '⌘⇧T', action: () => actions.formatting.formatTable() },
@@ -66,6 +79,7 @@ class CommandPaletteManager {
       { section: 'Format', label: 'Quote', shortcut: "⌘'", action: () => actions.formatting.insertAtLineStart('> ') },
       { section: 'Format', label: 'Horizontal Rule', shortcut: '⌘-', action: () => actions.formatting.insertText('\n---\n') },
       { section: 'Format', label: 'Insert Slide', shortcut: '⌘↵', action: () => actions.formatting.insertSlide() },
+      { section: 'Format', label: 'Insert Date Heading', shortcut: '⌘⇧D', action: () => actions.formatting.insertDateHeading() },
 
       // Navigation
       { section: 'Navigation', label: 'Next Tab', shortcut: '⌘⇧]', action: () => actions.tabManager.nextTab() },
@@ -76,8 +90,20 @@ class CommandPaletteManager {
       { section: 'Presentation', label: 'Start Presentation', shortcut: '⌘⇧P', action: () => window.vomit.startPresentation() },
       { section: 'Presentation', label: 'Start with Presenter View', shortcut: '⌘⌥P', action: () => window.vomit.startPresentationWithPresenter() },
 
+      // Theme
+      { section: 'Theme', label: 'Theme: Default', action: () => window.vomit.setTheme('default') },
+      { section: 'Theme', label: 'Theme: Dark', action: () => window.vomit.setTheme('dark') },
+      { section: 'Theme', label: 'Theme: Catppuccin', action: () => window.vomit.setTheme('catppuccin') },
+      { section: 'Theme', label: 'Theme: Nord', action: () => window.vomit.setTheme('nord') },
+      { section: 'Theme', label: 'Theme: Tokyo Night', action: () => window.vomit.setTheme('tokyo-night') },
+      { section: 'Theme', label: 'Theme: Tokyo Night Light', action: () => window.vomit.setTheme('tokyo-night-light') },
+      { section: 'Theme', label: 'Theme: Solarized Dark', action: () => window.vomit.setTheme('solarized') },
+      { section: 'Theme', label: 'Theme: CherryTree', action: () => window.vomit.setTheme('cherrytree') },
+
       // Help
       { section: 'Help', label: 'Keyboard Shortcuts', shortcut: '⌘/', action: () => actions.settingsManager.showShortcutsModal() },
+      { section: 'Help', label: 'Documentation', shortcut: '⌘⇧/', action: () => window.vomit.showDocumentationWindow() },
+      { section: 'Help', label: 'Vomit on GitHub', action: () => window.vomit.showHelp() },
     ];
 
     // Create palette UI

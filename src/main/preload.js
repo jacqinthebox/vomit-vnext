@@ -314,6 +314,11 @@ contextBridge.exposeInMainWorld('vomit', {
   createPresentationFile: (filePath) => ipcRenderer.invoke('create-presentation-file', filePath),
   openFileDialog: () => ipcRenderer.send('open-file-dialog'),
   saveAs: () => ipcRenderer.send('save-as'),
+  exportToPDF: () => ipcRenderer.send('export-to-pdf'),
+  setTheme: (theme) => ipcRenderer.send('palette-set-theme', theme),
+  setAutoSaveEnabled: (enabled) => ipcRenderer.send('set-auto-save-enabled', enabled),
+  showDocumentationWindow: () => ipcRenderer.send('show-documentation-window'),
+  showHelp: () => ipcRenderer.send('show-help'),
   // AI CLI methods
   claudeExecute: (command, cwd) => ipcRenderer.invoke('claude-execute', command, cwd),
   claudeStop: () => ipcRenderer.send('claude-stop'),
