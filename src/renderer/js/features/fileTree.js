@@ -29,6 +29,13 @@ class FileTreeManager {
     this._setupEventDelegation();
     this._setupKeyboardNavigation();
     this._setupDragAndDrop();
+
+    // Auto-reveal the active file in the tree when it changes
+    this.editorState.addEventListener('change:currentFilePath', (e) => {
+      if (e.detail.value && this.editorState.isFileTreeVisible) {
+        this.revealFile(e.detail.value);
+      }
+    });
   }
 
   get tabManager() { return this._getTabManager(); }
@@ -57,6 +64,10 @@ class FileTreeManager {
 
       // Load tree if needed
       this._ensureTreeLoaded().then(() => {
+        const currentFile = this.editorState.currentFilePath;
+        if (currentFile) {
+          this.revealFile(currentFile);
+        }
         this._focusFirstOrSelected();
       });
     } else {
@@ -461,6 +472,34 @@ class FileTreeManager {
     this.editorState.focusedPane = 'sidebar';
     window.vomit.openFile(path);
     // Note: Tree stays visible. User must explicitly toggle to hide.
+  }
+
+  // Reveal a file in the tree: expand ancestors, load directories, highlight it
+  async revealFile(filePath) {
+    if (!filePath || !this.treeState.rootPath) return;
+    if (!filePath.startsWith(this.treeState.rootPath)) return;
+
+    // Build the list of ancestor directories that need to be expanded
+    const rootPath = this.treeState.rootPath;
+    const relativeParts = filePath.slice(rootPath.length).split('/').filter(Boolean);
+    // All parts except the last (filename) are directories to expand
+    const dirsToExpand = [];
+    let currentPath = rootPath;
+    for (let i = 0; i < relativeParts.length - 1; i++) {
+      currentPath = `${currentPath}/${relativeParts[i]}`;
+      dirsToExpand.push(currentPath);
+    }
+
+    // Load and expand each ancestor directory
+    for (const dir of dirsToExpand) {
+      if (!this.dataModel.hasChildren(dir)) {
+        await this.dataModel.loadChildren(dir);
+      }
+      this.treeState.expand(dir);
+    }
+
+    // Select the file (adds 'active' class via TreeView)
+    this.treeState.selectedPath = filePath;
   }
 
   // ─────────────────────────────────────────────────────────────

@@ -115,6 +115,7 @@ class TreeView {
       const newEl = this.#elements.get(newPath);
       if (newEl) {
         newEl.classList.add('active');
+        newEl.scrollIntoView({ block: 'nearest' });
       }
     }
   }

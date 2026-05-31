@@ -1440,6 +1440,11 @@ html, body {
   height: 10px;
 }
 
+::-webkit-scrollbar:horizontal {
+  height: 0;
+  display: none;
+}
+
 ::-webkit-scrollbar-track {
   background: var(--scrollbar-track);
 }

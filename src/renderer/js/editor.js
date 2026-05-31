@@ -209,6 +209,11 @@ class Editor {
     // Create an empty tab initially - it will be replaced when bucket loads
     // or used if no files exist yet
     this.tabManager.createTab(null, '');
+
+    // File tree is visible by default — ensure it loads once a root is available
+    if (this.state.isFileTreeVisible) {
+      this.fileTreeManager.loadFileTree();
+    }
   }
 
   async loadFontSize() {

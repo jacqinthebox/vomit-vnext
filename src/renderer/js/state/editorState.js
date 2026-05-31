@@ -22,7 +22,7 @@ class EditorState extends EventTarget {
     this._isPreviewVisible = false;
 
     // Sidebar state
-    this._isFileTreeVisible = false;
+    this._isFileTreeVisible = true;
     this._isOutlineVisible = false;
     this._isSearchVisible = false;
     this._isTagExplorerVisible = false;
