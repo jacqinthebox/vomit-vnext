@@ -876,7 +876,8 @@ function createMenu() {
         { label: 'Nord', click: () => _actions.setTheme('nord') },
         { label: 'Tokyo Night', click: () => _actions.setTheme('tokyo-night') },
         { label: 'Tokyo Night Light', click: () => _actions.setTheme('tokyo-night-light') },
-        { label: 'Solarized Dark', click: () => _actions.setTheme('solarized') }
+        { label: 'Solarized Dark', click: () => _actions.setTheme('solarized') },
+        { label: 'CherryTree', click: () => _actions.setTheme('cherrytree') }
       ]
     },
     {

@@ -982,7 +982,18 @@ html, body {
 
 .sidebar-header .bucket-icon {
   margin-left: auto;
+  display: inline-flex;
+  align-items: center;
   font-size: 12px;
+}
+
+.sidebar-header .bucket-icon .bucket-icon-cherry {
+  display: none;
+}
+
+.sidebar-header .bucket-icon svg {
+  width: 14px;
+  height: 14px;
 }
 
 #outline-list {
