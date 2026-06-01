@@ -920,9 +920,10 @@ Now create the presentation about: ${topic}`;
     this.appendTerminalOutput(`Writing to editor (${modeLabels[mode]})...`, 'system');
 
     // For replace mode, check if there's a selection
+    let selectedText = '';
     if (mode === 'replace') {
-      const selection = this.host.getSelection();
-      if (!selection) {
+      selectedText = this.host.getSelection();
+      if (!selectedText) {
         this.appendTerminalOutput('Error: No text selected. Select text first.', 'error');
         return;
       }
@@ -966,8 +967,8 @@ Now create the presentation about: ${topic}`;
     // Build the prompt with context if needed
     let finalPrompt = prompt;
     if (mode === 'replace') {
-      // Include the selected text for context
-      finalPrompt = `Rewrite/improve the following text based on this instruction: "${prompt}"\n\nOriginal text:\n${this.host.getSelection() || ''}\n\nProvide ONLY the rewritten text, no explanations.`;
+      // Use the text captured before deletion (selection is gone now)
+      finalPrompt = `Rewrite/improve the following text based on this instruction: "${prompt}"\n\nOriginal text:\n${selectedText}\n\nProvide ONLY the rewritten text, no explanations.`;
     } else if (mode !== 'new') {
       // For cursor/append, provide document context
       const docContent = this.host.getContent();

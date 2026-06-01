@@ -1,3 +1,19 @@
+## [1.12.3](https://github.com/jacqinthebox/vomit-vnext/compare/v1.12.2...v1.12.3) (2026-06-01)
+
+
+### Bug Fixes
+
+* **rewrite:** preserve selected text when building prompt so model receives content instead of an empty original block
+
+
+### Chores
+
+* **palette:** add tag toggle shortcut and expand command palette coverage ([4dd9641](https://github.com/jacqinthebox/vomit-vnext/commit/4dd9641edead4184144636b00a7e889458536cd6))
+* render LaTeX math formulas in AI terminal output ([550cde7](https://github.com/jacqinthebox/vomit-vnext/commit/550cde7c8bb7d8c707b502698acc08ce3d88351c))
+* reveal active file in tree, show file tree by default, hide horizontal scrollbars ([e2221a8](https://github.com/jacqinthebox/vomit-vnext/commit/e2221a8e3fb16b2a25fcf754f90808e340ebeed0))
+* remove screenshot ([f1cdbc5](https://github.com/jacqinthebox/vomit-vnext/commit/f1cdbc5902db4a5711aea3cafdfc7aeeabb18b43))
+* add CherryTree theme with classic folder/file icon colors ([544d0ec](https://github.com/jacqinthebox/vomit-vnext/commit/544d0ec3c5479702af5c3e1025eebf4a4bc8c202))
+
 ## [1.12.2](https://github.com/jacqinthebox/vomit-vnext/compare/v1.12.1...v1.12.2) (2026-05-29)
 
 
