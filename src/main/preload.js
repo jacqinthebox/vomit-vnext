@@ -331,7 +331,7 @@ contextBridge.exposeInMainWorld('vomit', {
   getFontSize: () => ipcRenderer.invoke('get-font-size'),
   // Agent mode with tool calling
   agentExecute: (prompt, cwd) => ipcRenderer.invoke('agent-execute', prompt, cwd),
-  agentClearHistory: () => ipcRenderer.send('agent-clear-history'),
+  agentClearHistory: () => ipcRenderer.invoke('agent-clear-history'),
   getContextStats: () => ipcRenderer.invoke('get-context-stats'),
   onContextStatsUpdated: (cb) => ipcRenderer.on('context-stats-updated', cb),
   // File operations for pseudonymization

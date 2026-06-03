@@ -318,6 +318,51 @@ function registerHandlers(ipcMain, { state, bus, configStore, terminalService })
     }
   }
 
+  // Query an OpenAI-compatible /v1/models endpoint for context length.
+  // MLX and many other servers expose this as `max_model_len` or similar.
+  async function getOpenAIModelContextLength(baseUrl, modelName) {
+    const cacheKey = `openai:${baseUrl}:${modelName}`;
+    if (modelContextCache[cacheKey]) return modelContextCache[cacheKey];
+    try {
+      const url = new URL('/v1/models', baseUrl);
+      const result = await new Promise((resolve, reject) => {
+        const mod = url.protocol === 'https:' ? require('https') : http;
+        const req = mod.request(url, { method: 'GET' }, (res) => {
+          let data = '';
+          res.on('data', chunk => data += chunk);
+          res.on('end', () => {
+            try {
+              const json = JSON.parse(data);
+              const models = json.data || [];
+              const match = models.find(m => m.id === modelName);
+              if (match) {
+                // MLX uses max_model_len; others may use context_length or context_window
+                const ctx = match.max_model_len || match.context_length || match.context_window;
+                if (ctx && typeof ctx === 'number' && ctx > 0) {
+                  resolve(ctx);
+                  return;
+                }
+              }
+              resolve(null);
+            } catch (e) {
+              resolve(null);
+            }
+          });
+        });
+        req.on('error', () => resolve(null));
+        req.setTimeout(3000, () => { req.destroy(); resolve(null); });
+        req.end();
+      });
+      if (result) {
+        modelContextCache[cacheKey] = result;
+        return result;
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
   // Context health stats IPC
   ipcMain.handle('get-context-stats', async () => {
     const model = configStore.getActiveModel();
@@ -326,18 +371,26 @@ function registerHandlers(ipcMain, { state, bus, configStore, terminalService })
     const estimatedTokens = estimateTokens(history);
 
     // Pick the context limit per active provider:
-    // - Ollama: read from /api/show (it exposes context_length in model_info)
-    // - OpenAI-compatible: use the per-endpoint contextLength the user set
-    //   in AI → Add/Edit Endpoint, falling back to 32k. There is no standard
-    //   OpenAI endpoint that reports context length.
+    // - Ollama: query /api/show for context_length
+    // - OpenAI-compatible: try /v1/models auto-detection first, then fall back
+    //   to the user-configured contextLength, then 32k default.
     let contextLimit;
     if (configStore.getAIProvider() === 'ollama') {
       contextLimit = model ? await getModelContextLength(model) : 32768;
     } else {
       const ep = configStore.getActiveOpenAIEndpoint();
-      contextLimit = ep && typeof ep.contextLength === 'number' && ep.contextLength > 0
-        ? ep.contextLength
-        : 32768;
+      const baseUrl = ep && ep.baseUrl;
+      // Try auto-detection from the endpoint
+      const detected = baseUrl && model
+        ? await getOpenAIModelContextLength(baseUrl, model)
+        : null;
+      if (detected) {
+        contextLimit = detected;
+      } else if (ep && typeof ep.contextLength === 'number' && ep.contextLength > 0) {
+        contextLimit = ep.contextLength;
+      } else {
+        contextLimit = 32768;
+      }
     }
 
     return {
@@ -367,6 +420,8 @@ function registerHandlers(ipcMain, { state, bus, configStore, terminalService })
     // Check for /clear command to reset conversation
     if (prompt.trim().toLowerCase() === 'clear' || prompt.trim().toLowerCase() === '/clear') {
       state.agentConversationHistory = [];
+      bus.send('context-stats-updated');
+      bus.sendToTerminal('context-stats-updated');
       sendOutput('claude-output', 'Conversation history cleared.\n');
       sendOutput('claude-done', 0);
       return 0;
@@ -504,7 +559,7 @@ After using tools, provide a summary of what you did. You have access to convers
   });
 
   // Clear agent conversation history
-  ipcMain.on('agent-clear-history', () => {
+  ipcMain.handle('agent-clear-history', () => {
     state.agentConversationHistory = [];
     bus.send('context-stats-updated');
     bus.sendToTerminal('context-stats-updated');

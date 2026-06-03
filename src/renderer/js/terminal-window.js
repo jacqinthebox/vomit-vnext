@@ -880,11 +880,11 @@ Provide a helpful, accurate answer based on the context above. If the context do
     });
 
     // Clear button
-    terminalClear.addEventListener('click', () => {
+    terminalClear.addEventListener('click', async () => {
       if (terminalState.activeTerminalTab === 'ai') {
         clearTerminal();
         window.vomit.claudeClearHistory();
-        window.vomit.agentClearHistory();
+        await window.vomit.agentClearHistory();
         appendTerminalOutput('Conversation cleared.', 'system');
         updateContextBar();
         // Sync clear to main window

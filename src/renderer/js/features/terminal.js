@@ -148,6 +148,7 @@ class TerminalManager {
       // Clear main terminal when detached terminal is cleared
       this.clearTerminal();
       this.appendTerminalOutput('Conversation cleared.', 'system');
+      this.updateContextBar();
     });
 
     // Commands that need CodeMirror access (the editor) are forwarded from
@@ -186,7 +187,7 @@ class TerminalManager {
     });
 
     // Handle input submission
-    this.terminalInput.addEventListener('keydown', (e) => {
+    this.terminalInput.addEventListener('keydown', async (e) => {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         if (this.pickerState.active && this.pickerState.items.length > 0) {
@@ -271,7 +272,7 @@ class TerminalManager {
         e.preventDefault();
         this.clearTerminal();
         window.vomit.claudeClearHistory();
-        window.vomit.agentClearHistory();
+        await window.vomit.agentClearHistory();
         this.state.terminalHistory = [];
         this.state.terminalHistoryIndex = 0;
         window.vomit.clearTerminalHistory();
@@ -281,11 +282,11 @@ class TerminalManager {
     });
 
     // Clear button - clears active terminal
-    this.terminalClear.addEventListener('click', () => {
+    this.terminalClear.addEventListener('click', async () => {
       if (this.state.activeTerminalTab === 'ai') {
         this.clearTerminal();
         window.vomit.claudeClearHistory();
-        window.vomit.agentClearHistory();
+        await window.vomit.agentClearHistory();
         this.appendTerminalOutput('Conversation cleared.', 'system');
         this.updateContextBar();
       } else {

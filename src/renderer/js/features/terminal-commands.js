@@ -8,12 +8,26 @@ const COMMAND_REGISTRY = [
     description: 'Start a new conversation',
     args: 'none',
     argsHint: '',
-    requiresCwd: true,
+    requiresCwd: false,
     async handler(args, ctx) {
       window.vomit.claudeClearHistory();
-      window.vomit.agentClearHistory();
+      await window.vomit.agentClearHistory();
       ctx.clearTerminal();
       ctx.appendTerminalOutput('New conversation started.', 'system');
+      ctx.updateContextBar();
+    }
+  },
+  {
+    name: '/clear',
+    description: 'Clear conversation history',
+    args: 'none',
+    argsHint: '',
+    requiresCwd: false,
+    async handler(args, ctx) {
+      window.vomit.claudeClearHistory();
+      await window.vomit.agentClearHistory();
+      ctx.clearTerminal();
+      ctx.appendTerminalOutput('Conversation cleared.', 'system');
       ctx.updateContextBar();
     }
   },
