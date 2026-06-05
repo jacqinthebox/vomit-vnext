@@ -1,3 +1,10 @@
+## [1.13.2](https://github.com/jacqinthebox/vomit-vnext/compare/v1.13.1...v1.13.2) (2026-06-05)
+
+
+### Bug Fixes
+
+* **editor:** lock horizontal editor scroll ([bb5a97a](https://github.com/jacqinthebox/vomit-vnext/commit/bb5a97a524d0b28176578d9c426dc6609fc0745c))
+
 ## [1.13.1](https://github.com/jacqinthebox/vomit-vnext/compare/v1.13.0...v1.13.1) (2026-06-05)
 
 
