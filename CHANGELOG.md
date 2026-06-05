@@ -1,3 +1,10 @@
+# [1.14.0](https://github.com/jacqinthebox/vomit-vnext/compare/v1.13.2...v1.14.0) (2026-06-05)
+
+
+### Features
+
+* **windows:** add Windows app support ([4171bc6](https://github.com/jacqinthebox/vomit-vnext/commit/4171bc6ee2cb31cd772d295d016c91fc4c6a85cf))
+
 ## [1.13.2](https://github.com/jacqinthebox/vomit-vnext/compare/v1.13.1...v1.13.2) (2026-06-05)
 
 
