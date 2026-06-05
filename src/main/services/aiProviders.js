@@ -67,6 +67,18 @@ function buildRequestOptions(urlObj, method, headers) {
   };
 }
 
+function contentToText(value) {
+  if (typeof value === 'string') return value;
+  if (value == null) return '';
+  if (Array.isArray(value)) return value.map(contentToText).join('');
+  if (typeof value === 'object') {
+    if (typeof value.text === 'string') return value.text;
+    if (typeof value.content === 'string') return value.content;
+    if (typeof value.value === 'string') return value.value;
+  }
+  return '';
+}
+
 /**
  * Stream a chat completion from the active provider.
  *
@@ -134,8 +146,11 @@ function streamOllamaChat({ baseUrl, model, messages, tools, onContent, isAborte
           try {
             const json = JSON.parse(line);
             if (json.message && json.message.content) {
-              content += json.message.content;
-              if (onContent) onContent(json.message.content);
+              const text = contentToText(json.message.content);
+              if (text) {
+                content += text;
+                if (onContent) onContent(text);
+              }
             }
             if (json.message && json.message.tool_calls) {
               toolCalls = json.message.tool_calls;
@@ -248,13 +263,14 @@ function streamOpenAIChat({ baseUrl, apiKey, model, messages, tools, onContent, 
             }
             if (onContent) onContent(delta.reasoning);
           }
-          if (typeof delta.content === 'string' && delta.content.length) {
+          const deltaContent = contentToText(delta.content);
+          if (deltaContent.length) {
             if (inReasoning) {
               inReasoning = false;
               if (onContent) onContent('\n\n');
             }
-            content += delta.content;
-            if (onContent) onContent(delta.content);
+            content += deltaContent;
+            if (onContent) onContent(deltaContent);
           }
           if (Array.isArray(delta.tool_calls)) {
             for (const tc of delta.tool_calls) {
@@ -338,7 +354,7 @@ function toOpenAIMessage(msg) {
   if (msg.role === 'assistant' && Array.isArray(msg.tool_calls) && msg.tool_calls.length) {
     return {
       role: 'assistant',
-      content: msg.content || '',
+      content: contentToText(msg.content),
       tool_calls: msg.tool_calls.map((tc, i) => ({
         id: tc.id || `call_${i}`,
         type: 'function',
@@ -355,10 +371,10 @@ function toOpenAIMessage(msg) {
     return {
       role: 'tool',
       tool_call_id: msg.tool_call_id || 'call_0',
-      content: msg.content || ''
+      content: contentToText(msg.content)
     };
   }
-  return { role: msg.role, content: msg.content || '' };
+  return { role: msg.role, content: contentToText(msg.content) };
 }
 
 /**
@@ -373,10 +389,10 @@ function formatToolResultMessage(provider, toolCall, content) {
     return {
       role: 'tool',
       tool_call_id: toolCall && toolCall.id ? toolCall.id : 'call_0',
-      content
+      content: contentToText(content)
     };
   }
-  return { role: 'tool', content };
+  return { role: 'tool', content: contentToText(content) };
 }
 
 /**

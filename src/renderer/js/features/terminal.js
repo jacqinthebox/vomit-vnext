@@ -56,7 +56,8 @@ class TerminalManager {
     });
 
     window.addEventListener('vomit:claude-output', (e) => {
-      const cleanOutput = e.detail.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '');
+      const output = this.normalizeTerminalText(e.detail);
+      const cleanOutput = output.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '');
 
       if (this.state.pseudoCollecting) {
         this.state.pseudoOutput += cleanOutput;
@@ -64,14 +65,14 @@ class TerminalManager {
         // In write mode, stream to editor AND show in terminal
         this.writeBuffer += cleanOutput;
         this.streamToEditor(cleanOutput);
-        this.appendTerminalOutput(e.detail, 'output');
+        this.appendTerminalOutput(output, 'output');
       } else {
-        this.appendTerminalOutput(e.detail, 'output');
+        this.appendTerminalOutput(output, 'output');
       }
     });
 
     window.addEventListener('vomit:claude-error', (e) => {
-      this.appendTerminalOutput(e.detail, 'error');
+      this.appendTerminalOutput(this.normalizeTerminalText(e.detail), 'error');
     });
 
     window.addEventListener('vomit:claude-done', (e) => {
@@ -1837,7 +1838,25 @@ Provide a helpful, accurate answer based on the context above. If the context do
 
   // --- Output formatting ---
 
+  normalizeTerminalText(value) {
+    if (typeof value === 'string') return value;
+    if (value == null) return '';
+    if (Array.isArray(value)) return value.map(v => this.normalizeTerminalText(v)).join('');
+    if (typeof value === 'object') {
+      if (typeof value.text === 'string') return value.text;
+      if (typeof value.content === 'string') return value.content;
+      if (typeof value.value === 'string') return value.value;
+      try {
+        return JSON.stringify(value);
+      } catch {
+        return '';
+      }
+    }
+    return String(value);
+  }
+
   appendTerminalOutput(text, type = 'output') {
+    text = this.normalizeTerminalText(text);
     // Hide thinking indicator when first output arrives
     if (type === 'output') {
       this.hideThinkingIndicator();

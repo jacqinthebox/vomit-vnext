@@ -117,11 +117,12 @@ function estimateTokens(messages) {
 
 // Execute a tool and return the result
 async function executeAgentTool(toolName, args, cwd, configStore) {
+  const safeArgs = normalizeToolArguments(args);
   try {
     switch (toolName) {
       case 'bash': {
         try {
-          const output = execSync(args.command, {
+          const output = execSync(String(safeArgs.command || ''), {
             cwd: cwd,
             encoding: 'utf-8',
             timeout: 60000,
@@ -133,23 +134,23 @@ async function executeAgentTool(toolName, args, cwd, configStore) {
         }
       }
       case 'read_file': {
-        const filePath = path.isAbsolute(args.path) ? args.path : path.join(cwd, args.path);
+        const filePath = path.isAbsolute(safeArgs.path) ? safeArgs.path : path.join(cwd, safeArgs.path);
         if (!fs.existsSync(filePath)) {
           return `Error: File not found: ${filePath}`;
         }
         return fs.readFileSync(filePath, 'utf-8');
       }
       case 'write_file': {
-        const filePath = path.isAbsolute(args.path) ? args.path : path.join(cwd, args.path);
+        const filePath = path.isAbsolute(safeArgs.path) ? safeArgs.path : path.join(cwd, safeArgs.path);
         const dir = path.dirname(filePath);
         if (!fs.existsSync(dir)) {
           fs.mkdirSync(dir, { recursive: true });
         }
-        fs.writeFileSync(filePath, args.content, 'utf-8');
+        fs.writeFileSync(filePath, String(safeArgs.content || ''), 'utf-8');
         return `File written: ${filePath}`;
       }
       case 'list_files': {
-        const dirPath = path.isAbsolute(args.path) ? args.path : path.join(cwd, args.path);
+        const dirPath = path.isAbsolute(safeArgs.path) ? safeArgs.path : path.join(cwd, safeArgs.path);
         if (!fs.existsSync(dirPath)) {
           return `Error: Directory not found: ${dirPath}`;
         }
@@ -164,11 +165,11 @@ async function executeAgentTool(toolName, args, cwd, configStore) {
 
         try {
           const https = require('https');
-          const maxResults = args.max_results || 5;
+          const maxResults = safeArgs.max_results || 5;
 
           const requestBody = JSON.stringify({
             api_key: apiKey,
-            query: args.query,
+            query: safeArgs.query,
             search_depth: 'basic',
             max_results: maxResults,
             include_answer: true
@@ -231,6 +232,40 @@ async function executeAgentTool(toolName, args, cwd, configStore) {
         } catch (e) {
           return `Error: ${e.message}`;
         }
+      }
+
+      function normalizeToolArguments(args) {
+        if (!args) return {};
+        if (typeof args === 'string') {
+          try {
+            return normalizeToolArguments(JSON.parse(args));
+          } catch {
+            return { command: args };
+          }
+        }
+        if (Array.isArray(args)) return { command: args.map(stringifyValue).join(' ') };
+        if (typeof args !== 'object') return { command: String(args) };
+
+        const normalized = { ...args };
+        for (const key of Object.keys(normalized)) {
+          if (normalized[key] != null && typeof normalized[key] === 'object') {
+            normalized[key] = stringifyValue(normalized[key]);
+          }
+        }
+        return normalized;
+      }
+
+      function stringifyValue(value) {
+        if (typeof value === 'string') return value;
+        if (value == null) return '';
+        if (Array.isArray(value)) return value.map(stringifyValue).join(' ');
+        if (typeof value === 'object') {
+          if (typeof value.text === 'string') return value.text;
+          if (typeof value.content === 'string') return value.content;
+          if (typeof value.value === 'string') return value.value;
+          return JSON.stringify(value);
+        }
+        return String(value);
       }
       default:
         return `Error: Unknown tool: ${toolName}`;
@@ -501,7 +536,7 @@ After using tools, provide a summary of what you did. You have access to convers
             if (state.agentAborted) break;
 
             const toolName = toolCall.function.name;
-            const toolArgs = toolCall.function.arguments;
+            const toolArgs = normalizeToolArguments(toolCall.function.arguments);
 
             // Show tool call in terminal
             sendOutput('claude-output', `\n▶ ${toolName}: ${JSON.stringify(toolArgs)}\n`);

@@ -290,7 +290,25 @@
     });
   }
 
+  function normalizeTerminalText(value) {
+    if (typeof value === 'string') return value;
+    if (value == null) return '';
+    if (Array.isArray(value)) return value.map(normalizeTerminalText).join('');
+    if (typeof value === 'object') {
+      if (typeof value.text === 'string') return value.text;
+      if (typeof value.content === 'string') return value.content;
+      if (typeof value.value === 'string') return value.value;
+      try {
+        return JSON.stringify(value);
+      } catch {
+        return '';
+      }
+    }
+    return String(value);
+  }
+
   function appendTerminalOutput(text, type = 'output') {
+    text = normalizeTerminalText(text);
     // Streaming AI output arrives one token at a time. To avoid each token
     // landing on its own line (each div is block-level), aggregate the
     // stream into a single .terminal-output-stream element and only render
