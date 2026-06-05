@@ -93,7 +93,7 @@ class TabManager {
 
     // Update editor state
     this.editor.state.currentFilePath = tab.filePath;
-    this.editor.state.basePath = tab.filePath ? tab.filePath.substring(0, tab.filePath.lastIndexOf('/')) : null;
+    this.editor.state.basePath = tab.filePath ? window.PathUtils.dirname(tab.filePath) : null;
     this.editor.state.isDirty = tab.isDirty;
 
     // Re-enable change handler
@@ -174,7 +174,7 @@ class TabManager {
     // Check for unsaved changes
     if (tab.isDirty) {
       const response = await window.vomit.showUnsavedChangesDialog(
-        tab.filePath ? tab.filePath.split('/').pop() : 'Untitled'
+        tab.filePath ? window.PathUtils.basename(tab.filePath) : 'Untitled'
       );
 
       if (response === 'save') {
@@ -306,7 +306,7 @@ class TabManager {
     if (!tab) return;
 
     const filename = tab.filePath
-      ? tab.filePath.split('/').pop()
+      ? window.PathUtils.basename(tab.filePath)
       : 'Untitled';
     const dirtyIndicator = tab.isDirty ? ' *' : '';
 
@@ -342,7 +342,7 @@ class TabManager {
     if (tab) {
       tab.filePath = filePath;
       this.editor.state.currentFilePath = filePath;
-      this.editor.state.basePath = filePath ? filePath.substring(0, filePath.lastIndexOf('/')) : null;
+      this.editor.state.basePath = filePath ? window.PathUtils.dirname(filePath) : null;
       this.renderTabBar();
       this.updateWindowTitle();
     }
@@ -409,7 +409,7 @@ class TabManager {
 
       const isActive = tabId === this.activeTabId;
       const displayName = tab.filePath
-        ? tab.filePath.split('/').pop()
+        ? window.PathUtils.basename(tab.filePath)
         : 'Untitled';
       const number = index < 9 ? index + 1 : '';
       const title = tab.filePath || 'Untitled';

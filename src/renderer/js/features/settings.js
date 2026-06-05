@@ -42,6 +42,9 @@ class SettingsManager {
 
     const modal = document.createElement('div');
     modal.className = 'shortcuts-modal';
+    const isMac = navigator.platform.toLowerCase().includes('mac');
+    const mod = isMac ? 'Cmd' : 'Ctrl';
+    const alt = isMac ? 'Option' : 'Alt';
     modal.innerHTML = `
       <div class="shortcuts-content">
         <div class="shortcuts-header">
@@ -51,51 +54,51 @@ class SettingsManager {
         <div class="shortcuts-body">
           <div class="shortcuts-section">
             <h3>Tabs</h3>
-            <div class="shortcut-row"><kbd>Cmd+T</kbd> New tab</div>
-            <div class="shortcut-row"><kbd>Cmd+W</kbd> Close tab</div>
-            <div class="shortcut-row"><kbd>Cmd+Shift+]</kbd> Next tab</div>
-            <div class="shortcut-row"><kbd>Cmd+Shift+[</kbd> Previous tab</div>
-            <div class="shortcut-row"><kbd>Cmd+1-9</kbd> Go to tab</div>
+            <div class="shortcut-row"><kbd>${mod}+T</kbd> New tab</div>
+            <div class="shortcut-row"><kbd>${mod}+W</kbd> Close tab</div>
+            <div class="shortcut-row"><kbd>${mod}+Shift+]</kbd> Next tab</div>
+            <div class="shortcut-row"><kbd>${mod}+Shift+[</kbd> Previous tab</div>
+            <div class="shortcut-row"><kbd>${mod}+1-9</kbd> Go to tab</div>
           </div>
           <div class="shortcuts-section">
             <h3>File</h3>
-            <div class="shortcut-row"><kbd>Cmd+N</kbd> New file</div>
-            <div class="shortcut-row"><kbd>Cmd+O</kbd> Open file</div>
-            <div class="shortcut-row"><kbd>Cmd+S</kbd> Save</div>
-            <div class="shortcut-row"><kbd>Cmd+Shift+S</kbd> Save as</div>
+            <div class="shortcut-row"><kbd>${mod}+N</kbd> New file</div>
+            <div class="shortcut-row"><kbd>${mod}+O</kbd> Open file</div>
+            <div class="shortcut-row"><kbd>${mod}+S</kbd> Save</div>
+            <div class="shortcut-row"><kbd>${mod}+Shift+S</kbd> Save as</div>
           </div>
           <div class="shortcuts-section">
             <h3>View</h3>
-            <div class="shortcut-row"><kbd>Cmd+.</kbd> Command palette</div>
-            <div class="shortcut-row"><kbd>Cmd+P</kbd> Toggle preview</div>
-            <div class="shortcut-row"><kbd>Cmd+E</kbd> Toggle explorer</div>
-            <div class="shortcut-row"><kbd>Cmd+Shift+O</kbd> Toggle outline</div>
-            <div class="shortcut-row"><kbd>Cmd+L</kbd> Toggle line numbers</div>
-            <div class="shortcut-row"><kbd>Cmd+F</kbd> Find in file</div>
-            <div class="shortcut-row"><kbd>Cmd+Option+F</kbd> Find and replace</div>
-            <div class="shortcut-row"><kbd>Cmd+Shift+F</kbd> Search in files</div>
+            <div class="shortcut-row"><kbd>${mod}+.</kbd> Command palette</div>
+            <div class="shortcut-row"><kbd>${mod}+P</kbd> Toggle preview</div>
+            <div class="shortcut-row"><kbd>${mod}+E</kbd> Toggle explorer</div>
+            <div class="shortcut-row"><kbd>${mod}+Shift+O</kbd> Toggle outline</div>
+            <div class="shortcut-row"><kbd>${mod}+L</kbd> Toggle line numbers</div>
+            <div class="shortcut-row"><kbd>${mod}+F</kbd> Find in file</div>
+            <div class="shortcut-row"><kbd>${mod}+${alt}+F</kbd> Find and replace</div>
+            <div class="shortcut-row"><kbd>${mod}+Shift+F</kbd> Search in files</div>
             <div class="shortcut-row"><kbd>View menu</kbd> Toggle tags / todos</div>
-            <div class="shortcut-row"><kbd>Cmd+/</kbd> Show shortcuts</div>
+            <div class="shortcut-row"><kbd>${mod}+/</kbd> Show shortcuts</div>
           </div>
           <div class="shortcuts-section">
             <h3>Format</h3>
-            <div class="shortcut-row"><kbd>Cmd+B</kbd> Bold</div>
-            <div class="shortcut-row"><kbd>Cmd+I</kbd> Italic</div>
-            <div class="shortcut-row"><kbd>Cmd+\`</kbd> Code</div>
-            <div class="shortcut-row"><kbd>Cmd+K</kbd> Insert link</div>
-            <div class="shortcut-row"><kbd>Cmd+Shift+T</kbd> Format table</div>
-            <div class="shortcut-row"><kbd>Cmd+Shift+1/2/3</kbd> Headings</div>
-            <div class="shortcut-row"><kbd>Cmd+Shift+8</kbd> Bullet list</div>
-            <div class="shortcut-row"><kbd>Cmd+Shift+9</kbd> Numbered list</div>
-            <div class="shortcut-row"><kbd>Cmd+Shift+Enter</kbd> Toggle todo</div>
-            <div class="shortcut-row"><kbd>Cmd+'</kbd> Quote</div>
-            <div class="shortcut-row"><kbd>Cmd+-</kbd> Horizontal rule</div>
-            <div class="shortcut-row"><kbd>Cmd+Enter</kbd> New slide</div>
+            <div class="shortcut-row"><kbd>${mod}+B</kbd> Bold</div>
+            <div class="shortcut-row"><kbd>${mod}+I</kbd> Italic</div>
+            <div class="shortcut-row"><kbd>${mod}+\`</kbd> Code</div>
+            <div class="shortcut-row"><kbd>${mod}+K</kbd> Insert link</div>
+            <div class="shortcut-row"><kbd>${mod}+Shift+T</kbd> Format table</div>
+            <div class="shortcut-row"><kbd>${mod}+Shift+1/2/3</kbd> Headings</div>
+            <div class="shortcut-row"><kbd>${mod}+Shift+8</kbd> Bullet list</div>
+            <div class="shortcut-row"><kbd>${mod}+Shift+9</kbd> Numbered list</div>
+            <div class="shortcut-row"><kbd>${mod}+Shift+Enter</kbd> Toggle todo</div>
+            <div class="shortcut-row"><kbd>${mod}+'</kbd> Quote</div>
+            <div class="shortcut-row"><kbd>${mod}+-</kbd> Horizontal rule</div>
+            <div class="shortcut-row"><kbd>${mod}+Enter</kbd> New slide</div>
           </div>
           <div class="shortcuts-section">
             <h3>Multi-Cursor</h3>
-            <div class="shortcut-row"><kbd>Option</kbd> <kbd>Option</kbd> then <kbd>Option+↑</kbd> Add cursor above</div>
-            <div class="shortcut-row"><kbd>Option</kbd> <kbd>Option</kbd> then <kbd>Option+↓</kbd> Add cursor below</div>
+            <div class="shortcut-row"><kbd>${alt}</kbd> <kbd>${alt}</kbd> then <kbd>${alt}+↑</kbd> Add cursor above</div>
+            <div class="shortcut-row"><kbd>${alt}</kbd> <kbd>${alt}</kbd> then <kbd>${alt}+↓</kbd> Add cursor below</div>
             <div class="shortcut-row"><kbd>Escape</kbd> Clear extra cursors</div>
           </div>
           <div class="shortcuts-section">
@@ -108,13 +111,13 @@ class SettingsManager {
             <div class="shortcut-row"><kbd>↑↓</kbd> Navigate files</div>
             <div class="shortcut-row"><kbd>←→</kbd> Navigate folders</div>
             <div class="shortcut-row"><kbd>Enter</kbd> Open file/folder</div>
-            <div class="shortcut-row"><kbd>Cmd+1</kbd> / <kbd>Ctrl+Tab</kbd> Toggle sidebar focus</div>
+            <div class="shortcut-row"><kbd>${mod}+1</kbd> / <kbd>Ctrl+Tab</kbd> Toggle sidebar focus</div>
             <div class="shortcut-row"><kbd>Escape</kbd> Return to editor</div>
           </div>
           <div class="shortcuts-section">
             <h3>Presentation</h3>
-            <div class="shortcut-row"><kbd>Cmd+Shift+P</kbd> Start presentation</div>
-            <div class="shortcut-row"><kbd>Cmd+Alt+P</kbd> With presenter view</div>
+            <div class="shortcut-row"><kbd>${mod}+Shift+P</kbd> Start presentation</div>
+            <div class="shortcut-row"><kbd>${mod}+Alt+P</kbd> With presenter view</div>
             <div class="shortcut-row"><kbd>→/Space/N</kbd> Next slide</div>
             <div class="shortcut-row"><kbd>←/P</kbd> Previous slide</div>
             <div class="shortcut-row"><kbd>L</kbd> Laser pointer</div>
@@ -122,10 +125,10 @@ class SettingsManager {
           </div>
           <div class="shortcuts-section">
             <h3>AI Terminal</h3>
-            <div class="shortcut-row"><kbd>Cmd+J</kbd> Toggle AI terminal</div>
-            <div class="shortcut-row"><kbd>Cmd+\`</kbd> Toggle shell terminal</div>
+            <div class="shortcut-row"><kbd>${mod}+J</kbd> Toggle AI terminal</div>
+            <div class="shortcut-row"><kbd>${mod}+\`</kbd> Toggle shell terminal</div>
             <div class="shortcut-row"><kbd>Ctrl+C</kbd> Stop AI response</div>
-            <div class="shortcut-row"><kbd>Cmd+K</kbd> Clear terminal</div>
+            <div class="shortcut-row"><kbd>${mod}+K</kbd> Clear terminal</div>
           </div>
         </div>
       </div>
@@ -166,8 +169,8 @@ class SettingsManager {
         this.searchManager.togglePaneFocus();
       }
 
-      // Cmd+\ to toggle focus between editor and preview in split view
-      if (e.metaKey && e.key === '\\') {
+      // Cmd/Ctrl+\ toggles focus between editor and preview in split view.
+      if ((e.metaKey || e.ctrlKey) && e.key === '\\') {
         e.preventDefault();
         e.stopPropagation();
         if (this.previewManager) {

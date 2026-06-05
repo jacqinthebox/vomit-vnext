@@ -103,13 +103,13 @@ class TreeState extends EventTarget {
 
   // Ensure all ancestors of a path are expanded (for revealing a node)
   expandAncestors(path) {
-    if (!this.#rootPath || !path.startsWith(this.#rootPath)) return;
+    if (!this.#rootPath || !window.PathUtils.isSubPath(path, this.#rootPath)) return;
 
-    const parts = path.replace(this.#rootPath, '').split('/').filter(Boolean);
+    const parts = window.PathUtils.relativeParts(path, this.#rootPath);
     let currentPath = this.#rootPath;
 
     for (let i = 0; i < parts.length - 1; i++) {
-      currentPath = `${currentPath}/${parts[i]}`;
+      currentPath = window.PathUtils.join(currentPath, parts[i]);
       this.expand(currentPath);
     }
   }

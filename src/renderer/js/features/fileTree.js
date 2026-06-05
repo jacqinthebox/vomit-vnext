@@ -132,7 +132,7 @@ class FileTreeManager {
     this.dataModel.setRoot(folderPath);
 
     // Update sidebar header
-    const folderName = folderPath.split('/').pop().toUpperCase();
+    const folderName = window.PathUtils.basename(folderPath).toUpperCase();
     const sidebarFolderName = document.getElementById('sidebar-folder-name');
     if (sidebarFolderName) {
       sidebarFolderName.textContent = folderName;
@@ -351,10 +351,10 @@ class FileTreeManager {
 
       // Can't drop on self or into own children
       if (targetPath === draggedPath) return;
-      if (draggedIsDir && targetPath.startsWith(draggedPath + '/')) return;
+      if (draggedIsDir && window.PathUtils.isSubPath(targetPath, draggedPath)) return;
 
       // Can't drop into same parent (no-op)
-      const draggedParent = draggedPath.substring(0, draggedPath.lastIndexOf('/'));
+      const draggedParent = window.PathUtils.dirname(draggedPath);
       if (targetPath === draggedParent) return;
 
       e.preventDefault();
@@ -477,16 +477,16 @@ class FileTreeManager {
   // Reveal a file in the tree: expand ancestors, load directories, highlight it
   async revealFile(filePath) {
     if (!filePath || !this.treeState.rootPath) return;
-    if (!filePath.startsWith(this.treeState.rootPath)) return;
+    if (!window.PathUtils.isSubPath(filePath, this.treeState.rootPath)) return;
 
     // Build the list of ancestor directories that need to be expanded
     const rootPath = this.treeState.rootPath;
-    const relativeParts = filePath.slice(rootPath.length).split('/').filter(Boolean);
+    const relativeParts = window.PathUtils.relativeParts(filePath, rootPath);
     // All parts except the last (filename) are directories to expand
     const dirsToExpand = [];
     let currentPath = rootPath;
     for (let i = 0; i < relativeParts.length - 1; i++) {
-      currentPath = `${currentPath}/${relativeParts[i]}`;
+      currentPath = window.PathUtils.join(currentPath, relativeParts[i]);
       dirsToExpand.push(currentPath);
     }
 
@@ -650,7 +650,7 @@ class FileTreeManager {
   }
 
   _getParentPath(path) {
-    return path.substring(0, path.lastIndexOf('/'));
+    return window.PathUtils.dirname(path);
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -716,7 +716,7 @@ class FileTreeManager {
       inputContainer.remove();
 
       if (name) {
-        const newPath = `${targetDir}/${name}`;
+        const newPath = window.PathUtils.join(targetDir, name);
         try {
           await window.vomit.createDirectory(newPath);
           await this.refreshFolder(targetDir);
@@ -816,7 +816,7 @@ class FileTreeManager {
             const day = String(d.getDate()).padStart(2, '0');
             const today = `${y}-${m}-${day}`;
             const title = name.replace(/\.(md|markdown)$/i, '').replace(/[-_]/g, ' ');
-            const folder = targetDir.split('/').filter(Boolean).pop() || '';
+            const folder = window.PathUtils.basename(targetDir);
             initialContent = `---\ntitle: ${title}\nfolder: ${folder}\ncreated: ${today}\nmodified: ${today}\ndraft: true\ntags: []\n---\n\n`;
           }
           await window.vomit.writeFile(newPath, initialContent);
@@ -1068,10 +1068,9 @@ class FileTreeManager {
     if (!this.editorState.currentDirectory) return;
     if (this.editorState.projectRoot && this.editorState.currentDirectory === this.editorState.projectRoot) return;
 
-    const parts = this.editorState.currentDirectory.split('/');
-    if (parts.length > 2) {
-      const newDir = parts.slice(0, -1).join('/');
-      if (this.editorState.projectRoot && !newDir.startsWith(this.editorState.projectRoot)) return;
+    const newDir = window.PathUtils.dirname(this.editorState.currentDirectory);
+    if (newDir && newDir !== this.editorState.currentDirectory) {
+      if (this.editorState.projectRoot && !window.PathUtils.isSubPath(newDir, this.editorState.projectRoot)) return;
 
       this.editorState.currentDirectory = newDir;
       this._ensureTreeLoaded().then(() => this._focusFirstOrSelected());
@@ -1082,10 +1081,9 @@ class FileTreeManager {
   _calculateDepth(path) {
     const rootPath = this.treeState.rootPath;
     if (!path || path === rootPath) return -1;
-    if (!rootPath || !path.startsWith(rootPath)) return 0;
+    if (!rootPath || !window.PathUtils.isSubPath(path, rootPath)) return 0;
 
-    const relativePath = path.slice(rootPath.length);
-    return relativePath.split('/').filter(Boolean).length - 1;
+    return window.PathUtils.relativeParts(path, rootPath).length - 1;
   }
 }
 

@@ -272,7 +272,7 @@ async function dispatchCommand(parsed, ctx) {
   if (cmd.requiresCwd !== false) {
     cwd = ctx.state.projectRoot || ctx.state.currentDirectory;
     if (!cwd) {
-      ctx.appendTerminalOutput('Error: No project folder open. Open a folder first with Cmd+Alt+O.', 'error');
+      ctx.appendTerminalOutput('Error: No project folder open. Add or select a bucket from the Buckets menu first.', 'error');
       return true;
     }
   }

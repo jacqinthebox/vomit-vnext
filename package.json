@@ -1,12 +1,13 @@
 {
   "name": "vomit-vnext",
-  "version": "1.13.2",
+  "version": "1.14.0",
   "description": "A keyboard-centric markdown editor and presentation app with IntelliSense, live preview, and presenter view",
   "main": "src/main/main.js",
   "scripts": {
     "start": "electron .",
     "build": "electron-builder --mac",
     "build:mac": "electron-builder --mac",
+    "build:win": "electron-builder --win",
     "pack": "electron-builder --dir"
   },
   "keywords": [
@@ -47,6 +48,12 @@
       "target": "dmg",
       "icon": "build/icon.icns"
     },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
     "files": [
       "src/**/*",
       "bin/**/*",
@@ -58,6 +65,16 @@
         "ext": "md",
         "name": "Markdown",
         "role": "Editor"
+      },
+      {
+        "ext": "pdf",
+        "name": "PDF Document",
+        "role": "Viewer"
+      },
+      {
+        "ext": "drawio",
+        "name": "Draw.io Diagram",
+        "role": "Viewer"
       }
     ]
   }

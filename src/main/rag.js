@@ -38,14 +38,15 @@ function cosineSimilarity(a, b) {
 
 // Get embedding from Ollama
 async function getEmbedding(text) {
-  const { execSync } = require('child_process');
   try {
-    const payload = JSON.stringify({ model: 'nomic-embed-text', prompt: text });
-    const result = execSync(
-      `curl -s http://localhost:11434/api/embeddings -d '${payload.replace(/'/g, "'\\''")}'`,
-      { encoding: 'utf-8', timeout: 30000 }
-    );
-    const json = JSON.parse(result);
+    const response = await fetch('http://localhost:11434/api/embeddings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'nomic-embed-text', prompt: text }),
+      signal: AbortSignal.timeout(30000)
+    });
+    if (!response.ok) return null;
+    const json = await response.json();
     return json.embedding || null;
   } catch (e) {
     return null;

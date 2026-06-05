@@ -26,7 +26,9 @@ An opinionated, keyboard-centric markdown editor for presentations and notes wit
 
 ## Platform Support
 
-**macOS only** (Intel and Apple Silicon)
+**macOS** (Intel and Apple Silicon) and **Windows**. Linux remains Electron-compatible but is not currently packaged by CI.
+
+Keyboard shortcuts shown as **Cmd** on macOS use **Ctrl** on Windows/Linux. **Option** maps to **Alt**.
 
 ## Features
 
@@ -43,6 +45,7 @@ An opinionated, keyboard-centric markdown editor for presentations and notes wit
 - **PlantUML & Mermaid** - Render sequence diagrams, flowcharts, and more
 - **Emoji Shortcodes** - Use `:smile:` syntax like GitHub/Slack
 - **File Tree** - Browse and open files in your bucket (Cmd+E)
+- **Native Viewers** - Open PDF and draw.io files directly inside Vomit
 - **Tag & Todo Explorers** - Browse tags and open todos across the current bucket
 - **Search in Files** - Search across all markdown files (Cmd+Shift+F)
 - **Laser Pointer** - Press L during presentation to highlight
@@ -81,9 +84,9 @@ Todos are markdown-native. Your notes remain the source of truth; Vomit scans th
 
 ## Installation
 
-### Option 1: Download DMG
+### Option 1: Download a Release
 
-Download the latest `.dmg` from [Releases](https://github.com/jacqinthebox/vomit-vnext/releases), open it, and drag to Applications.
+Download the latest macOS `.dmg` or Windows `.exe` from [Releases](https://github.com/jacqinthebox/vomit-vnext/releases).
 
 **Important:** The app is not code-signed with an Apple Developer certificate. macOS will block it by default. After installing, run this command in Terminal to remove the quarantine flag:
 
@@ -106,8 +109,9 @@ npm install
 # Run the app
 npm start
 
-# Or build a DMG
-npm run build
+# Or build a platform package
+npm run build:mac   # macOS
+npm run build:win   # Windows
 ```
 
 ## Usage

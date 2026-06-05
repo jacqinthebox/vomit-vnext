@@ -363,6 +363,7 @@ class TerminalManager {
     if (this.terminalOutput.querySelector('.terminal-banner')) return;
     const banner = document.createElement('pre');
     banner.className = 'terminal-line terminal-banner';
+    const mod = navigator.platform.toLowerCase().includes('mac') ? 'Cmd' : 'Ctrl';
     banner.textContent =
       '\n' +
       '  ██╗   ██╗ ██████╗ ███╗   ███╗██╗████████╗      ╭─────────╮\n' +
@@ -372,7 +373,7 @@ class TerminalManager {
       '   ╚████╔╝ ╚██████╔╝██║ ╚═╝ ██║██║   ██║         ╰─────────╯\n' +
       '    ╚═══╝   ╚═════╝ ╚═╝     ╚═╝╚═╝   ╚═╝\n' +
       '\n' +
-      '   keyboard-first markdown · type / for commands · Cmd+J to toggle\n';
+      `   keyboard-first markdown · type / for commands · ${mod}+J to toggle\n`;
     this.terminalOutput.insertBefore(banner, this.terminalOutput.firstChild);
   }
 
@@ -773,7 +774,7 @@ class TerminalManager {
     // Plain text or unrecognized slash command — route to agent mode (has tools + history)
     const cwd = this.state.projectRoot || this.state.currentDirectory;
     if (!cwd) {
-      this.appendTerminalOutput('Error: No project folder open. Open a folder first with Cmd+Alt+O.', 'error');
+      this.appendTerminalOutput('Error: No project folder open. Add or select a bucket from the Buckets menu first.', 'error');
       return;
     }
 
@@ -1043,15 +1044,15 @@ Now create the presentation about: ${topic}`;
     let outputPath;
     let mappingPath;
     if (currentFile) {
-      const dir = currentFile.substring(0, currentFile.lastIndexOf('/'));
-      const filename = currentFile.split('/').pop();
+      const dir = window.PathUtils.dirname(currentFile);
+      const filename = window.PathUtils.basename(currentFile);
       const ext = filename.lastIndexOf('.') > 0 ? filename.substring(filename.lastIndexOf('.')) : '';
       const basename = filename.lastIndexOf('.') > 0 ? filename.substring(0, filename.lastIndexOf('.')) : filename;
-      outputPath = `${dir}/${basename}-pseudo${ext}`;
-      mappingPath = `${dir}/${basename}-pseudo.map.json`;
+      outputPath = window.PathUtils.join(dir, `${basename}-pseudo${ext}`);
+      mappingPath = window.PathUtils.join(dir, `${basename}-pseudo.map.json`);
     } else {
-      outputPath = `${cwd}/untitled-pseudo.md`;
-      mappingPath = `${cwd}/untitled-pseudo.map.json`;
+      outputPath = window.PathUtils.join(cwd, 'untitled-pseudo.md');
+      mappingPath = window.PathUtils.join(cwd, 'untitled-pseudo.map.json');
     }
 
     const pseudoPrompt = `Analyze this file and identify ALL sensitive/personal data that should be anonymized for GDPR compliance.
@@ -1134,14 +1135,14 @@ ${docContent}
 
           // Save the pseudonymized content
           await window.vomit.writeFile(outputPath, content);
-          this.appendTerminalOutput(`✓ Saved: ${outputPath.split('/').pop()}`, 'output');
+          this.appendTerminalOutput(`✓ Saved: ${window.PathUtils.basename(outputPath)}`, 'output');
 
           // Save the mapping
           await window.vomit.writeFile(mappingPath, JSON.stringify(mapping, null, 2));
-          this.appendTerminalOutput(`✓ Mapping saved: ${mappingPath.split('/').pop()}`, 'output');
+          this.appendTerminalOutput(`✓ Mapping saved: ${window.PathUtils.basename(mappingPath)}`, 'output');
 
           // Refresh the parent folder in the file tree
-          const parentDir = outputPath.substring(0, outputPath.lastIndexOf('/'));
+          const parentDir = window.PathUtils.dirname(outputPath);
           await this.fileTreeManager.refreshFolder(parentDir);
         } else {
           this.appendTerminalOutput('No sensitive data found to anonymize.', 'system');
@@ -1166,8 +1167,8 @@ ${docContent}
     }
 
     // Determine mapping file path and original file path
-    const dir = currentFile.substring(0, currentFile.lastIndexOf('/'));
-    const filename = currentFile.split('/').pop();
+    const dir = window.PathUtils.dirname(currentFile);
+    const filename = window.PathUtils.basename(currentFile);
     const ext = filename.lastIndexOf('.') > 0 ? filename.substring(filename.lastIndexOf('.')) : '';
     const basename = filename.lastIndexOf('.') > 0 ? filename.substring(0, filename.lastIndexOf('.')) : filename;
 
@@ -1190,7 +1191,7 @@ ${docContent}
       const mappingContent = await window.vomit.readFile(mappingPath);
 
       if (!mappingContent) {
-        this.appendTerminalOutput(`Error: No mapping found at ${mappingPath.split('/').pop()}`, 'error');
+        this.appendTerminalOutput(`Error: No mapping found at ${window.PathUtils.basename(mappingPath)}`, 'error');
         this.appendTerminalOutput('Run /pseudo first to create a mapping.', 'system');
         return;
       }
@@ -1223,7 +1224,7 @@ ${docContent}
       // Write to the ORIGINAL file
       await window.vomit.writeFile(originalPath, content);
       this.appendTerminalOutput(`✓ Restored ${replacements} values.`, 'output');
-      this.appendTerminalOutput(`✓ Updated: ${originalPath.split('/').pop()}`, 'output');
+      this.appendTerminalOutput(`✓ Updated: ${window.PathUtils.basename(originalPath)}`, 'output');
 
       // Refresh file tree
       this.fileTreeManager.loadFileTree();

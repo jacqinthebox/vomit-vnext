@@ -351,7 +351,7 @@ class PreviewManager {
     this.dom.previewPane.classList.add('visible');
     this.state.isPreviewVisible = true;
     this.state.viewMode = 'preview';
-    this.dom.preview.innerHTML = `<div class="viewer-loading">Loading ${this._escapeHtml(filePath.split('/').pop())}...</div>`;
+    this.dom.preview.innerHTML = `<div class="viewer-loading">Loading ${this._escapeHtml(window.PathUtils.basename(filePath))}...</div>`;
 
     if (ext === 'pdf') {
       await this._renderPDF(filePath);
@@ -362,7 +362,7 @@ class PreviewManager {
 
   async _renderPDF(filePath) {
     try {
-      const pdfUrl = `vomit-file://${encodeURI(filePath)}`;
+      const pdfUrl = window.PathUtils.toVomitFileUrl(filePath);
       const escapedPath = this._escapeHtml(filePath);
       this.dom.preview.innerHTML = `
         <div class="viewer-container pdf-viewer">
@@ -731,7 +731,7 @@ class PreviewManager {
         if (height) style += `height:${height}px;`;
         let resolvedSrc = src;
         if (basePath && !src.startsWith('http') && !src.startsWith('file://') && !src.startsWith('vomit-file://') && !src.startsWith('data:')) {
-          resolvedSrc = `vomit-file://${basePath}/${src}`;
+          resolvedSrc = window.PathUtils.toVomitFileUrl(window.PathUtils.join(basePath, src));
         }
         return `<img src="${resolvedSrc}" alt="${alt}" style="${style}">`;
       }
@@ -743,7 +743,7 @@ class PreviewManager {
         if (src.includes('=')) return match;
         let resolvedSrc = src;
         if (basePath && !src.startsWith('http') && !src.startsWith('file://') && !src.startsWith('vomit-file://') && !src.startsWith('data:')) {
-          resolvedSrc = `vomit-file://${basePath}/${src}`;
+          resolvedSrc = window.PathUtils.toVomitFileUrl(window.PathUtils.join(basePath, src));
         }
         return `![${alt}](${resolvedSrc})`;
       }

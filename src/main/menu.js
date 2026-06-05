@@ -1,7 +1,7 @@
 // @ts-check
 'use strict';
 
-const { app, Menu } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -135,23 +135,81 @@ function selectOpenAIEndpoint(index) {
   _bus.send('show-terminal');
 }
 
-function escapeForAppleScript(s) {
-  return String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-}
+  async function promptString(message, defaultValue, { hidden = false } = {}) {
+    return new Promise((resolve) => {
+      const channel = `prompt-string-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const parent = _bus?.getMainWindow?.() || null;
+      const win = new BrowserWindow({
+        width: 460,
+        height: 190,
+        parent,
+        modal: !!parent,
+        resizable: false,
+        minimizable: false,
+        maximizable: false,
+        title: app.getName(),
+        webPreferences: {
+          nodeIntegration: true,
+          contextIsolation: false
+        }
+      });
 
-async function promptString(message, defaultValue, { hidden = false } = {}) {
-  const { exec } = require('child_process');
-  const msg = escapeForAppleScript(message);
-  const def = escapeForAppleScript(defaultValue || '');
-  const hiddenArg = hidden ? ' with hidden answer' : '';
-  const script = `osascript -e 'display dialog "${msg}" default answer "${def}"${hiddenArg}'`;
-  return new Promise((resolve) => {
-    exec(script, (err, stdout) => {
-      if (err) return resolve(null); // cancelled
-      const match = stdout.match(/text returned:(.*)/);
-      resolve(match ? match[1].trim() : null);
+      const html = `<!doctype html>
+  <html>
+    <head>
+      <meta charset="utf-8">
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 18px; color: #1f2937; background: #fff; }
+        label { display: block; margin-bottom: 10px; line-height: 1.4; white-space: pre-wrap; }
+        input { box-sizing: border-box; width: 100%; padding: 8px; font-size: 13px; }
+        .buttons { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+        button { padding: 7px 14px; }
+      </style>
+    </head>
+    <body>
+      <label>${escapeHtml(message)}</label>
+      <input id="value" type="${hidden ? 'password' : 'text'}" value="${escapeHtml(defaultValue || '')}" autofocus>
+      <div class="buttons">
+        <button id="cancel">Cancel</button>
+        <button id="ok">OK</button>
+      </div>
+      <script>
+        const { ipcRenderer } = require('electron');
+        const input = document.getElementById('value');
+        document.getElementById('ok').addEventListener('click', () => ipcRenderer.send(${JSON.stringify(channel)}, input.value));
+        document.getElementById('cancel').addEventListener('click', () => ipcRenderer.send(${JSON.stringify(channel)}, null));
+        input.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter') ipcRenderer.send(${JSON.stringify(channel)}, input.value);
+          if (event.key === 'Escape') ipcRenderer.send(${JSON.stringify(channel)}, null);
+        });
+        input.focus();
+        input.select();
+      </script>
+    </body>
+  </html>`;
+
+      let settled = false;
+      const cleanup = (value) => {
+        if (settled) return;
+        settled = true;
+        ipcMain.removeAllListeners(channel);
+        if (!win.isDestroyed()) win.close();
+        resolve(typeof value === 'string' ? value.trim() : null);
+      };
+
+      ipcMain.once(channel, (_event, value) => cleanup(value));
+      win.on('closed', () => cleanup(null));
+      win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
     });
-  });
+  }
+
+  function escapeHtml(value) {
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
 }
 
 async function confirmDialog(message, detail) {
@@ -280,26 +338,15 @@ async function testAIConnection() {
 
 // Prompt user to enter Tavily API key
 async function setTavilyApiKey() {
-  const { exec } = require('child_process');
   const currentKey = _configStore.getTavilyApiKey();
   const promptMsg = currentKey
     ? `Enter new Tavily API key (current: ${currentKey.substring(0, 8)}...):\\nLeave blank to clear.`
     : 'Enter your Tavily API key:';
 
-  const script = `osascript -e 'display dialog "${promptMsg}" default answer "" with hidden answer'`;
-
-  return new Promise((resolve) => {
-    exec(script, (err, stdout) => {
-      if (err) return resolve(); // user cancelled
-      const match = stdout.match(/text returned:(.*)/);
-      if (match) {
-        const value = match[1].trim();
-        _configStore.setTavilyApiKey(value || '');
-        createMenu();
-      }
-      resolve();
-    });
-  });
+  const value = await promptString(promptMsg, '', { hidden: true });
+  if (value === null) return;
+  _configStore.setTavilyApiKey(value || '');
+  createMenu();
 }
 
 // Set Ollama model and show terminal

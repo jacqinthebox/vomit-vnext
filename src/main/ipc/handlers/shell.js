@@ -2,6 +2,22 @@
 'use strict';
 
 const pty = require('node-pty');
+const os = require('os');
+
+function getDefaultShell() {
+  if (process.platform === 'win32') {
+    return process.env.COMSPEC || 'powershell.exe';
+  }
+  return process.env.SHELL || '/bin/bash';
+}
+
+function getDefaultShellArgs(shell) {
+  const basename = shell.toLowerCase().split(/[\\/]/).pop();
+  if (process.platform === 'win32' && (basename === 'powershell.exe' || basename === 'pwsh.exe')) {
+    return ['-NoLogo'];
+  }
+  return [];
+}
 
 /**
  * Register shell terminal IPC handlers.
@@ -16,10 +32,10 @@ function registerHandlers(ipcMain, { state, bus, terminalService }) {
       state.shellProcess = null;
     }
 
-    const shell = process.env.SHELL || '/bin/bash';
-    const workingDir = cwd || process.env.HOME;
+    const shell = getDefaultShell();
+    const workingDir = cwd || os.homedir();
 
-    state.shellProcess = pty.spawn(shell, [], {
+    state.shellProcess = pty.spawn(shell, getDefaultShellArgs(shell), {
       name: 'xterm-256color',
       cols: 120,
       rows: 30,

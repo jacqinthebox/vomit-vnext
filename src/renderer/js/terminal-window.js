@@ -677,7 +677,7 @@ Provide a helpful, accurate answer based on the context above. If the context do
     // parity with the main TerminalManager (tools + shared history).
     const cwd = terminalState.projectRoot || terminalState.currentDirectory;
     if (!cwd) {
-      appendTerminalOutput('Error: No project folder open. Open a folder first with Cmd+Alt+O.', 'error');
+      appendTerminalOutput('Error: No project folder open. Add or select a bucket from the Buckets menu first.', 'error');
       return;
     }
 

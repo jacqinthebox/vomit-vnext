@@ -2,18 +2,26 @@
 'use strict';
 
 const fs = require('fs');
-const { execSync } = require('child_process');
+const path = require('path');
+const { execFileSync } = require('child_process');
 const aiProviders = require('../../services/aiProviders');
 
 // Find executable path
 function findExecutable(name) {
   // Check common locations directly (packaged apps have limited PATH)
-  const commonPaths = [
-    `/opt/homebrew/bin/${name}`,  // Apple Silicon homebrew
-    `/usr/local/bin/${name}`,      // Intel homebrew / Linux
-    `/usr/bin/${name}`,            // System
-    `${process.env.HOME}/.local/bin/${name}` // User local
-  ];
+  const executableName = process.platform === 'win32' && !name.endsWith('.exe') ? `${name}.exe` : name;
+  const commonPaths = process.platform === 'win32'
+    ? [
+        path.join(process.env.LOCALAPPDATA || '', 'Programs', 'Ollama', executableName),
+        path.join(process.env.ProgramFiles || '', 'Ollama', executableName),
+        path.join(process.env['ProgramFiles(x86)'] || '', 'Ollama', executableName)
+      ]
+    : [
+        `/opt/homebrew/bin/${name}`,  // Apple Silicon homebrew
+        `/usr/local/bin/${name}`,      // Intel homebrew / Linux
+        `/usr/bin/${name}`,            // System
+        path.join(process.env.HOME || '', '.local', 'bin', name) // User local
+      ];
 
   for (const p of commonPaths) {
     if (fs.existsSync(p)) {
@@ -21,9 +29,10 @@ function findExecutable(name) {
     }
   }
 
-  // Fallback to which
+  // Fallback to platform executable lookup without shell quoting.
   try {
-    const result = execSync(`which ${name}`, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }).trim().split('\n')[0];
+    const lookup = process.platform === 'win32' ? 'where.exe' : 'which';
+    const result = execFileSync(lookup, [executableName], { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }).trim().split(/\r?\n/)[0];
     return result || null;
   } catch (e) {
     return null;
@@ -34,8 +43,8 @@ function findExecutable(name) {
 function getOllamaModels(ollamaPath) {
   if (!ollamaPath) return [];
   try {
-    const result = execSync(`"${ollamaPath}" list`, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'], timeout: 5000 });
-    const lines = result.trim().split('\n');
+    const result = execFileSync(ollamaPath, ['list'], { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'], timeout: 5000 });
+    const lines = result.trim().split(/\r?\n/);
     // Skip header line, parse model names
     const models = [];
     for (let i = 1; i < lines.length; i++) {

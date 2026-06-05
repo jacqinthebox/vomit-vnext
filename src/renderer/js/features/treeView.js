@@ -442,10 +442,9 @@ class TreeView {
     if (!path || path === this.#state.rootPath) return -1;
 
     const rootPath = this.#state.rootPath;
-    if (!rootPath || !path.startsWith(rootPath)) return 0;
+    if (!rootPath || !window.PathUtils.isSubPath(path, rootPath)) return 0;
 
-    const relativePath = path.slice(rootPath.length);
-    return relativePath.split('/').filter(Boolean).length - 1;
+    return window.PathUtils.relativeParts(path, rootPath).length - 1;
   }
 
   #removeChildElementsFromMaps(parentPath) {

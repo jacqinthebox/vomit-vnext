@@ -639,7 +639,7 @@ class Editor {
     window.addEventListener('vomit:file-saved-as', (e) => {
       const filePath = e.detail;
       this.state.currentFilePath = filePath;
-      this.state.basePath = filePath ? filePath.substring(0, filePath.lastIndexOf('/')) : null;
+      this.state.basePath = filePath ? window.PathUtils.dirname(filePath) : null;
       if (this.tabManager) {
         this.tabManager.updateCurrentTabPath(filePath);
       }
@@ -728,9 +728,9 @@ class Editor {
       }
 
       // Refresh the most specific changed folder, or fall back to root
-      const normalRoot = projectRoot ? projectRoot.replace(/\/$/, '') : null;
+      const normalRoot = projectRoot ? window.PathUtils.normalize(projectRoot).replace(/\/$/, '') : null;
       const isInsideProject = normalRoot && changedPath &&
-        (changedPath === normalRoot || changedPath.startsWith(normalRoot + '/'));
+        window.PathUtils.isSubPath(changedPath, normalRoot);
       const target = isInsideProject ? changedPath : projectRoot;
 
       if (target) {
@@ -855,7 +855,7 @@ class Editor {
     // File opened outside bucket notification
     window.addEventListener('vomit:file-outside-bucket', (e) => {
       const filePath = e.detail;
-      const fileName = filePath.split('/').pop();
+      const fileName = window.PathUtils.basename(filePath);
       this.showToast(`⚠ Opened "${fileName}" (outside bucket)`, 'warning', 5000);
     });
 
@@ -883,7 +883,7 @@ class Editor {
   async handleExternalFileChange(tab) {
     const filePath = tab ? tab.filePath : this.state.currentFilePath;
     const isDirty = tab ? tab.isDirty : this.state.isDirty;
-    const filename = filePath ? filePath.split('/').pop() : 'file';
+    const filename = filePath ? window.PathUtils.basename(filePath) : 'file';
 
     if (isDirty) {
       // Has local changes - ask user what to do

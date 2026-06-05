@@ -99,7 +99,7 @@ class InlineImageManager {
     }
     const basePath = this.state.basePath;
     if (basePath) {
-      return `vomit-file://${basePath}/${src}`;
+      return window.PathUtils.toVomitFileUrl(window.PathUtils.join(basePath, src));
     }
     return src;
   }
@@ -121,7 +121,7 @@ class InlineImageManager {
     };
     img.onerror = () => {
       container.classList.add('error');
-      container.textContent = `Image not found: ${src.split('/').pop()}`;
+      container.textContent = `Image not found: ${window.PathUtils.basename(src)}`;
     };
 
     container.appendChild(img);

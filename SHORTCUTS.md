@@ -1,6 +1,8 @@
 # Vomit Keyboard Shortcuts
 
-Press **Cmd+/** to open this help at any time.
+Press **Cmd+/** on macOS or **Ctrl+/** on Windows/Linux to open this help at any time.
+
+Shortcut tables use macOS notation: use **Ctrl** instead of **Cmd** and **Alt** instead of **Option** on Windows/Linux.
 
 ---
 

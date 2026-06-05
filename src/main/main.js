@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, protocol, net } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { pathToFileURL } = require('url');
 const configStore = require('./services/configStore');
 const bucketSetup = require('./services/bucketSetup');
 const { SessionState } = require('./services/sessionState');
@@ -27,6 +28,63 @@ const bus = new RendererBus();
 // Initialize state from configStore
 state.currentTheme = configStore.getTheme();
 state.autoSaveEnabled = configStore.getAutoSaveEnabled();
+
+const pendingOpenFiles = [];
+let launchFilesConsumed = false;
+
+function getLaunchFilePaths(argv) {
+  const supportedExtensions = new Set(['.md', '.markdown', '.pdf', '.drawio']);
+  const executablePaths = new Set([process.argv[0], process.execPath].filter(Boolean).map(p => path.resolve(p)));
+  return argv.filter(arg => {
+    if (!arg || arg.startsWith('-')) return false;
+    try {
+      const resolved = path.resolve(arg);
+      return !executablePaths.has(resolved) &&
+        supportedExtensions.has(path.extname(arg).toLowerCase()) &&
+        fs.existsSync(arg) &&
+        fs.statSync(arg).isFile();
+    } catch {
+      return false;
+    }
+  });
+}
+
+function isSameOrSubPath(childPath, parentPath) {
+  const child = path.resolve(childPath);
+  const parent = path.resolve(parentPath);
+  const relative = path.relative(parent, child);
+  return relative === '' || (!!relative && !relative.startsWith('..') && !path.isAbsolute(relative));
+}
+
+function openExternalFile(filePath) {
+  const activeBucket = configStore.getActiveBucket();
+  const isOutsideBucket = !activeBucket || !isSameOrSubPath(filePath, activeBucket.path);
+
+  if (bus.getMainWindow()) {
+    fileService.loadFile(filePath);
+    if (isOutsideBucket) {
+      bus.send('file-outside-bucket', filePath);
+    }
+  } else {
+    pendingOpenFiles.push(filePath);
+  }
+}
+
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+if (!gotSingleInstanceLock) {
+  app.exit(0);
+} else {
+  app.on('second-instance', (_event, argv) => {
+    for (const filePath of getLaunchFilePaths(argv)) {
+      openExternalFile(filePath);
+    }
+    const win = bus.getMainWindow();
+    if (win) {
+      if (win.isMinimized()) win.restore();
+      win.focus();
+    }
+  });
+}
 
 // Create services (lazy refs resolve circular deps at call time)
 function createMenu() { menuModule.createMenu(); }
@@ -170,8 +228,14 @@ protocol.registerSchemesAsPrivileged([
 app.whenReady().then(async () => {
   // Handle local file requests (e.g. images in markdown preview)
   protocol.handle('vomit-file', (request) => {
-    const filePath = decodeURIComponent(request.url.slice('vomit-file://'.length));
-    return net.fetch(`file://${filePath}`);
+    const rawPath = request.url.slice('vomit-file://'.length);
+    let filePath;
+    try {
+      filePath = decodeURIComponent(rawPath);
+    } catch {
+      filePath = rawPath;
+    }
+    return net.fetch(pathToFileURL(filePath).href);
   });
   aiHandlers.detectAITools(state);
 
@@ -229,6 +293,17 @@ app.whenReady().then(async () => {
     bus.send('open-folder', activeBucket.path);
     bus.getMainWindow()?.setTitle(`${activeBucket.name} - Vomit`);
 
+    for (const filePath of pendingOpenFiles.splice(0)) {
+      openExternalFile(filePath);
+    }
+
+    if (process.platform !== 'darwin' && !launchFilesConsumed) {
+      launchFilesConsumed = true;
+      for (const filePath of getLaunchFilePaths(process.argv)) {
+        openExternalFile(filePath);
+      }
+    }
+
     // Build the wikilink index in the background so [[ autocomplete and the
     // backlinks panel work immediately. Best-effort — never blocks startup.
     setTimeout(() => {
@@ -257,20 +332,5 @@ app.on('window-all-closed', () => {
 
 app.on('open-file', (event, filePath) => {
   event.preventDefault();
-  const activeBucket = configStore.getActiveBucket();
-  const isOutsideBucket = !activeBucket || !filePath.startsWith(activeBucket.path);
-
-  if (bus.getMainWindow()) {
-    fileService.loadFile(filePath);
-    if (isOutsideBucket) {
-      bus.send('file-outside-bucket', filePath);
-    }
-  } else {
-    app.whenReady().then(() => {
-      fileService.loadFile(filePath);
-      if (isOutsideBucket) {
-        bus.send('file-outside-bucket', filePath);
-      }
-    });
-  }
+  openExternalFile(filePath);
 });

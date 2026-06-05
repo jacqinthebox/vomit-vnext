@@ -27,6 +27,13 @@ function isMarkdownPath(filePath) {
   return ext === '.md' || ext === '.markdown';
 }
 
+function isSameOrSubPath(childPath, parentPath) {
+  const child = path.resolve(childPath);
+  const parent = path.resolve(parentPath);
+  const relative = path.relative(parent, child);
+  return relative === '' || (!!relative && !relative.startsWith('..') && !path.isAbsolute(relative));
+}
+
 function updateModifiedDate(content) {
   const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
   if (!match) return content;
@@ -310,12 +317,19 @@ Questions?
   }
 
   function getDrawioCliPath() {
-    const candidates = [
-      '/opt/homebrew/bin/drawio',
-      '/usr/local/bin/drawio',
-      '/Applications/draw.io.app/Contents/MacOS/draw.io',
-      '/Applications/diagrams.net.app/Contents/MacOS/diagrams.net'
-    ];
+    const candidates = process.platform === 'win32'
+      ? [
+          path.join(process.env.ProgramFiles || '', 'draw.io', 'draw.io.exe'),
+          path.join(process.env.ProgramFiles || '', 'diagrams.net', 'diagrams.net.exe'),
+          path.join(process.env.LOCALAPPDATA || '', 'Programs', 'draw.io', 'draw.io.exe'),
+          path.join(process.env.LOCALAPPDATA || '', 'Programs', 'diagrams.net', 'diagrams.net.exe')
+        ]
+      : [
+          '/opt/homebrew/bin/drawio',
+          '/usr/local/bin/drawio',
+          '/Applications/draw.io.app/Contents/MacOS/draw.io',
+          '/Applications/diagrams.net.app/Contents/MacOS/diagrams.net'
+        ];
     return candidates.find(candidate => fs.existsSync(candidate)) || null;
   }
 
@@ -1141,7 +1155,7 @@ Questions?
         }
 
         // Prevent moving a folder into itself or its descendants
-        if (sourcePath === targetDir || targetDir.startsWith(sourcePath + '/')) {
+        if (isSameOrSubPath(targetDir, sourcePath)) {
           return { success: false, error: 'Cannot move a folder into itself' };
         }
 
@@ -1152,10 +1166,10 @@ Questions?
         if (state.currentFilePath === sourcePath) {
           state.currentFilePath = newPath;
           bus.getMainWindow()?.setTitle(`${path.basename(newPath)} - Vomit`);
-        } else if (state.currentFilePath && state.currentFilePath.startsWith(sourcePath + '/')) {
+        } else if (state.currentFilePath && isSameOrSubPath(state.currentFilePath, sourcePath)) {
           // File is inside a moved folder
-          const relativePath = state.currentFilePath.slice(sourcePath.length);
-          state.currentFilePath = newPath + relativePath;
+          const relativePath = path.relative(sourcePath, state.currentFilePath);
+          state.currentFilePath = path.join(newPath, relativePath);
           bus.getMainWindow()?.setTitle(`${path.basename(state.currentFilePath)} - Vomit`);
         }
 

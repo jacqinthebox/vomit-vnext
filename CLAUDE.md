@@ -2,11 +2,11 @@
 
 ## Project Overview
 
-Vomit is a keyboard-centric markdown editor and presentation app built with Electron (macOS/Linux only). It features live preview, presenter view with speaker notes, and an integrated AI terminal powered by Ollama.
+Vomit is a keyboard-centric markdown editor and presentation app built with Electron for macOS, Linux, and Windows. It features live preview, presenter view with speaker notes, and an integrated AI terminal powered by Ollama.
 
 ## Tech Stack
 
-- **Electron 40.x** - Desktop app framework
+- **Electron 41.x** - Desktop app framework
 - **CodeMirror 5** - Editor with syntax highlighting (GFM mode)
 - **Marked** - Markdown parsing
 - **Highlight.js** - Code block highlighting
@@ -49,7 +49,8 @@ src/main/
 src/renderer/
 ├── index.html                 # Main window HTML + script load order
 ├── js/
-│   ├── editor.js              # Orchestrator — wires all managers, routes IPC (521 lines)
+│   ├── editor.js              # Orchestrator — wires all managers, routes IPC
+│   ├── pathUtils.js           # Separator-tolerant renderer path/url helpers
 │   ├── tabs.js                # Tab management
 │   ├── hints.js               # Autocomplete hints
 │   ├── emoji.js               # Emoji shortcode support
@@ -77,7 +78,8 @@ src/renderer/
 - **IPC handler registration**: `registerHandlers(ipcMain, { state, bus, configStore })` pattern for all main process modules
 - **EditorState**: EventTarget-based state container with getters/setters that fire `change` and `change:propertyName` events
 - **CodemirrorHost**: Thin wrapper around CM5 with clean API; `raw` getter as escape hatch
-- **Script load order** (critical): editorState → codemirrorHost → features → tabs → editor
+- **Script load order** (critical): pathUtils → editorState → codemirrorHost → features → tabs → editor
+- **Shortcut labels**: Use platform-aware labels in renderer UI (`Cmd` on macOS, `Ctrl` on Windows/Linux; `Option` on macOS, `Alt` elsewhere). Electron menu accelerators should use `CmdOrCtrl`.
 
 ## Key Features
 
@@ -108,7 +110,7 @@ npm start            # Run in development
 
 ## Building & Releasing
 
-**Local build (Mac only):**
+**Local build (Mac):**
 ```bash
 npx electron-builder --mac --dir    # Build .app only (recommended)
 ```
@@ -117,7 +119,14 @@ The built app will be at `dist/mac-arm64/Vomit.app`.
 
 **DO NOT build DMG locally** - The DMG builder often fails with "disk busy" errors. Use `--dir` flag to build just the .app file.
 
-**DO NOT run `npm run build`** - It tries to build for all platforms and fails on macOS due to Wine/32-bit issues.
+**Local build (Windows):**
+```bash
+npm run build:win
+```
+
+Windows artifacts are produced in `dist/`. The CI Windows build runs on `windows-latest`; prefer CI for validating native module rebuilds (`better-sqlite3`, `node-pty`) when working from macOS.
+
+**DO NOT run `npm run build` for cross-platform validation** - It is mac-only by design. Use `npm run build:mac` on macOS and `npm run build:win` on Windows/CI.
 
 ### Automated Releases (semantic-release)
 
@@ -128,7 +137,7 @@ Releases are fully automated via semantic-release. On every push to main:
 3. Updates `CHANGELOG.md` automatically
 4. Bumps version in `package.json`
 5. Creates git tag and GitHub Release
-6. Build workflow attaches DMG to the release
+6. Build workflow attaches macOS DMG and Windows artifacts to the release
 
 **Commit types and version bumps:**
 
@@ -207,7 +216,7 @@ Releases are fully automated via semantic-release. On every push to main:
    - `README.md` - Features, comparison table, usage instructions
    - `SHORTCUTS.md` - If any keyboard shortcuts changed
 
-3. **Ollama detection** - Uses direct path checks (`/opt/homebrew/bin/ollama`, `/usr/local/bin/ollama`) because packaged Electron apps have restricted PATH.
+3. **Ollama detection** - Uses direct path checks plus platform executable lookup because packaged Electron apps have restricted PATH. Include Windows `.exe` locations when adding tool detection.
 
 4. **No console.log in main.js** - Causes EPIPE errors in Electron. Remove debug logs before committing.
 
@@ -215,7 +224,9 @@ Releases are fully automated via semantic-release. On every push to main:
 
 6. **RAG embeddings** - Requires `ollama pull nomic-embed-text` to be installed.
 
-7. **macOS/Linux only** - Windows support was removed. No platform checks needed.
+7. **Cross-platform paths** - Renderer code receives native paths from main. Use `window.PathUtils` for basename/dirname/join/subpath checks and `toVomitFileUrl()` for local preview URLs. Do not split paths on `'/'` or build `vomit-file://` URLs with string concatenation.
+
+8. **Windows support** - Keep runtime integrations platform-aware: shell defaults to PowerShell/cmd on Windows, app file-open uses argv/single-instance handling, RAG must use JS HTTP/fetch rather than shell `curl`, and menu prompts must stay Electron-based rather than AppleScript.
 
 ## Recent Changes
 
