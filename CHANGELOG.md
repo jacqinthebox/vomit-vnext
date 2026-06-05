@@ -1,3 +1,16 @@
+## [1.13.1](https://github.com/jacqinthebox/vomit-vnext/compare/v1.13.0...v1.13.1) (2026-06-05)
+
+
+### Bug Fixes
+
+* **editor:** keep inline image previews within viewport ([74d8566](https://github.com/jacqinthebox/vomit-vnext/commit/74d856685d5c2fb15cefa4457623b98e78970dad))
+
+
+### Chores
+
+* **deps:** refresh safe dependency baselines ([875db4a](https://github.com/jacqinthebox/vomit-vnext/commit/875db4a7207f77b9dfd682bacac016a5cacaaab6))
+* **deps:** trial major dependency upgrades ([dde6609](https://github.com/jacqinthebox/vomit-vnext/commit/dde6609f9e5aeeea991b166b5c543b40453d06a9))
+
 # [1.13.0](https://github.com/jacqinthebox/vomit-vnext/compare/v1.12.3...v1.13.0) (2026-06-05)
 
 
