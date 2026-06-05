@@ -32,6 +32,25 @@ class CodemirrorHost {
         return null;
       }
     });
+
+    this._lockHorizontalScroll();
+  }
+
+  _lockHorizontalScroll() {
+    let pending = false;
+    this.cm.on('scroll', (cm) => {
+      const info = cm.getScrollInfo();
+      if (info.left === 0 || pending) return;
+
+      pending = true;
+      requestAnimationFrame(() => {
+        const current = cm.getScrollInfo();
+        if (current.left !== 0) {
+          cm.scrollTo(0, current.top);
+        }
+        pending = false;
+      });
+    });
   }
 
   // --- Content ---
@@ -158,7 +177,7 @@ class CodemirrorHost {
   }
 
   scrollTo(x, y) {
-    this.cm.scrollTo(x, y);
+    this.cm.scrollTo(0, y);
   }
 
   scrollIntoView(pos) {

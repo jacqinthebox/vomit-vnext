@@ -1076,6 +1076,11 @@ html, body {
 
 #editor .CodeMirror-scroll {
   padding: 0;
+  overflow-x: hidden !important;
+}
+
+#editor .CodeMirror-hscrollbar {
+  display: none !important;
 }
 
 #editor .CodeMirror-lines {
