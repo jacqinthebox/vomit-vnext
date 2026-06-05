@@ -174,6 +174,12 @@ class PreviewManager {
     return ['md', 'markdown'].includes(ext);
   }
 
+  isViewerFile() {
+    if (!this.state.currentFilePath) return false;
+    const ext = this.state.currentFilePath.split('.').pop().toLowerCase();
+    return ['pdf', 'drawio'].includes(ext);
+  }
+
   parseFrontmatter(content) {
     if (!content.startsWith('---')) return {};
 
@@ -261,6 +267,8 @@ class PreviewManager {
 
   updatePreview() {
     if (!this.state.isPreviewVisible) return;
+    // Don't overwrite viewer content (PDF, draw.io)
+    if (this.state._isViewerMode) return;
 
     const content = this.host.cm.getValue();
 
@@ -326,6 +334,353 @@ class PreviewManager {
         });
         window.mermaid.run({ querySelector: '.mermaid' });
       }
+    }
+  }
+
+  /**
+   * Show a viewer-mode file (PDF or draw.io) in the preview pane.
+   * Switches to preview-only layout, hides the editor.
+   */
+  async showViewerFile(filePath) {
+    const ext = filePath.split('.').pop().toLowerCase();
+
+    // Force preview-only mode with viewer-specific layout
+    const body = document.body;
+    body.classList.remove('editor-only', 'split-view');
+    body.classList.add('preview-only', 'viewer-mode');
+    this.dom.previewPane.classList.add('visible');
+    this.state.isPreviewVisible = true;
+    this.state.viewMode = 'preview';
+    this.dom.preview.innerHTML = `<div class="viewer-loading">Loading ${this._escapeHtml(filePath.split('/').pop())}...</div>`;
+
+    if (ext === 'pdf') {
+      await this._renderPDF(filePath);
+    } else if (ext === 'drawio') {
+      await this._renderDrawio(filePath);
+    }
+  }
+
+  async _renderPDF(filePath) {
+    try {
+      const pdfUrl = `vomit-file://${encodeURI(filePath)}`;
+      const escapedPath = this._escapeHtml(filePath);
+      this.dom.preview.innerHTML = `
+        <div class="viewer-container pdf-viewer">
+          <embed src="${pdfUrl}" type="application/pdf" />
+          <button class="viewer-open-external" type="button" data-file-path="${escapedPath}">Open in external viewer</button>
+        </div>`;
+      const button = this.dom.preview.querySelector('.viewer-open-external');
+      if (button) {
+        button.addEventListener('click', () => window.vomit.openWithDefault(filePath));
+      }
+    } catch (err) {
+      this.dom.preview.innerHTML = `<div class="viewer-error"><p>Failed to load PDF: ${err.message}</p></div>`;
+    }
+  }
+
+  async _renderDrawio(filePath) {
+    try {
+      const svg = await window.vomit.renderDrawioSvg(filePath);
+      this.dom.preview.innerHTML = `
+        <div class="viewer-container drawio-viewer drawio-svg-export">${svg}</div>`;
+      return;
+    } catch (exportErr) {
+      // Fall through to the lightweight local XML renderer if draw.io CLI is unavailable.
+    }
+
+    try {
+      const data = await window.vomit.readDrawioFile(filePath);
+      const svgContent = this._extractDrawioSVG(data.xml);
+      if (svgContent) {
+        this.dom.preview.innerHTML = `
+          <div class="viewer-container drawio-viewer">${svgContent}</div>`;
+        // Scale SVG to fit
+        const svg = this.dom.preview.querySelector('svg');
+        if (svg) {
+          svg.style.maxWidth = '100%';
+          svg.style.height = 'auto';
+        }
+      } else {
+        const rendered = this._renderDrawioDiagrams(data.diagrams);
+        this.dom.preview.innerHTML = `
+          <div class="viewer-container drawio-viewer">${rendered}</div>`;
+      }
+    } catch (err) {
+      this.dom.preview.innerHTML = `<div class="viewer-error"><p>Failed to load draw.io file: ${err.message}</p></div>`;
+    }
+  }
+
+  _renderDrawioDiagrams(diagrams) {
+    if (!diagrams || diagrams.length === 0) {
+      return '<p class="viewer-info">No diagrams found in this file.</p>';
+    }
+
+    return diagrams.map((diagram, index) => {
+      const name = diagram.name || `Diagram ${index + 1}`;
+      const svg = diagram.xml ? this._renderDrawioModelToSvg(diagram.xml) : null;
+      return `<div class="drawio-diagram-card">
+        <h3>${this._escapeHtml(name)}</h3>
+        ${svg || '<p class="viewer-info">This diagram could not be decoded for native preview.</p>'}
+      </div>`;
+    }).join('');
+  }
+
+  _renderDrawioModelToSvg(xmlString) {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(xmlString, 'text/xml');
+    const cells = Array.from(doc.querySelectorAll('mxCell'));
+    const cellById = new Map(cells.map(cell => [cell.getAttribute('id'), cell]));
+    const nodeById = new Map();
+    const nodes = [];
+
+    cells.forEach(cell => {
+      if (cell.getAttribute('vertex') !== '1') return;
+      const geometry = cell.querySelector('mxGeometry');
+      if (!geometry) return;
+      const position = this._absoluteDrawioPosition(cell, cellById);
+      const width = Number(geometry.getAttribute('width') || 120);
+      const height = Number(geometry.getAttribute('height') || 60);
+      const node = {
+        id: cell.getAttribute('id'),
+        label: this._stripHtml(cell.getAttribute('value') || ''),
+        style: cell.getAttribute('style') || '',
+        x: position.x,
+        y: position.y,
+        width,
+        height
+      };
+      nodes.push(node);
+      nodeById.set(node.id, node);
+    });
+
+    if (nodes.length === 0) return null;
+
+    const minX = Math.min(...nodes.map(node => node.x)) - 40;
+    const minY = Math.min(...nodes.map(node => node.y)) - 40;
+    const maxX = Math.max(...nodes.map(node => node.x + node.width)) + 40;
+    const maxY = Math.max(...nodes.map(node => node.y + node.height)) + 40;
+    const edges = cells.filter(cell => cell.getAttribute('edge') === '1');
+
+    let svg = `<svg class="drawio-native-svg" viewBox="${minX} ${minY} ${maxX - minX} ${maxY - minY}" xmlns="http://www.w3.org/2000/svg">`;
+    svg += '<rect class="drawio-canvas" x="' + minX + '" y="' + minY + '" width="' + (maxX - minX) + '" height="' + (maxY - minY) + '" />';
+
+    edges.forEach(edge => {
+      const source = nodeById.get(edge.getAttribute('source'));
+      const target = nodeById.get(edge.getAttribute('target'));
+      if (!source || !target) return;
+      const points = this._drawioEdgePoints(edge, source, target);
+      const pointList = points.map(point => `${point.x},${point.y}`).join(' ');
+      svg += `<polyline class="drawio-native-edge" points="${pointList}" />`;
+      const label = this._stripHtml(edge.getAttribute('value') || '');
+      if (label) {
+        const midpoint = points[Math.floor(points.length / 2)];
+        svg += `<text class="drawio-native-edge-label" x="${midpoint.x}" y="${midpoint.y - 6}" text-anchor="middle">${this._escapeHtml(label)}</text>`;
+      }
+    });
+
+    nodes.forEach(node => {
+      const fill = this._styleValue(node.style, 'fillColor') || '#ffffff';
+      const stroke = this._styleValue(node.style, 'strokeColor') || '#6c7086';
+      const isTextOnly = node.style.startsWith('text;') || node.style.includes('text;') || (fill === 'none' && stroke === 'none');
+      const isEllipse = node.style.includes('ellipse');
+
+      if (!isTextOnly) {
+        if (isEllipse) {
+          svg += `<ellipse cx="${node.x + node.width / 2}" cy="${node.y + node.height / 2}" rx="${node.width / 2}" ry="${node.height / 2}" fill="${this._drawioColor(fill)}" stroke="${this._drawioColor(stroke)}" />`;
+        } else {
+          const radius = node.style.includes('rounded=1') ? 8 : 2;
+          svg += `<rect x="${node.x}" y="${node.y}" width="${node.width}" height="${node.height}" rx="${radius}" fill="${this._drawioColor(fill)}" stroke="${this._drawioColor(stroke)}" />`;
+        }
+      }
+
+      if (node.label) {
+        svg += this._renderDrawioLabel(node);
+      }
+    });
+
+    svg += '</svg>';
+    return svg;
+  }
+
+  _absoluteDrawioPosition(cell, cellById) {
+    const geometry = cell.querySelector('mxGeometry');
+    let x = Number(geometry?.getAttribute('x') || 0);
+    let y = Number(geometry?.getAttribute('y') || 0);
+    let parent = cellById.get(cell.getAttribute('parent'));
+
+    while (parent && parent.getAttribute('vertex') === '1') {
+      const parentGeometry = parent.querySelector('mxGeometry');
+      x += Number(parentGeometry?.getAttribute('x') || 0);
+      y += Number(parentGeometry?.getAttribute('y') || 0);
+      parent = cellById.get(parent.getAttribute('parent'));
+    }
+
+    return { x, y };
+  }
+
+  _drawioEdgePoints(edge, source, target) {
+    const geometry = edge.querySelector('mxGeometry');
+    const points = [
+      { x: source.x + source.width / 2, y: source.y + source.height / 2 }
+    ];
+
+    geometry?.querySelectorAll('Array[as="points"] mxPoint').forEach(point => {
+      points.push({
+        x: Number(point.getAttribute('x') || 0),
+        y: Number(point.getAttribute('y') || 0)
+      });
+    });
+
+    points.push({ x: target.x + target.width / 2, y: target.y + target.height / 2 });
+    return points;
+  }
+
+  _renderDrawioLabel(node) {
+    const fontSize = Number(this._styleValue(node.style, 'fontSize') || 12);
+    const fontColor = this._drawioColor(this._styleValue(node.style, 'fontColor') || '#111827');
+    const align = this._styleValue(node.style, 'align') || 'center';
+    const verticalAlign = this._styleValue(node.style, 'verticalAlign') || 'middle';
+    const escapedLabel = this._escapeHtml(node.label).replace(/\n/g, '<br>');
+    const justify = align === 'left' ? 'flex-start' : align === 'right' ? 'flex-end' : 'center';
+    const items = verticalAlign === 'top' ? 'flex-start' : verticalAlign === 'bottom' ? 'flex-end' : 'center';
+
+    return `<foreignObject x="${node.x + 4}" y="${node.y + 4}" width="${Math.max(1, node.width - 8)}" height="${Math.max(1, node.height - 8)}">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="drawio-native-label"
+           style="font-size:${fontSize}px;color:${fontColor};text-align:${align};justify-content:${justify};align-items:${items};">
+        ${escapedLabel}
+      </div>
+    </foreignObject>`;
+  }
+
+  _drawioColor(color) {
+    if (!color || color === 'none') return 'none';
+    return this._escapeHtml(color);
+  }
+
+  _styleValue(style, key) {
+    const match = style.match(new RegExp(`(?:^|;)${key}=([^;]+)`));
+    return match ? match[1] : null;
+  }
+
+  _stripHtml(value) {
+    const div = document.createElement('div');
+    div.innerHTML = value.replace(/<br\s*\/?>/gi, '\n');
+    return div.textContent || div.innerText || '';
+  }
+
+  _extractDrawioSVG(xml) {
+    // draw.io files may embed SVG directly or in diagram elements
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(xml, 'text/xml');
+
+    // Check for embedded SVG in the XML
+    const svgEl = doc.querySelector('svg');
+    if (svgEl) {
+      return svgEl.outerHTML;
+    }
+
+    return null;
+  }
+
+  _renderDrawioFromXML(xml) {
+    // Parse the draw.io XML and render diagrams as a visual representation
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(xml, 'text/xml');
+    const diagrams = doc.querySelectorAll('diagram');
+
+    if (diagrams.length === 0) {
+      return '<p class="viewer-info">No diagrams found in this file.</p>';
+    }
+
+    let html = '';
+    diagrams.forEach((diagram, index) => {
+      const name = diagram.getAttribute('name') || `Diagram ${index + 1}`;
+      // Try to decode the diagram content (draw.io uses deflate+base64)
+      const content = diagram.textContent.trim();
+      html += `<div class="drawio-diagram-card">
+        <h3>${this._escapeHtml(name)}</h3>`;
+
+      if (content) {
+        // Attempt to decode and render
+        try {
+          const decoded = this._decodeDrawioDiagram(content);
+          if (decoded) {
+            const cellHtml = this._renderDrawioCells(decoded);
+            html += cellHtml;
+          } else {
+            html += `<p class="viewer-info">Diagram content (encoded). Open in draw.io for full rendering.</p>`;
+          }
+        } catch {
+          html += `<p class="viewer-info">Diagram content (encoded). Open in draw.io for full rendering.</p>`;
+        }
+      }
+
+      html += '</div>';
+    });
+
+    return html;
+  }
+
+  _decodeDrawioDiagram(encoded) {
+    // draw.io stores diagrams as: base64 → URL-decoded → deflate-compressed XML
+    // Or as plain XML in newer formats
+    try {
+      // Try plain base64 decode first
+      const decoded = atob(encoded);
+      // Try to decompress (pako/zlib)
+      if (window.pako) {
+        const inflated = window.pako.inflate(decoded, { to: 'string' });
+        return decodeURIComponent(inflated);
+      }
+      // If no pako, try raw URI decode
+      return decodeURIComponent(decoded);
+    } catch {
+      // May already be plain XML
+      if (encoded.startsWith('<')) return encoded;
+      return null;
+    }
+  }
+
+  _renderDrawioCells(xmlString) {
+    // Parse the mxGraphModel and render a simplified view of shapes/labels
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(xmlString, 'text/xml');
+    const cells = doc.querySelectorAll('mxCell[value]');
+
+    if (cells.length === 0) return '<p class="viewer-info">No labeled elements found.</p>';
+
+    let html = '<div class="drawio-cells">';
+    cells.forEach(cell => {
+      const value = cell.getAttribute('value');
+      if (value && value.trim()) {
+        const style = cell.getAttribute('style') || '';
+        const isEdge = style.includes('edgeStyle') || cell.getAttribute('edge') === '1';
+        const cssClass = isEdge ? 'drawio-edge' : 'drawio-node';
+        html += `<span class="${cssClass}">${this._escapeHtml(value)}</span>`;
+      }
+    });
+    html += '</div>';
+    return html;
+  }
+
+  _escapeHtml(str) {
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  /**
+   * Exit viewer mode and restore normal editor layout.
+   */
+  exitViewerMode() {
+    if (document.body.classList.contains('viewer-mode')) {
+      this.state._isViewerMode = false;
+      this.dom.preview.innerHTML = '';
+      // Restore to editor-only
+      const body = document.body;
+      body.classList.remove('preview-only', 'split-view', 'viewer-mode');
+      body.classList.add('editor-only');
+      this.dom.previewPane.classList.remove('visible');
+      this.state.isPreviewVisible = false;
+      this.state.viewMode = 'editor';
     }
   }
 

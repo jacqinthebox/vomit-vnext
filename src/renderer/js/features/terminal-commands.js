@@ -73,13 +73,34 @@ const COMMAND_REGISTRY = [
   },
   {
     // Must be registered before /pseudo so the longer name matches first
+    name: '/pseudo run',
+    description: 'Pseudonymize repos in bucket (optionally one folder)',
+    args: 'optional',
+    argsHint: '[folder-name]',
+    requiresCwd: true,
+    async handler(args, ctx, cwd) {
+      await ctx.runPseudoRepo(cwd, args.trim() || null);
+    }
+  },
+  {
+    // Must be registered before /pseudo so the longer name matches first
     name: '/pseudo all',
-    description: 'Pseudonymize all files',
+    description: 'Pseudonymize all files (legacy)',
     args: 'none',
     argsHint: '',
     requiresCwd: true,
     async handler(args, ctx, cwd) {
       await ctx.runPseudonymization(cwd);
+    }
+  },
+  {
+    name: '/pseudo map',
+    description: 'Show current entity mapping',
+    args: 'none',
+    argsHint: '',
+    requiresCwd: true,
+    async handler(args, ctx, cwd) {
+      await ctx.showPseudoMapping(cwd);
     }
   },
   {
@@ -94,12 +115,16 @@ const COMMAND_REGISTRY = [
   },
   {
     name: '/depseudo',
-    description: 'Restore original document',
-    args: 'none',
-    argsHint: '',
+    description: 'Reverse-map pseudo repo changes to real repo',
+    args: 'optional',
+    argsHint: '[repo-name]',
     requiresCwd: true,
     async handler(args, ctx, cwd) {
-      await ctx.depseudonymizeCurrentDoc();
+      if (args.trim()) {
+        await ctx.depseudoRepo(args.trim(), cwd);
+      } else {
+        await ctx.depseudonymizeCurrentDoc();
+      }
     }
   },
   {

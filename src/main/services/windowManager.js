@@ -30,7 +30,8 @@ function createWindowManager({ state, bus, getSaveFileAs }) {
       webPreferences: {
         preload: path.join(mainDir, 'preload.js'),
         contextIsolation: true,
-        nodeIntegration: false
+        nodeIntegration: false,
+        plugins: true
       },
       titleBarStyle: 'hiddenInset',
       trafficLightPosition: { x: 12, y: 10 }

@@ -336,8 +336,22 @@ contextBridge.exposeInMainWorld('vomit', {
   onContextStatsUpdated: (cb) => ipcRenderer.on('context-stats-updated', cb),
   // File operations for pseudonymization
   readFile: (filePath) => ipcRenderer.invoke('read-file', filePath),
+  readFileBase64: (filePath) => ipcRenderer.invoke('read-file-base64', filePath),
+  readDrawioFile: (filePath) => ipcRenderer.invoke('read-drawio-file', filePath),
+  renderDrawioSvg: (filePath) => ipcRenderer.invoke('render-drawio-svg', filePath),
   writeFile: (filePath, content) => ipcRenderer.invoke('write-file', filePath, content),
   createDirectory: (dirPath) => ipcRenderer.invoke('create-directory', dirPath),
+  // Pseudo-repo operations
+  pseudoDetectRepos: (bucketPath) => ipcRenderer.invoke('pseudo-detect-repos', bucketPath),
+  pseudoHasMapping: (bucketPath) => ipcRenderer.invoke('pseudo-has-mapping', bucketPath),
+  pseudoReadMapping: (bucketPath) => ipcRenderer.invoke('pseudo-read-mapping', bucketPath),
+  pseudoSaveMapping: (bucketPath, mapping) => ipcRenderer.invoke('pseudo-save-mapping', bucketPath, mapping),
+  pseudoSaveProject: (bucketPath, data) => ipcRenderer.invoke('pseudo-save-project', bucketPath, data),
+  pseudoReadProject: (bucketPath) => ipcRenderer.invoke('pseudo-read-project', bucketPath),
+  pseudoGitInit: (repoPath) => ipcRenderer.invoke('pseudo-git-init', repoPath),
+  pseudoGitChangedFiles: (repoPath, hash) => ipcRenderer.invoke('pseudo-git-changed-files', repoPath, hash),
+  pseudoCopyStructure: (src, dest) => ipcRenderer.invoke('pseudo-copy-structure', src, dest),
+  pseudoRemoveDir: (dirPath) => ipcRenderer.invoke('pseudo-remove-dir', dirPath),
   // RAG methods
   ragIndex: (projectRoot, targetPath) => ipcRenderer.invoke('rag-index', projectRoot, targetPath),
   ragClear: (folderPath) => ipcRenderer.invoke('rag-clear', folderPath),

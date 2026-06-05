@@ -4,6 +4,9 @@
 const { dialog, shell, app } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const zlib = require('zlib');
+const os = require('os');
+const { execFile } = require('child_process');
 const chokidar = require('chokidar');
 const wiki = require('../../wiki');
 
@@ -36,7 +39,7 @@ function updateModifiedDate(content) {
   return updated + content.substring(frontmatter.length);
 }
 
-const SKIP_RENAME_DIRS = new Set(['node_modules', 'pseudonymized', '.git', '.obsidian']);
+const SKIP_RENAME_DIRS = new Set(['node_modules', 'pseudo', '.git', '.obsidian', 'pseudo']);
 
 function escapeRegExp(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -192,9 +195,11 @@ Questions?
   async function openFile() {
     const bucketPath = configStore.getBucketPath();
     const result = await dialog.showOpenDialog(bus.getMainWindow(), {
-      title: 'Open Markdown File',
+      title: 'Open File',
       filters: [
         { name: 'Markdown Files', extensions: ['md', 'markdown'] },
+        { name: 'PDF Files', extensions: ['pdf'] },
+        { name: 'Draw.io Diagrams', extensions: ['drawio'] },
         { name: 'All Files', extensions: ['*'] }
       ],
       properties: ['openFile'],
@@ -299,9 +304,63 @@ Questions?
     }
   }
 
+  function isViewerFile(filePath) {
+    const ext = path.extname(filePath).toLowerCase();
+    return ['.pdf', '.drawio'].includes(ext);
+  }
+
+  function getDrawioCliPath() {
+    const candidates = [
+      '/opt/homebrew/bin/drawio',
+      '/usr/local/bin/drawio',
+      '/Applications/draw.io.app/Contents/MacOS/draw.io',
+      '/Applications/diagrams.net.app/Contents/MacOS/diagrams.net'
+    ];
+    return candidates.find(candidate => fs.existsSync(candidate)) || null;
+  }
+
+  function renderDrawioToSvg(filePath) {
+    return new Promise((resolve, reject) => {
+      const cliPath = getDrawioCliPath();
+      if (!cliPath) {
+        reject(new Error('draw.io CLI not found'));
+        return;
+      }
+
+      const outputPath = path.join(os.tmpdir(), `vomit-drawio-${Date.now()}-${Math.random().toString(36).slice(2)}.svg`);
+      const args = [
+        '--export',
+        '--format', 'svg',
+        '--embed-svg-images',
+        '--embed-svg-fonts', 'true',
+        '--svg-theme', 'light',
+        '--border', '8',
+        '--output', outputPath,
+        filePath
+      ];
+
+      execFile(cliPath, args, { timeout: 30000 }, (err, stdout, stderr) => {
+        if (err) {
+          reject(new Error(stderr || stdout || err.message));
+          return;
+        }
+
+        try {
+          const svg = fs.readFileSync(outputPath, 'utf-8');
+          fs.unlink(outputPath, () => {});
+          resolve(svg);
+        } catch (readErr) {
+          reject(readErr);
+        }
+      });
+    });
+  }
+
   function loadFile(filePath) {
     try {
-      const content = fs.readFileSync(filePath, 'utf-8');
+      // For viewer files (PDF, draw.io), don't read as text — renderer handles loading
+      const isViewer = isViewerFile(filePath);
+      const content = isViewer ? '' : fs.readFileSync(filePath, 'utf-8');
       state.currentFilePath = filePath;
       state.currentContent = content;
 
@@ -714,7 +773,7 @@ Questions?
         try {
           const entries = fs.readdirSync(dir, { withFileTypes: true });
           for (const entry of entries) {
-            if (entry.name.startsWith('.') || entry.name === 'node_modules' || entry.name === 'pseudonymized') continue;
+            if (entry.name.startsWith('.') || entry.name === 'node_modules' || entry.name === 'pseudo') continue;
             const fullPath = path.join(dir, entry.name);
             if (entry.isDirectory()) {
               walk(fullPath);
@@ -968,6 +1027,58 @@ Questions?
         return fs.readFileSync(filePath, 'utf-8');
       } catch (err) {
         throw new Error(`Failed to read file: ${err.message}`);
+      }
+    });
+
+    // Read binary file as base64 (for PDF viewer)
+    ipcMain.handle('read-file-base64', async (event, filePath) => {
+      try {
+        const buffer = fs.readFileSync(filePath);
+        return buffer.toString('base64');
+      } catch (err) {
+        throw new Error(`Failed to read binary file: ${err.message}`);
+      }
+    });
+
+    ipcMain.handle('read-drawio-file', async (event, filePath) => {
+      try {
+        const xml = fs.readFileSync(filePath, 'utf-8');
+        const diagrams = [];
+        const diagramRegex = /<diagram\b([^>]*)>([\s\S]*?)<\/diagram>/gi;
+        let match;
+
+        while ((match = diagramRegex.exec(xml)) !== null) {
+          const attrs = match[1] || '';
+          const body = (match[2] || '').trim();
+          const nameMatch = attrs.match(/\bname="([^"]*)"/i);
+          const name = nameMatch ? nameMatch[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&') : `Diagram ${diagrams.length + 1}`;
+          let decoded = null;
+
+          if (body.startsWith('<mxGraphModel')) {
+            decoded = body;
+          } else if (body) {
+            try {
+              const inflated = zlib.inflateRawSync(Buffer.from(body, 'base64')).toString('utf-8');
+              decoded = decodeURIComponent(inflated);
+            } catch {
+              decoded = null;
+            }
+          }
+
+          diagrams.push({ name, xml: decoded });
+        }
+
+        return { xml, diagrams };
+      } catch (err) {
+        throw new Error(`Failed to read draw.io file: ${err.message}`);
+      }
+    });
+
+    ipcMain.handle('render-drawio-svg', async (event, filePath) => {
+      try {
+        return await renderDrawioToSvg(filePath);
+      } catch (err) {
+        throw new Error(`Failed to render draw.io file: ${err.message}`);
       }
     });
 

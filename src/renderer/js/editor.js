@@ -541,6 +541,19 @@ class Editor {
         this.state.currentDirectory = basePath;
       }
 
+      // Viewer files are rendered during tab restore.
+      if (this.previewManager.isViewerFile()) {
+        if (this.state.isFileTreeVisible) {
+          this.fileTreeManager.loadFileTree();
+        }
+        return;
+      }
+
+      // Exit viewer mode if previously active
+      if (this.state._isViewerMode) {
+        this.previewManager.exitViewerMode();
+      }
+
       this.cm.setOption('filename', filePath); // For hints file-type detection
       this.previewManager.updateEditorMode();
       this.previewManager.applyFrontmatterSettings(content);

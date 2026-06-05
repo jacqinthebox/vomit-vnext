@@ -13,6 +13,7 @@ const { createTerminalService } = require('./ipc/handlers/terminal');
 const aiHandlers = require('./ipc/handlers/ai');
 const agentHandlers = require('./ipc/handlers/agent');
 const shellHandlers = require('./ipc/handlers/shell');
+const pseudoHandlers = require('./ipc/handlers/pseudo');
 const rag = require('./rag');
 const wiki = require('./wiki');
 const menuModule = require('./menu');
@@ -83,6 +84,7 @@ terminalService.registerHandlers(ipcMain);
 aiHandlers.registerHandlers(ipcMain, { state, bus, configStore, terminalService });
 agentHandlers.registerHandlers(ipcMain, { state, bus, configStore, terminalService });
 shellHandlers.registerHandlers(ipcMain, { state, bus, terminalService });
+pseudoHandlers.registerHandlers(ipcMain, { state, configStore });
 rag.registerHandlers(ipcMain, { state, bus });
 wiki.registerHandlers(ipcMain, { state, bus });
 

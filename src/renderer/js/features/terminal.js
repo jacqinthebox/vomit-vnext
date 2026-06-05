@@ -1307,7 +1307,7 @@ File content:
 
       let processed = 0;
       for (const file of files) {
-        this.appendTerminalOutput(`Processing: ${file.relativePath}`, 'system');
+        this.appendTerminalOutput(`[${processed + 1}/${files.length}] Processing: ${file.relativePath}`, 'system');
 
         try {
           const content = await window.vomit.readFile(file.path);
@@ -1327,7 +1327,7 @@ File content:
           await window.vomit.writeFile(outputPath, this.state.pseudoOutput);
 
           processed++;
-          this.appendTerminalOutput(`✓ Saved: pseudonymized/${file.relativePath}`, 'output');
+          this.appendTerminalOutput(`✓ Saved: pseudo/${file.relativePath}`, 'output');
           this.markOutputComplete();
         } catch (err) {
           this.appendTerminalOutput(`✗ Error processing ${file.relativePath}: ${err.message}`, 'error');
@@ -1339,6 +1339,329 @@ File content:
 
     } catch (err) {
       this.appendTerminalOutput(`Error: ${err.message}`, 'error');
+    }
+  }
+
+  // --- Pseudo-repo workflow (multi-repo bucket pseudonymization) ---
+
+  async runPseudoRepo(cwd, targetFolder = null) {
+    this.appendTerminalOutput(`❯ /pseudo run${targetFolder ? ' ' + targetFolder : ''}`, 'input');
+    this.appendTerminalOutput('Detecting repos in bucket...', 'system');
+
+    try {
+      // 1. Detect git repos in bucket
+      let repos = await window.vomit.pseudoDetectRepos(cwd);
+      if (repos.length === 0) {
+        // Maybe the bucket itself is a git repo?
+        this.appendTerminalOutput(`No git sub-repos found in: ${cwd}`, 'error');
+        this.appendTerminalOutput('Expected: top-level subdirectories with .git/', 'system');
+        this.appendTerminalOutput('Listing top-level dirs...', 'system');
+        const items = await window.vomit.getDirectoryContents(cwd);
+        const dirs = items.filter(i => i.isDirectory && !i.name.startsWith('.'));
+        for (const d of dirs.slice(0, 10)) {
+          this.appendTerminalOutput(`  ${d.name}/`, 'system');
+        }
+        return;
+      }
+
+      this.appendTerminalOutput(`Found ${repos.length} repo(s): ${repos.map(r => r.name).join(', ')}`, 'system');
+
+      // Filter to single folder if specified
+      if (targetFolder) {
+        const match = repos.find(r => r.name === targetFolder);
+        if (!match) {
+          this.appendTerminalOutput(`Error: "${targetFolder}" not found among repos.`, 'error');
+          this.appendTerminalOutput(`Available: ${repos.map(r => r.name).join(', ')}`, 'system');
+          return;
+        }
+        repos = [match];
+        this.appendTerminalOutput(`Targeting: ${targetFolder}`, 'system');
+      }
+
+      // 2. Phase 1 — Entity extraction (build shared mapping)
+      this.appendTerminalOutput('\n── Phase 1: Extracting entities ──', 'system');
+
+      let mapping = {};
+      // Load existing mapping if re-running
+      const existingMapping = await window.vomit.pseudoReadMapping(cwd);
+      if (existingMapping) {
+        mapping = existingMapping;
+        this.appendTerminalOutput(`Loaded existing mapping (${Object.keys(mapping).length} entities).`, 'system');
+      }
+
+      const targetExtensions = ['.tf', '.yaml', '.yml', '.json', '.md', '.env', '.sh', '.ps1', '.py', '.js', '.ts', '.tsx', '.jsx', '.go', '.hcl', '.bicep', '.toml', '.xml', '.sql'];
+      let totalFiles = 0;
+
+      for (const repo of repos) {
+        const files = await this.getFilesRecursively(repo.path, targetExtensions);
+        this.appendTerminalOutput(`\n${repo.name}/: ${files.length} files to scan`, 'system');
+
+        for (let i = 0; i < files.length; i++) {
+          totalFiles++;
+          this.appendTerminalOutput(`  [${i + 1}/${files.length}] Scanning: ${files[i].relativePath}`, 'system');
+
+          const content = await window.vomit.readFile(files[i].path);
+          if (!content || content.trim().length === 0) continue;
+
+          // Ask AI to extract only NEW entities
+          const extractPrompt = `You are an entity extraction tool for GDPR pseudonymization.
+
+Analyze this file and find ALL sensitive/identifying data NOT already in the known mapping.
+
+Known mapping (do NOT repeat these):
+${JSON.stringify(mapping, null, 2)}
+
+Look for NEW instances of:
+- Person names
+- Company/organization names
+- Email addresses
+- Phone numbers
+- IP addresses, FQDNs, hostnames
+- API keys, tokens, passwords, secrets
+- Cloud resource IDs (Azure/AWS/GCP subscription, tenant, resource IDs)
+- GUIDs/UUIDs
+- Database connection strings
+- Usernames, paths with usernames
+
+For each NEW entity, provide a realistic fake replacement.
+
+OUTPUT: Return ONLY a JSON object with new mappings. No explanations, no code fences.
+Example: {"real-value": "fake-replacement", "another@real.com": "user@example.com"}
+If nothing new found, return: {}
+
+File (${files[i].relativePath}):
+\`\`\`
+${content.substring(0, 8000)}
+\`\`\``;
+
+          this.state.pseudoOutput = '';
+          this.state.pseudoCollecting = true;
+
+          await window.vomit.claudeExecute(extractPrompt, cwd);
+          await this.waitForAIComplete();
+
+          // Parse new entities from AI response
+          if (this.state.pseudoOutput.trim()) {
+            try {
+              const jsonMatch = this.state.pseudoOutput.trim().match(/\{[\s\S]*\}/);
+              if (jsonMatch) {
+                const newEntities = JSON.parse(jsonMatch[0]);
+                let added = 0;
+                for (const [real, fake] of Object.entries(newEntities)) {
+                  if (!mapping[real] && real.trim().length > 0) {
+                    mapping[real] = fake;
+                    added++;
+                  }
+                }
+                if (added > 0) {
+                  this.appendTerminalOutput(`    + ${added} new entities`, 'output');
+                }
+              }
+            } catch (e) {
+              // Skip unparseable responses
+            }
+          }
+
+          // Brief cooldown to prevent thermal throttling
+          await new Promise(r => setTimeout(r, 1500));
+          if (totalFiles % 10 === 0) {
+            await window.vomit.pseudoSaveMapping(cwd, mapping);
+          }
+        }
+      }
+
+      // Save final mapping
+      await window.vomit.pseudoSaveMapping(cwd, mapping);
+      this.appendTerminalOutput(`\n✓ Mapping complete: ${Object.keys(mapping).length} entities total.`, 'output');
+
+      // 3. Phase 2 — Apply mapping to create pseudo repos
+      this.appendTerminalOutput('\n── Phase 2: Creating pseudo repos ──', 'system');
+
+      const projectData = { repos: [], createdAt: new Date().toISOString() };
+
+      for (const repo of repos) {
+        const pseudoPath = `${cwd}/pseudo/${repo.name}`;
+
+        // Clean existing pseudo repo for fresh rebuild
+        await window.vomit.pseudoRemoveDir(pseudoPath);
+
+        this.appendTerminalOutput(`\nCreating pseudo/${repo.name}/...`, 'system');
+
+        // Copy file structure
+        const fileCount = await window.vomit.pseudoCopyStructure(repo.path, pseudoPath);
+        this.appendTerminalOutput(`  Copied ${fileCount} files.`, 'system');
+
+        // Apply mapping to all files
+        const pseudoFiles = await this.getFilesRecursively(pseudoPath, targetExtensions);
+        let replacedCount = 0;
+
+        // Sort mapping keys by length (longest first) to avoid partial replacements
+        const sortedKeys = Object.keys(mapping).sort((a, b) => b.length - a.length);
+
+        for (const file of pseudoFiles) {
+          let content = await window.vomit.readFile(file.path);
+          let changed = false;
+
+          for (const real of sortedKeys) {
+            const fake = mapping[real];
+            const escaped = real.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(escaped, 'g');
+            if (regex.test(content)) {
+              content = content.replace(new RegExp(escaped, 'g'), fake);
+              changed = true;
+            }
+          }
+
+          if (changed) {
+            await window.vomit.writeFile(file.path, content);
+            replacedCount++;
+          }
+        }
+
+        this.appendTerminalOutput(`  Applied mapping to ${replacedCount} files.`, 'system');
+
+        // Git init + commit baseline
+        const gitResult = await window.vomit.pseudoGitInit(pseudoPath);
+        if (gitResult.success) {
+          projectData.repos.push({
+            name: repo.name,
+            sourcePath: repo.path,
+            pseudoPath: pseudoPath,
+            baselineHash: gitResult.baselineHash
+          });
+          this.appendTerminalOutput(`  ✓ Git baseline: ${gitResult.baselineHash.substring(0, 8)}`, 'output');
+        } else {
+          this.appendTerminalOutput(`  ⚠ Git init failed: ${gitResult.error}`, 'error');
+          projectData.repos.push({
+            name: repo.name,
+            sourcePath: repo.path,
+            pseudoPath: pseudoPath,
+            baselineHash: null
+          });
+        }
+      }
+
+      // Save project metadata
+      await window.vomit.pseudoSaveProject(cwd, projectData);
+
+      this.appendTerminalOutput('\n══════════════════════════════════════', 'system');
+      this.appendTerminalOutput('✓ Pseudonymization complete!', 'output');
+      this.appendTerminalOutput(`  Mapping: mapping.json (${Object.keys(mapping).length} entities)`, 'system');
+      for (const repo of projectData.repos) {
+        this.appendTerminalOutput(`  Repo: pseudo/${repo.name}/`, 'system');
+      }
+      this.appendTerminalOutput('\nPoint your cloud agent at: pseudo/', 'system');
+      this.appendTerminalOutput('When done: /depseudo <repo-name> to merge back.', 'system');
+      this.appendTerminalOutput('══════════════════════════════════════', 'system');
+
+      this.fileTreeManager.loadFileTree();
+
+    } catch (err) {
+      this.appendTerminalOutput(`Error: ${err.message}`, 'error');
+    }
+  }
+
+  async depseudoRepo(repoName, cwd) {
+    this.appendTerminalOutput(`❯ /depseudo ${repoName}`, 'input');
+
+    try {
+      // Load project metadata
+      const project = await window.vomit.pseudoReadProject(cwd);
+      if (!project) {
+        this.appendTerminalOutput('Error: No pseudo project found in this bucket.', 'error');
+        this.appendTerminalOutput('Run /pseudo run first.', 'system');
+        return;
+      }
+
+      // Find the repo
+      const repoInfo = project.repos.find(r => r.name === repoName);
+      if (!repoInfo) {
+        const available = project.repos.map(r => r.name).join(', ');
+        this.appendTerminalOutput(`Error: Repo "${repoName}" not found.`, 'error');
+        this.appendTerminalOutput(`Available: ${available}`, 'system');
+        return;
+      }
+
+      // Load mapping
+      const mapping = await window.vomit.pseudoReadMapping(cwd);
+      if (!mapping) {
+        this.appendTerminalOutput('Error: No mapping found.', 'error');
+        return;
+      }
+
+      this.appendTerminalOutput(`Checking changes in pseudo/${repoName}/...`, 'system');
+
+      // Get changed files
+      let changedFiles;
+      if (repoInfo.baselineHash) {
+        changedFiles = await window.vomit.pseudoGitChangedFiles(repoInfo.pseudoPath, repoInfo.baselineHash);
+      } else {
+        this.appendTerminalOutput('Warning: No git baseline — processing all files.', 'system');
+        const targetExtensions = ['.tf', '.yaml', '.yml', '.json', '.md', '.env', '.sh', '.ps1', '.py', '.js', '.ts', '.tsx', '.jsx', '.go', '.hcl', '.bicep', '.toml', '.xml', '.sql'];
+        const allFiles = await this.getFilesRecursively(repoInfo.pseudoPath, targetExtensions);
+        changedFiles = allFiles.map(f => f.relativePath);
+      }
+
+      if (changedFiles.length === 0) {
+        this.appendTerminalOutput('No changes detected in pseudo repo.', 'system');
+        return;
+      }
+
+      this.appendTerminalOutput(`Found ${changedFiles.length} changed file(s).`, 'system');
+
+      // Build reverse mapping (fake → real), sorted longest first
+      const reverseMapping = {};
+      for (const [real, fake] of Object.entries(mapping)) {
+        reverseMapping[fake] = real;
+      }
+      const sortedFakes = Object.keys(reverseMapping).sort((a, b) => b.length - a.length);
+
+      // Apply reverse mapping and write to real repo
+      let applied = 0;
+      for (const relPath of changedFiles) {
+        const pseudoFilePath = `${repoInfo.pseudoPath}/${relPath}`;
+        const realFilePath = `${repoInfo.sourcePath}/${relPath}`;
+
+        try {
+          let content = await window.vomit.readFile(pseudoFilePath);
+
+          // Apply reverse mapping
+          for (const fake of sortedFakes) {
+            const real = reverseMapping[fake];
+            const escaped = fake.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            content = content.replace(new RegExp(escaped, 'g'), real);
+          }
+
+          await window.vomit.writeFile(realFilePath, content);
+          this.appendTerminalOutput(`  ✓ ${relPath}`, 'output');
+          applied++;
+        } catch (err) {
+          this.appendTerminalOutput(`  ✗ ${relPath}: ${err.message}`, 'error');
+        }
+      }
+
+      this.appendTerminalOutput(`\n✓ Applied ${applied} file(s) to ${repoName}/`, 'output');
+      this.appendTerminalOutput(`Review with: cd ${repoInfo.sourcePath} && git diff`, 'system');
+      this.fileTreeManager.loadFileTree();
+
+    } catch (err) {
+      this.appendTerminalOutput(`Error: ${err.message}`, 'error');
+    }
+  }
+
+  async showPseudoMapping(cwd) {
+    this.appendTerminalOutput('❯ /pseudo map', 'input');
+
+    const mapping = await window.vomit.pseudoReadMapping(cwd);
+    if (!mapping) {
+      this.appendTerminalOutput('No mapping found. Run /pseudo run first.', 'system');
+      return;
+    }
+
+    const entries = Object.entries(mapping);
+    this.appendTerminalOutput(`Mapping (${entries.length} entities):`, 'system');
+    for (const [real, fake] of entries) {
+      this.appendTerminalOutput(`  ${real} → ${fake}`, 'output');
     }
   }
 
@@ -1477,7 +1800,7 @@ Provide a helpful, accurate answer based on the context above. If the context do
 
       for (const item of items) {
         if (item.name.startsWith('.')) continue; // Skip hidden
-        if (item.name === 'pseudonymized') continue; // Skip output dir
+        if (item.name === 'pseudo') continue; // Skip pseudonymized output dir
         if (item.name === 'node_modules') continue; // Skip node_modules
 
         const itemRelativePath = relativePath ? `${relativePath}/${item.name}` : item.name;
