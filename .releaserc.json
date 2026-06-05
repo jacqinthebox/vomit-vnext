@@ -2,7 +2,16 @@
   "branches": ["main"],
   "plugins": [
     "@semantic-release/commit-analyzer",
-    "@semantic-release/release-notes-generator",
+    ["@semantic-release/release-notes-generator", {
+      "presetConfig": {
+        "types": [
+          { "type": "feat", "section": "Features" },
+          { "type": "fix", "section": "Bug Fixes" },
+          { "type": "perf", "section": "Performance Improvements" },
+          { "type": "chore", "section": "Chores" }
+        ]
+      }
+    }],
     ["@semantic-release/changelog", {
       "changelogFile": "CHANGELOG.md"
     }],
