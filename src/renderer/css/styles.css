@@ -2675,13 +2675,15 @@ body:has(#terminal-panel:not(.hidden)) #main-container {
 
 /* Inline widgets in editor (images, LaTeX, Mermaid, PlantUML) */
 .cm-inline-widget {
+  box-sizing: border-box;
   display: block;
   margin: 8px 0 8px 32px;
   max-width: calc(100% - 64px);
+  overflow-x: hidden;
 }
 
 .cm-inline-widget img {
-  max-width: 100%;
+  max-width: 100% !important;
   height: auto;
   display: block;
 }

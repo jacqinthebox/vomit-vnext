@@ -29,6 +29,7 @@ class InlineImageManager {
     this.host.on('change', () => {
       this.scheduleUpdate();
     });
+    window.addEventListener('resize', () => this.updateWidgetWidths());
     this.updateAll();
   }
 
@@ -106,13 +107,18 @@ class InlineImageManager {
   createImageWidget(lineNumber, src, { width, height, alt }, hash) {
     const container = document.createElement('div');
     container.className = 'cm-inline-widget cm-image-widget';
+    this.constrainWidgetToEditor(container);
 
     const img = document.createElement('img');
     img.alt = alt || '';
     if (width) img.style.width = `${width}px`;
     if (height) img.style.height = `${height}px`;
 
-    img.onload = () => container.classList.remove('loading');
+    img.onload = () => {
+      container.classList.remove('loading');
+      this.constrainWidgetToEditor(container);
+      this.host.refresh();
+    };
     img.onerror = () => {
       container.classList.add('error');
       container.textContent = `Image not found: ${src.split('/').pop()}`;
@@ -162,6 +168,7 @@ class InlineImageManager {
   createLatexWidget(lineNumber, latex, hash) {
     const container = document.createElement('div');
     container.className = 'cm-inline-widget cm-latex-widget';
+    this.constrainWidgetToEditor(container);
 
     try {
       katex.render(latex, container, {
@@ -226,6 +233,7 @@ class InlineImageManager {
   createMermaidWidget(lineNumber, content, hash) {
     const container = document.createElement('div');
     container.className = 'cm-inline-widget cm-mermaid-widget';
+    this.constrainWidgetToEditor(container);
 
     const id = `mermaid-editor-${this.mermaidCounter++}`;
     const mermaidDiv = document.createElement('div');
@@ -253,6 +261,7 @@ class InlineImageManager {
   createPlantUMLWidget(lineNumber, content, hash) {
     const container = document.createElement('div');
     container.className = 'cm-inline-widget cm-plantuml-widget';
+    this.constrainWidgetToEditor(container);
 
     // plantumlEncoder is a global from plantuml-encoder.min.js
     const encoder = window.plantumlEncoder || (typeof plantumlEncoder !== 'undefined' ? plantumlEncoder : null);
@@ -267,7 +276,11 @@ class InlineImageManager {
         img.src = `https://www.plantuml.com/plantuml/svg/${encoded}`;
         img.alt = 'PlantUML diagram';
 
-        img.onload = () => container.classList.remove('loading');
+        img.onload = () => {
+          container.classList.remove('loading');
+          this.constrainWidgetToEditor(container);
+          this.host.refresh();
+        };
         img.onerror = (e) => {
           container.classList.add('error');
           container.textContent = `PlantUML failed - check diagram syntax`;
@@ -313,6 +326,27 @@ class InlineImageManager {
       }
     }
     this.widgets.clear();
+  }
+
+  widgetMaxWidth() {
+    const scroller = this.host.cm?.getScrollerElement?.();
+    const available = scroller ? scroller.clientWidth : 0;
+    return Math.max(240, available - 96);
+  }
+
+  constrainWidgetToEditor(container) {
+    const maxWidth = this.widgetMaxWidth();
+    container.style.width = `${maxWidth}px`;
+    container.style.maxWidth = `${maxWidth}px`;
+  }
+
+  updateWidgetWidths() {
+    for (const [, entry] of this.widgets) {
+      if (entry.widget?.node) {
+        this.constrainWidgetToEditor(entry.widget.node);
+      }
+    }
+    this.host.refresh();
   }
 
   setEnabled(enabled) {
