@@ -188,6 +188,15 @@ Releases are fully automated via semantic-release. On every push to main:
    - semantic-release will see the version already matches the commit type
    - GitHub Actions will build and attach DMG to the release
 
+7. **After semantic-release completes, sync and rebuild locally**:
+   ```bash
+   git pull --ff-only
+   npx electron-builder --mac --dir
+   ```
+   - Required after every `fix:`/`feat:` push because semantic-release creates a follow-up `chore(release): <version>` commit that updates `package.json`
+   - Do not tell the user to test/use the local app until this post-release rebuild is done
+   - This prevents local builds from showing "Update available" popups (for example, local app `1.13.1` while latest release is `1.13.2`)
+
 **Why manual version bump?** This prevents the update popup during local testing. The version in the built app matches the next release version, so the app won't prompt for an update.
 
 ## Important Guidelines
