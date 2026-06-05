@@ -15,12 +15,13 @@ module.exports = {
           const section = VISIBLE_TYPES[commit.type];
           if (!section) return false;
 
-          commit.type = section;
-          if (typeof commit.hash === 'string') {
-            commit.shortHash = commit.hash.substring(0, 7);
-          }
-
-          return commit;
+          return {
+            ...commit,
+            type: section,
+            shortHash: typeof commit.hash === 'string'
+              ? commit.hash.substring(0, 7)
+              : commit.shortHash
+          };
         }
       }
     }],
