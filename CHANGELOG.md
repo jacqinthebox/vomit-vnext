@@ -1,3 +1,18 @@
+# [1.13.0](https://github.com/jacqinthebox/vomit-vnext/compare/v1.12.3...v1.13.0) (2026-06-05)
+
+
+### Chores
+
+* **release:** avoid mutating changelog commits ([0fa3d75](https://github.com/jacqinthebox/vomit-vnext/commit/0fa3d75a2b7fee392149916403d635f195dcda32))
+* **release:** generate changelog entries for chores ([b6357bc](https://github.com/jacqinthebox/vomit-vnext/commit/b6357bcf2a3770f23c63a34cc3e9494eb6610d6d))
+* **release:** include chores in generated changelog ([af74fe1](https://github.com/jacqinthebox/vomit-vnext/commit/af74fe1b9367804ba6da4ea77dafd8512e96b5b7))
+* **terminal:** fix context bar not resetting on /new and /clear ([4f1769e](https://github.com/jacqinthebox/vomit-vnext/commit/4f1769efa11c3cd5c21fd97d7c9560ecb3eb9979))
+
+
+### Features
+
+* add native file viewers and pseudo repo workflow ([d3dbd89](https://github.com/jacqinthebox/vomit-vnext/commit/d3dbd89688a4c38aca0f86bac8d30eaab37ec149))
+
 ## [1.12.3](https://github.com/jacqinthebox/vomit-vnext/compare/v1.12.2...v1.12.3) (2026-06-01)
 
 
