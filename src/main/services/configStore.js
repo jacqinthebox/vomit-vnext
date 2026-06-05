@@ -1,7 +1,8 @@
 // @ts-check
 'use strict';
 
-const Store = require('electron-store');
+const ElectronStore = require('electron-store');
+const Store = ElectronStore.default || ElectronStore;
 const path = require('path');
 
 const store = new Store({
