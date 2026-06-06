@@ -74,6 +74,13 @@ html, body {
   margin-bottom: 0.8em;
 }
 
+.slide li > ul,
+.slide li > ol {
+  font-size: 1em;
+  margin-top: 0.3em;
+  margin-bottom: 0.3em;
+}
+
 .slide li {
   margin-bottom: 0.4em;
 }

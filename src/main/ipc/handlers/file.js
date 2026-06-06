@@ -514,8 +514,12 @@ Questions?
     });
 
     // Sync current file path when switching tabs
-    ipcMain.on('set-current-file', (event, filePath) => {
+    ipcMain.on('set-current-file', (event, filePath, content) => {
       state.currentFilePath = filePath;
+      if (typeof content === 'string') {
+        state.currentContent = content;
+        return;
+      }
       if (filePath) {
         state.currentContent = '';
         try {

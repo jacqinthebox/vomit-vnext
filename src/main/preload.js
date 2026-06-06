@@ -282,7 +282,7 @@ ipcRenderer.on('update-available', (event, data) => {
 // Expose only the send methods (no callbacks needed)
 contextBridge.exposeInMainWorld('vomit', {
   watchFile: (filePath) => ipcRenderer.send('watch-file', filePath),
-  setCurrentFile: (filePath) => ipcRenderer.send('set-current-file', filePath),
+  setCurrentFile: (filePath, content) => ipcRenderer.send('set-current-file', filePath, content),
   openExternal: (url) => ipcRenderer.invoke('open-external', url),
   getDirectoryContents: (dirPath) => ipcRenderer.invoke('get-directory-contents', dirPath),
   getFileSortOrder: () => ipcRenderer.invoke('get-file-sort-order'),

@@ -147,7 +147,7 @@ class TabManager {
 
     // Notify main process of current file (for save dialog)
     if (window.vomit && window.vomit.setCurrentFile) {
-      window.vomit.setCurrentFile(tab.filePath || null);
+      window.vomit.setCurrentFile(tab.filePath || null, tab.content || '');
     }
 
     // Notify main process to watch this file

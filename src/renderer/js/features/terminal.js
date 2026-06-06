@@ -1935,11 +1935,17 @@ Provide a helpful, accurate answer based on the context above. If the context do
       const renderer = new marked.Renderer();
 
       // Custom code block renderer with syntax highlighting
-      renderer.code = function(code, language) {
-        if (language && window.hljs.getLanguage(language)) {
+      renderer.code = function(tokenOrCode, language) {
+        const code = typeof tokenOrCode === 'object' && tokenOrCode !== null
+          ? tokenOrCode.text || ''
+          : String(tokenOrCode || '');
+        const lang = typeof tokenOrCode === 'object' && tokenOrCode !== null
+          ? tokenOrCode.lang
+          : language;
+        if (lang && window.hljs.getLanguage(lang)) {
           try {
-            const highlighted = window.hljs.highlight(code, { language: language, ignoreIllegals: true });
-            return `<pre class="terminal-code"><code class="hljs language-${language}">${highlighted.value}</code></pre>`;
+            const highlighted = window.hljs.highlight(code, { language: lang, ignoreIllegals: true });
+            return `<pre class="terminal-code"><code class="hljs language-${escapeHtml(lang)}">${highlighted.value}</code></pre>`;
           } catch (e) {
             // Fallback to auto-detection
           }
@@ -1954,7 +1960,10 @@ Provide a helpful, accurate answer based on the context above. If the context do
       };
 
       // Custom inline code renderer
-      renderer.codespan = function(code) {
+      renderer.codespan = function(tokenOrCode) {
+        const code = typeof tokenOrCode === 'object' && tokenOrCode !== null
+          ? tokenOrCode.text || ''
+          : String(tokenOrCode || '');
         return `<code class="terminal-inline-code">${escapeHtml(code)}</code>`;
       };
 
@@ -1965,19 +1974,16 @@ Provide a helpful, accurate answer based on the context above. If the context do
         return div.innerHTML;
       }
 
-      // Configure marked options
-      marked.setOptions({
-        renderer: renderer,
-        breaks: false,      // Don't convert \n to <br> — markdown handles spacing
-        gfm: true,          // GitHub Flavored Markdown
-        headerIds: false,   // Don't generate header IDs
-        mangle: false,      // Don't mangle email addresses
-        sanitize: false     // Allow HTML (AI responses are from trusted local source)
-      });
-
       // Render the markdown
       try {
-        const html = marked.parse(text);
+        const html = marked.parse(text, {
+          renderer,
+          breaks: false,
+          gfm: true,
+          headerIds: false,
+          mangle: false,
+          sanitize: false
+        });
         element.innerHTML = html;
 
         // Render LaTeX math formulas with KaTeX

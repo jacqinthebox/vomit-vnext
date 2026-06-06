@@ -251,6 +251,7 @@
   }
 
   // --- AI terminal output ---
+  let terminalMarkedOptions = null;
 
   // Configure marked.js for proper markdown rendering
   function configureMarked() {
@@ -259,11 +260,17 @@
     const renderer = new marked.Renderer();
 
     // Custom code block renderer with syntax highlighting
-    renderer.code = function(code, language) {
-      if (language && window.hljs.getLanguage(language)) {
+    renderer.code = function(tokenOrCode, language) {
+      const code = typeof tokenOrCode === 'object' && tokenOrCode !== null
+        ? tokenOrCode.text || ''
+        : String(tokenOrCode || '');
+      const lang = typeof tokenOrCode === 'object' && tokenOrCode !== null
+        ? tokenOrCode.lang
+        : language;
+      if (lang && window.hljs.getLanguage(lang)) {
         try {
-          const highlighted = window.hljs.highlight(code, { language }).value;
-          return `<pre><code class="hljs language-${language}">${highlighted}</code></pre>`;
+          const highlighted = window.hljs.highlight(code, { language: lang, ignoreIllegals: true }).value;
+          return `<pre><code class="hljs language-${escapeHtml(lang)}">${highlighted}</code></pre>`;
         } catch (e) {
           // Fallback to auto-detect
         }
@@ -274,20 +281,31 @@
 
     // Escape HTML in text to prevent XSS
     renderer.html = function(html) {
+      const text = typeof html === 'object' && html !== null ? html.text || '' : String(html || '');
+      return escapeHtml(text);
+    };
+
+    renderer.codespan = function(tokenOrCode) {
+      const code = typeof tokenOrCode === 'object' && tokenOrCode !== null
+        ? tokenOrCode.text || ''
+        : String(tokenOrCode || '');
+      return `<code>${escapeHtml(code)}</code>`;
+    };
+
+    function escapeHtml(value) {
       const div = document.createElement('div');
-      div.textContent = html;
+      div.textContent = value;
       return div.innerHTML;
     }
 
-    // Configure marked options
-    marked.setOptions({
+    terminalMarkedOptions = {
       renderer: renderer,
       breaks: false,      // Don't convert \n to <br> — markdown handles spacing
       gfm: true,          // GitHub Flavored Markdown
       headerIds: false,   // Don't generate header IDs
       mangle: false,      // Don't mangle email addresses
       sanitize: false     // Allow HTML (AI responses are from trusted local source)
-    });
+    };
   }
 
   function normalizeTerminalText(value) {
@@ -345,7 +363,7 @@
     if (!text.trim()) return;
 
     try {
-      const html = marked.parse(text);
+      const html = marked.parse(text, terminalMarkedOptions || undefined);
       element.innerHTML = html;
 
       element.querySelectorAll('pre code').forEach((block) => {
