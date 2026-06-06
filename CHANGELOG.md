@@ -1,3 +1,10 @@
+## [1.14.2](https://github.com/jacqinthebox/vomit-vnext/compare/v1.14.1...v1.14.2) (2026-06-06)
+
+
+### Bug Fixes
+
+* **renderer:** isolate terminal markdown rendering ([60da896](https://github.com/jacqinthebox/vomit-vnext/commit/60da896ba67e23f432446d82b112ce052b5474fa))
+
 ## [1.14.1](https://github.com/jacqinthebox/vomit-vnext/compare/v1.14.0...v1.14.1) (2026-06-05)
 
 
