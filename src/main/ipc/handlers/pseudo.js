@@ -149,7 +149,7 @@ function registerHandlers(ipcMain, { state, configStore }) {
 
   // Copy a repo's file structure (skipping .git, node_modules, binaries)
   ipcMain.handle('pseudo-copy-structure', async (event, sourcePath, destPath) => {
-    const SKIP_DIRS = new Set(['.git', 'node_modules', 'pseudo', 'dist', 'build', '.next', 'coverage', 'vendor']);
+    const SKIP_DIRS = new Set(['.git', '.terraform', '.terragrunt-cache', 'node_modules', 'pseudo', 'pseudonymized', 'dist', 'build', 'bin', 'obj', '.next', 'coverage', 'vendor']);
     const BINARY_EXTENSIONS = new Set([
       '.png', '.jpg', '.jpeg', '.gif', '.ico', '.svg', '.webp', '.bmp',
       '.zip', '.tar', '.gz', '.bz2', '.7z', '.rar',

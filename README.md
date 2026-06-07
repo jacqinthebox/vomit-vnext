@@ -234,6 +234,9 @@ Type `/` in the AI terminal to open an inline command picker. Navigate with `↑
 - `/presentation <topic>` - Generate a presentation with slides and speaker notes
 - `/pseudo` - Pseudonymize the current document (names, emails, IPs, secrets)
 - `/pseudo all` - Pseudonymize all files in the current folder
+- `/pseudo deterministic [folder]` - Fast local repo pseudonymization for Terraform/IaC, Azure DevOps, Python/.NET config, Kubernetes, Docker, and common secrets
+- `/pseudo ai [folder]` - AI-assisted repo pseudonymization for prose documents, architecture designs, HLDs, legal docs, and advisory text
+- `/pseudo run [folder]` - Alias for `/pseudo deterministic [folder]`
 - `/depseudo` - Restore original data from pseudonymized file using the mapping
 - `/index` - Index the current bucket for RAG search
 - `/index <folder>` - Refresh only a specific folder inside the current bucket

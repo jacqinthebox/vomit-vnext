@@ -73,13 +73,35 @@ const COMMAND_REGISTRY = [
   },
   {
     // Must be registered before /pseudo so the longer name matches first
-    name: '/pseudo run',
-    description: 'Pseudonymize repos in bucket (optionally one folder)',
+    name: '/pseudo deterministic',
+    description: 'Fast deterministic repo pseudonymization',
     args: 'optional',
     argsHint: '[folder-name]',
     requiresCwd: true,
     async handler(args, ctx, cwd) {
-      await ctx.runPseudoRepo(cwd, args.trim() || null);
+      await ctx.runPseudoRepo(cwd, args.trim() || null, 'deterministic', '/pseudo deterministic');
+    }
+  },
+  {
+    // Must be registered before /pseudo so the longer name matches first
+    name: '/pseudo ai',
+    description: 'AI-assisted repo/document pseudonymization',
+    args: 'optional',
+    argsHint: '[folder-name]',
+    requiresCwd: true,
+    async handler(args, ctx, cwd) {
+      await ctx.runPseudoRepo(cwd, args.trim() || null, 'ai', '/pseudo ai');
+    }
+  },
+  {
+    // Must be registered before /pseudo so the longer name matches first
+    name: '/pseudo run',
+    description: 'Pseudonymize repos in bucket (alias for deterministic)',
+    args: 'optional',
+    argsHint: '[folder-name]',
+    requiresCwd: true,
+    async handler(args, ctx, cwd) {
+      await ctx.runPseudoRepo(cwd, args.trim() || null, 'deterministic', '/pseudo run');
     }
   },
   {

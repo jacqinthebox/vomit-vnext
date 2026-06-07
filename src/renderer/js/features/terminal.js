@@ -1346,8 +1346,267 @@ File content:
 
   // --- Pseudo-repo workflow (multi-repo bucket pseudonymization) ---
 
-  async runPseudoRepo(cwd, targetFolder = null) {
-    this.appendTerminalOutput(`❯ /pseudo run${targetFolder ? ' ' + targetFolder : ''}`, 'input');
+  getPseudoTargetExtensions() {
+    return ['.tf', '.tfvars', '.yaml', '.yml', '.json', '.md', '.env', '.sh', '.ps1', '.py', '.js', '.ts', '.tsx', '.jsx', '.go', '.cs', '.fs', '.vb', '.csproj', '.fsproj', '.vbproj', '.sln', '.props', '.targets', '.config', '.hcl', '.bicep', '.toml', '.xml', '.sql', '.ini', '.dockerfile', '.tpl'];
+  }
+
+  getPseudoSkipDirs() {
+    return new Set(['.git', '.terraform', '.terragrunt-cache', 'node_modules', 'pseudo', 'pseudonymized', 'dist', 'build', 'bin', 'obj', '.next', 'coverage', 'vendor']);
+  }
+
+  createPseudoCounters(mapping) {
+    const counters = {};
+    for (const value of Object.values(mapping)) {
+      if (typeof value !== 'string') continue;
+      const match = value.match(/(\d+)(?!.*\d)/);
+      if (!match) continue;
+      const prefix = value.slice(0, match.index);
+      const n = Number(match[1]);
+      if (Number.isFinite(n)) counters[prefix] = Math.max(counters[prefix] || 0, n);
+    }
+    return counters;
+  }
+
+  nextPseudoNumber(counters, prefix) {
+    counters[prefix] = (counters[prefix] || 0) + 1;
+    return counters[prefix];
+  }
+
+  fakePseudoGuid(n) {
+    return `00000000-0000-4000-8000-${String(n).padStart(12, '0').slice(-12)}`;
+  }
+
+  createPseudoReplacement(category, counters) {
+    switch (category) {
+      case 'email':
+        return `user${String(this.nextPseudoNumber(counters, 'user')).padStart(3, '0')}@example.com`;
+      case 'ip': {
+        const n = this.nextPseudoNumber(counters, 'ip');
+        return `10.254.${Math.floor(n / 250)}.${(n % 250) + 1}`;
+      }
+      case 'uuid':
+        return this.fakePseudoGuid(this.nextPseudoNumber(counters, 'uuid'));
+      case 'azureResourceId': {
+        const n = this.nextPseudoNumber(counters, 'resource-id');
+        return `/subscriptions/${this.fakePseudoGuid(n)}/resourceGroups/rg-example-${n}/providers/Microsoft.Example/resources/example-${n}`;
+      }
+      case 'awsArn': {
+        const n = this.nextPseudoNumber(counters, 'arn');
+        return `arn:aws:service:region:000000000000:resource/example-${n}`;
+      }
+      case 'awsAccount': {
+        const n = this.nextPseudoNumber(counters, 'account');
+        return String(n).padStart(12, '0');
+      }
+      case 'url':
+        return `https://example${this.nextPseudoNumber(counters, 'url')}.invalid`;
+      case 'domain':
+        return `example${this.nextPseudoNumber(counters, 'domain')}.internal`;
+      case 'adoOrg':
+        return `ado-org-${String(this.nextPseudoNumber(counters, 'ado-org-')).padStart(3, '0')}`;
+      case 'adoProject':
+        return `ado-project-${String(this.nextPseudoNumber(counters, 'ado-project-')).padStart(3, '0')}`;
+      case 'adoRepo':
+        return `ado-repo-${String(this.nextPseudoNumber(counters, 'ado-repo-')).padStart(3, '0')}`;
+      case 'adoPipeline':
+        return `ado-pipeline-${String(this.nextPseudoNumber(counters, 'ado-pipeline-')).padStart(3, '0')}`;
+      case 'serviceConnection':
+        return `service-connection-${String(this.nextPseudoNumber(counters, 'service-connection-')).padStart(3, '0')}`;
+      case 'variableGroup':
+        return `variable-group-${String(this.nextPseudoNumber(counters, 'variable-group-')).padStart(3, '0')}`;
+      case 'connectionString':
+        return `FAKE_CONNECTION_STRING_${String(this.nextPseudoNumber(counters, 'FAKE_CONNECTION_STRING_')).padStart(4, '0')}`;
+      case 'database':
+        return `database_${String(this.nextPseudoNumber(counters, 'database_')).padStart(3, '0')}`;
+      case 'package':
+        return `example.package${String(this.nextPseudoNumber(counters, 'example.package')).padStart(3, '0')}`;
+      case 'namespace':
+        return `Example.App${String(this.nextPseudoNumber(counters, 'Example.App')).padStart(3, '0')}`;
+      case 'k8sNamespace':
+        return `namespace-${String(this.nextPseudoNumber(counters, 'namespace-')).padStart(3, '0')}`;
+      case 'dockerImage':
+        return `registry.example.invalid/app/image-${String(this.nextPseudoNumber(counters, 'image-')).padStart(3, '0')}:latest`;
+      case 'registry':
+        return `registry${String(this.nextPseudoNumber(counters, 'registry')).padStart(3, '0')}.example.invalid`;
+      case 'keyVault':
+        return `kv-example-${String(this.nextPseudoNumber(counters, 'kv-example-')).padStart(3, '0')}`;
+      case 'storageAccount':
+        return `stexample${String(this.nextPseudoNumber(counters, 'stexample')).padStart(3, '0')}`;
+      case 'secret':
+        return `FAKE_SECRET_${String(this.nextPseudoNumber(counters, 'FAKE_SECRET_')).padStart(4, '0')}`;
+      default:
+        return `resource-${String(this.nextPseudoNumber(counters, 'resource-')).padStart(3, '0')}`;
+    }
+  }
+
+  shouldSkipPseudoEntity(value, category = 'resource') {
+    if (typeof value !== 'string') return true;
+    const trimmed = value.trim();
+    const maxLength = category === 'secret' ? 10000 : category === 'connectionString' ? 2000 : 1000;
+    if (trimmed.length < 3 || trimmed.length > maxLength) return true;
+    if (trimmed.includes('${') || trimmed.startsWith('var.') || trimmed.startsWith('local.') || trimmed.startsWith('data.')) return true;
+    if (/^(true|false|null|none|default|latest|main|master|dev|test|prod|stage|staging)$/i.test(trimmed)) return true;
+    if (/^(example|fake|placeholder|changeme|redacted|dummy)/i.test(trimmed)) return true;
+    if (/^(ado-org|ado-project|ado-repo|ado-pipeline|service-connection|variable-group|resource|namespace)-\d+/i.test(trimmed)) return true;
+    if (/^(FAKE_SECRET|FAKE_CONNECTION_STRING)_\d+/i.test(trimmed)) return true;
+    if (/^(Example\.App|example\.package)\d+/i.test(trimmed)) return true;
+    if (/^registry\.example\.invalid|^registry\d+\.example\.invalid|^kv-example-\d+|^stexample\d+/i.test(trimmed)) return true;
+    if (/^user\d+@example\.com$/i.test(trimmed)) return true;
+    if (/^10\.254\./.test(trimmed)) return true;
+    if (/^00000000-0000-4000-8000-/.test(trimmed)) return true;
+    return false;
+  }
+
+  addPseudoEntity(mapping, counters, value, category) {
+    const real = typeof value === 'string' ? value.trim() : '';
+    if (this.shouldSkipPseudoEntity(real, category) || mapping[real]) return false;
+    mapping[real] = this.createPseudoReplacement(category, counters);
+    return true;
+  }
+
+  scanIacPseudoEntities(content, relativePath, mapping, counters) {
+    let added = 0;
+    const add = (value, category) => {
+      if (this.addPseudoEntity(mapping, counters, value, category)) added++;
+    };
+    const addDockerImage = (value) => {
+      if (!value) return;
+      add(value, 'dockerImage');
+      const registry = String(value).split('/')[0];
+      if (registry && /[.:]/.test(registry) && !registry.includes('://')) {
+        add(registry, 'registry');
+      }
+    };
+
+    const collect = (regex, category, groupIndex = 0) => {
+      regex.lastIndex = 0;
+      let match;
+      while ((match = regex.exec(content)) !== null) {
+        add(match[groupIndex], category);
+      }
+    };
+
+    collect(/(?<![:/])\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, 'email');
+    collect(/\b(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)\b/g, 'ip');
+    collect(/\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/gi, 'uuid');
+    collect(/\/subscriptions\/[0-9a-f-]{36}\/[^\s"'`<>),]+/gi, 'azureResourceId');
+    collect(/\barn:aws[a-z-]*:[^:\s"'`]+:[^:\s"'`]*:\d{12}:[^\s"'`<>]+/g, 'awsArn');
+    collect(/\b(?:aws_)?account(?:_id)?\s*[:=]\s*["'](\d{12})["']/gi, 'awsAccount', 1);
+    collect(/\bhttps?:\/\/[^\s"'`<>]+/gi, 'url');
+    collect(/\b(?:password|passwd|pwd|secret|token|api[_-]?key|client[_-]?secret|access[_-]?key|private[_-]?key)\b\s*[:=]\s*["']([^"'\n]{6,})["']/gi, 'secret', 1);
+    collect(/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g, 'secret');
+    collect(/-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g, 'secret');
+    collect(/\b(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis|amqps?|sqlserver):\/\/[^\s"'`<>]+/gi, 'connectionString');
+    collect(/["']((?=[^"'\n]*(?:Server|Data Source|Host|Database|Initial Catalog|User Id|Username|Password|AccountKey|SharedAccessKey|DefaultEndpointsProtocol|Endpoint=sb:\/\/))[^"'\n;=]+=[^"'\n]{12,})["']/gi, 'connectionString', 1);
+    collect(/\b(?:database|database_name|db_name|initial catalog)\b\s*[:=]\s*["']([^"'\n]{3,})["']/gi, 'database', 1);
+    collect(/\b(?:username|user_id|user id|db_user|database_user)\b\s*[:=]\s*["']([^"'\n]{3,})["']/gi, 'resource', 1);
+    collect(/https:\/\/([a-z0-9-]{3,24})\.vault\.azure\.net\b/gi, 'keyVault', 1);
+    collect(/\b([a-z0-9]{3,24})\.(?:blob|queue|table|file|dfs)\.core\.windows\.net\b/gi, 'storageAccount', 1);
+    collect(/\b(?:APPINSIGHTS_INSTRUMENTATIONKEY|APPLICATIONINSIGHTS_CONNECTION_STRING|InstrumentationKey)\b\s*[:=]\s*["']([^"'\n]{6,})["']/gi, 'secret', 1);
+    collect(/\b(?:AZURE_CLIENT_ID|AZURE_TENANT_ID|AZURE_SUBSCRIPTION_ID|client_id|tenant_id|subscription_id)\b\s*[:=]\s*["']([0-9a-f-]{36})["']/gi, 'uuid', 1);
+
+    let match;
+    const devAzure = /https:\/\/dev\.azure\.com\/([^\/\s"'`?#]+)\/([^\/\s"'`?#]+)/gi;
+    while ((match = devAzure.exec(content)) !== null) {
+      add(decodeURIComponent(match[1]), 'adoOrg');
+      add(decodeURIComponent(match[2]), 'adoProject');
+    }
+
+    const visualStudio = /https:\/\/([^.\/\s"'`?#]+)\.visualstudio\.com\/([^\/\s"'`?#]+)/gi;
+    while ((match = visualStudio.exec(content)) !== null) {
+      add(decodeURIComponent(match[1]), 'adoOrg');
+      add(decodeURIComponent(match[2]), 'adoProject');
+    }
+
+    const isAdoFile = /azuredevops_|dev\.azure\.com|visualstudio\.com/i.test(content);
+    if (isAdoFile) {
+      const adoBlockRegex = /\b(?:resource|data)\s+"(azuredevops_[^"]+)"\s+"([^"]+)"\s*\{([\s\S]*?)(?=\n\s*(?:resource|data)\s+"|\n\s*}\s*$|$)/gi;
+      while ((match = adoBlockRegex.exec(content)) !== null) {
+        const type = match[1].toLowerCase();
+        const label = match[2];
+        const body = match[3] || '';
+        add(label, 'resource');
+
+        const nameMatch = body.match(/\bname\s*=\s*"([^"\n]{3,})"/i);
+        if (nameMatch) {
+          const category = type.includes('git_repository') ? 'adoRepo'
+            : type.includes('build_definition') || type.includes('pipeline') ? 'adoPipeline'
+            : type.includes('serviceendpoint') ? 'serviceConnection'
+            : type.includes('variable_group') ? 'variableGroup'
+            : type.includes('project') ? 'adoProject'
+            : 'resource';
+          add(nameMatch[1], category);
+        }
+      }
+
+      const adoValueRegex = /\b(name|project_name|repository_name|repo_name|pipeline_name|service_endpoint_name|service_connection_name|variable_group_name|agent_pool_name|feed_name|environment_name)\s*=\s*"([^"\n]{3,})"/gi;
+      while ((match = adoValueRegex.exec(content)) !== null) {
+        const key = match[1].toLowerCase();
+        const value = match[2];
+        const category = key.includes('project') ? 'adoProject'
+          : key.includes('repo') ? 'adoRepo'
+          : key.includes('pipeline') ? 'adoPipeline'
+          : key.includes('service') ? 'serviceConnection'
+          : key.includes('variable_group') ? 'variableGroup'
+          : key.includes('agent_pool') ? 'resource'
+          : key.includes('feed') ? 'resource'
+          : key.includes('environment') ? 'resource'
+          : 'adoProject';
+        add(value, category);
+      }
+
+      const adoBlockLabel = /\b(?:resource|data)\s+"azuredevops_[^"]+"\s+"([^"]+)"/gi;
+      while ((match = adoBlockLabel.exec(content)) !== null) {
+        add(match[1], 'resource');
+      }
+    }
+
+    const iacNameRegex = /\b(?:resource_group_name|key_vault_name|storage_account_name|server_name|hostname|host_name|database_name|workspace_name)\s*=\s*"([^"\n]{3,})"/gi;
+    while ((match = iacNameRegex.exec(content)) !== null) {
+      add(match[1], match[0].toLowerCase().includes('host') ? 'domain' : 'resource');
+    }
+
+    const lowerPath = (relativePath || '').toLowerCase();
+    const isDotNetFile = /\.(cs|fs|vb|csproj|fsproj|vbproj|sln|props|targets|config|json)$/i.test(lowerPath);
+    if (isDotNetFile) {
+      collect(/\bnamespace\s+([A-Z][A-Za-z0-9_]*(?:\.[A-Z][A-Za-z0-9_]*)+)/g, 'namespace', 1);
+      collect(/<(?:RootNamespace|AssemblyName|PackageId|Product|Company)>([^<]{3,})<\/(?:RootNamespace|AssemblyName|PackageId|Product|Company)>/gi, 'package', 1);
+      collect(/<UserSecretsId>([^<]{6,})<\/UserSecretsId>/gi, 'secret', 1);
+      collect(/["'](?:ConnectionStrings:[^"']+|DefaultConnection|ApplicationInsights:[^"']+)["']\s*[:=]\s*["']([^"'\n]{6,})["']/gi, 'connectionString', 1);
+      collect(/^\s*(?:Project\([^)]*\)\s*=\s*)?"([^"]{3,})",\s*"[^"]+\.(?:csproj|fsproj|vbproj)"/gmi, 'package', 1);
+    }
+
+    const isPythonFile = /\.(py|toml|ini|env|yaml|yml|json)$/i.test(lowerPath) || lowerPath.endsWith('requirements.txt');
+    if (isPythonFile) {
+      collect(/\b(?:SECRET_KEY|DATABASE_URL|REDIS_URL|CELERY_BROKER_URL|BROKER_URL|SQLALCHEMY_DATABASE_URI)\s*=\s*["']([^"'\n]{6,})["']/g, 'secret', 1);
+      collect(/\bDJANGO_SETTINGS_MODULE\s*=\s*["']([^"'\n]{3,})["']/g, 'namespace', 1);
+      collect(/^\s*name\s*=\s*["']([A-Za-z0-9_.-]{3,})["']/gmi, 'package', 1);
+      collect(/\bsetup\s*\([\s\S]*?\bname\s*=\s*["']([A-Za-z0-9_.-]{3,})["']/gmi, 'package', 1);
+    }
+
+    const isKubernetesFile = /apiVersion\s*:|kind\s*:|helm\.sh|containers\s*:|ingress/i.test(content);
+    if (isKubernetesFile) {
+      collect(/^\s*namespace\s*:\s*["']?([A-Za-z0-9_.-]{3,})["']?/gmi, 'k8sNamespace', 1);
+      collect(/^\s*name\s*:\s*["']?([A-Za-z0-9_.-]{3,})["']?/gmi, 'resource', 1);
+      collect(/^\s*host\s*:\s*["']?([^"'\s]+)["']?/gmi, 'domain', 1);
+      const k8sImageRegex = /^\s*image\s*:\s*["']?([^"'\s]+)["']?/gmi;
+      while ((match = k8sImageRegex.exec(content)) !== null) addDockerImage(match[1]);
+    }
+
+    const dockerFromRegex = /^\s*FROM\s+([^\s]+)(?:\s+AS\s+\S+)?\s*$/gmi;
+    while ((match = dockerFromRegex.exec(content)) !== null) addDockerImage(match[1]);
+
+    const dockerImageRegex = /\b(?:image|container_image|docker_image)\s*[:=]\s*["']?([^"'\s]+\/[^"'\s]+(?::[^"'\s]+)?)["']?/gi;
+    while ((match = dockerImageRegex.exec(content)) !== null) addDockerImage(match[1]);
+
+    collect(/\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:com|net|org|io|dev|cloud|local|internal|corp|nl|be|de|fr|uk|us)\b/gi, 'domain');
+
+    return added;
+  }
+
+  async runPseudoRepo(cwd, targetFolder = null, mode = 'deterministic', commandName = '/pseudo deterministic') {
+    const normalizedMode = mode === 'ai' ? 'ai' : 'deterministic';
+    this.appendTerminalOutput(`❯ ${commandName}${targetFolder ? ' ' + targetFolder : ''}`, 'input');
     this.appendTerminalOutput('Detecting repos in bucket...', 'system');
 
     try {
@@ -1380,8 +1639,13 @@ File content:
         this.appendTerminalOutput(`Targeting: ${targetFolder}`, 'system');
       }
 
-      // 2. Phase 1 — Entity extraction (build shared mapping)
-      this.appendTerminalOutput('\n── Phase 1: Extracting entities ──', 'system');
+      // 2. Phase 1 — build shared mapping either locally or with AI assistance.
+      this.appendTerminalOutput(
+        normalizedMode === 'ai'
+          ? '\n── Phase 1: AI-assisted document/entity extraction ──'
+          : '\n── Phase 1: Fast deterministic entity scan ──',
+        'system'
+      );
 
       let mapping = {};
       // Load existing mapping if re-running
@@ -1391,8 +1655,10 @@ File content:
         this.appendTerminalOutput(`Loaded existing mapping (${Object.keys(mapping).length} entities).`, 'system');
       }
 
-      const targetExtensions = ['.tf', '.yaml', '.yml', '.json', '.md', '.env', '.sh', '.ps1', '.py', '.js', '.ts', '.tsx', '.jsx', '.go', '.hcl', '.bicep', '.toml', '.xml', '.sql'];
+      const targetExtensions = this.getPseudoTargetExtensions();
+      const counters = this.createPseudoCounters(mapping);
       let totalFiles = 0;
+      let totalAdded = 0;
 
       for (const repo of repos) {
         const files = await this.getFilesRecursively(repo.path, targetExtensions);
@@ -1400,13 +1666,16 @@ File content:
 
         for (let i = 0; i < files.length; i++) {
           totalFiles++;
-          this.appendTerminalOutput(`  [${i + 1}/${files.length}] Scanning: ${files[i].relativePath}`, 'system');
+          if (i === 0 || (i + 1) % 25 === 0 || i + 1 === files.length) {
+            this.appendTerminalOutput(`  [${i + 1}/${files.length}] Scanning: ${files[i].relativePath}`, 'system');
+          }
 
           const content = await window.vomit.readFile(files[i].path);
           if (!content || content.trim().length === 0) continue;
 
-          // Ask AI to extract only NEW entities
-          const extractPrompt = `You are an entity extraction tool for GDPR pseudonymization.
+          let added = 0;
+          if (normalizedMode === 'ai') {
+            const extractPrompt = `You are an entity extraction tool for GDPR pseudonymization.
 
 Analyze this file and find ALL sensitive/identifying data NOT already in the known mapping.
 
@@ -1414,18 +1683,16 @@ Known mapping (do NOT repeat these):
 ${JSON.stringify(mapping, null, 2)}
 
 Look for NEW instances of:
-- Person names
-- Company/organization names
-- Email addresses
-- Phone numbers
-- IP addresses, FQDNs, hostnames
-- API keys, tokens, passwords, secrets
-- Cloud resource IDs (Azure/AWS/GCP subscription, tenant, resource IDs)
-- GUIDs/UUIDs
-- Database connection strings
-- Usernames, paths with usernames
+- Person, team, company, customer, organization, product, project, and code names
+- Architecture, system, application, environment, and repository names
+- Legal parties, contract references, internal advice context, business processes, and locations
+- Email addresses, phone numbers, usernames, and paths with usernames
+- IP addresses, FQDNs, hostnames, URLs, and internal domains
+- API keys, tokens, passwords, secrets, certificates, and connection strings
+- Cloud resource IDs, subscription IDs, tenant IDs, object IDs, GUIDs/UUIDs
+- Azure DevOps organizations, projects, repositories, pipelines, service connections, environments, and variable groups
 
-For each NEW entity, provide a realistic fake replacement.
+For each NEW entity, provide a realistic fake replacement that preserves the same broad type.
 
 OUTPUT: Return ONLY a JSON object with new mappings. No explanations, no code fences.
 Example: {"real-value": "fake-replacement", "another@real.com": "user@example.com"}
@@ -1433,40 +1700,46 @@ If nothing new found, return: {}
 
 File (${files[i].relativePath}):
 \`\`\`
-${content.substring(0, 8000)}
+${content.substring(0, 12000)}
 \`\`\``;
 
-          this.state.pseudoOutput = '';
-          this.state.pseudoCollecting = true;
+            this.state.pseudoOutput = '';
+            this.state.pseudoCollecting = true;
 
-          await window.vomit.claudeExecute(extractPrompt, cwd);
-          await this.waitForAIComplete();
+            await window.vomit.claudeExecute(extractPrompt, cwd);
+            await this.waitForAIComplete();
 
-          // Parse new entities from AI response
-          if (this.state.pseudoOutput.trim()) {
-            try {
-              const jsonMatch = this.state.pseudoOutput.trim().match(/\{[\s\S]*\}/);
-              if (jsonMatch) {
-                const newEntities = JSON.parse(jsonMatch[0]);
-                let added = 0;
-                for (const [real, fake] of Object.entries(newEntities)) {
-                  if (!mapping[real] && real.trim().length > 0) {
-                    mapping[real] = fake;
-                    added++;
+            if (this.state.pseudoOutput.trim()) {
+              try {
+                const jsonMatch = this.state.pseudoOutput.trim().match(/\{[\s\S]*\}/);
+                if (jsonMatch) {
+                  const newEntities = JSON.parse(jsonMatch[0]);
+                  for (const [real, fake] of Object.entries(newEntities)) {
+                    if (typeof real === 'string' && real.trim().length > 0 && !mapping[real]) {
+                      mapping[real] = typeof fake === 'string' && fake.trim().length > 0
+                        ? fake.trim()
+                        : this.createPseudoReplacement('resource', counters);
+                      added++;
+                    }
                   }
                 }
-                if (added > 0) {
-                  this.appendTerminalOutput(`    + ${added} new entities`, 'output');
-                }
+              } catch (e) {
+                this.appendTerminalOutput(`    ⚠ Could not parse AI mappings for ${files[i].relativePath}`, 'error');
               }
-            } catch (e) {
-              // Skip unparseable responses
             }
+
+            // Keep AI-assisted document mode gentle on local model servers.
+            await new Promise(r => setTimeout(r, 750));
+          } else {
+            added = this.scanIacPseudoEntities(content, files[i].relativePath, mapping, counters);
           }
 
-          // Brief cooldown to prevent thermal throttling
-          await new Promise(r => setTimeout(r, 1500));
-          if (totalFiles % 10 === 0) {
+          totalAdded += added;
+          if (added > 0) {
+            this.appendTerminalOutput(`    + ${added} entities`, 'output');
+          }
+
+          if (totalFiles % 100 === 0) {
             await window.vomit.pseudoSaveMapping(cwd, mapping);
           }
         }
@@ -1474,7 +1747,7 @@ ${content.substring(0, 8000)}
 
       // Save final mapping
       await window.vomit.pseudoSaveMapping(cwd, mapping);
-      this.appendTerminalOutput(`\n✓ Mapping complete: ${Object.keys(mapping).length} entities total.`, 'output');
+      this.appendTerminalOutput(`\n✓ Mapping complete: ${Object.keys(mapping).length} entities total (${totalAdded} new from ${totalFiles} files).`, 'output');
 
       // 3. Phase 2 — Apply mapping to create pseudo repos
       this.appendTerminalOutput('\n── Phase 2: Creating pseudo repos ──', 'system');
@@ -1796,21 +2069,20 @@ Provide a helpful, accurate answer based on the context above. If the context do
 
   async getFilesRecursively(dir, extensions) {
     const files = [];
+    const skipDirs = this.getPseudoSkipDirs ? this.getPseudoSkipDirs() : new Set(['node_modules', 'pseudo']);
 
     const scan = async (currentDir, relativePath = '') => {
       const items = await window.vomit.getDirectoryContents(currentDir);
 
       for (const item of items) {
-        if (item.name.startsWith('.')) continue; // Skip hidden
-        if (item.name === 'pseudo') continue; // Skip pseudonymized output dir
-        if (item.name === 'node_modules') continue; // Skip node_modules
-
         const itemRelativePath = relativePath ? `${relativePath}/${item.name}` : item.name;
 
         if (item.isDirectory) {
+          if (item.name.startsWith('.') || skipDirs.has(item.name)) continue;
           await scan(item.path, itemRelativePath);
         } else {
-          const ext = '.' + item.name.split('.').pop().toLowerCase();
+          if (item.name.startsWith('.') && item.name !== '.env') continue;
+          const ext = item.name === '.env' ? '.env' : '.' + item.name.split('.').pop().toLowerCase();
           if (extensions.includes(ext)) {
             files.push({ path: item.path, relativePath: itemRelativePath });
           }

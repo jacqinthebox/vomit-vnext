@@ -194,6 +194,9 @@ All processing happens locally — your data never leaves your machine.
 | `/append <prompt>` | Add AI response at end of document |
 | `/pseudo` | Pseudonymize current document (names, emails, IPs) |
 | `/pseudo all` | Pseudonymize all files in current folder |
+| `/pseudo deterministic [folder]` | Fast local repo pseudonymization for IaC/code/config and common secrets |
+| `/pseudo ai [folder]` | AI-assisted repo pseudonymization for prose docs, architecture designs, HLDs, legal docs, and advisory text |
+| `/pseudo run [folder]` | Alias for `/pseudo deterministic [folder]` |
 | `/depseudo` | Restore original data from pseudonymized file |
 | `/index` | Index the current bucket for RAG search |
 | `/index <folder>` | Refresh a specific folder inside the current bucket index |
