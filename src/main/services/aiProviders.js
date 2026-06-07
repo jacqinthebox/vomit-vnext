@@ -79,6 +79,50 @@ function contentToText(value) {
   return '';
 }
 
+function parseErrorBody(body) {
+  if (!body) return '';
+  try {
+    const parsed = JSON.parse(body);
+    if (parsed && typeof parsed.error === 'string') return parsed.error;
+  } catch (_) {
+    // Fall through to the raw response body.
+  }
+  return String(body);
+}
+
+function formatOllamaApiError(statusCode, body) {
+  const details = parseErrorBody(body);
+  const lower = details.toLowerCase();
+  if (lower.includes('llama-server binary not found')) {
+    const repairSteps = process.platform === 'darwin'
+      ? [
+          'brew reinstall ollama',
+          'brew services restart ollama'
+        ]
+      : process.platform === 'win32'
+        ? [
+            'Repair or reinstall Ollama from https://ollama.com/download',
+            'Restart the Ollama app'
+          ]
+        : [
+            'Reinstall Ollama from https://ollama.com/download',
+            'Restart the Ollama service'
+          ];
+    return [
+      'Ollama is installed but cannot start models because its llama-server helper is missing.',
+      'Repair the local Ollama install with:',
+      '',
+      ...repairSteps,
+      '',
+      'Then run: ollama list',
+      '',
+      `Details: ${details}`
+    ].join('\n');
+  }
+
+  return `Ollama API error: ${statusCode} - ${body}`;
+}
+
 /**
  * Stream a chat completion from the active provider.
  *
@@ -130,7 +174,7 @@ function streamOllamaChat({ baseUrl, model, messages, tools, onContent, isAborte
             if (res.statusCode === 400) {
               reject(new Error(`Model may not support tool calling. Try llama3.2, llama3.1, mistral, or qwen2.5.\n\nDetails: ${errBody}`));
             } else {
-              reject(new Error(`Ollama API error: ${res.statusCode} - ${errBody}`));
+              reject(new Error(formatOllamaApiError(res.statusCode, errBody)));
             }
           });
           return;
@@ -474,5 +518,6 @@ module.exports = {
   getActiveProviderConfig,
   streamChat,
   formatToolResultMessage,
+  formatOllamaApiError,
   testConnection
 };

@@ -115,6 +115,40 @@ function estimateTokens(messages) {
   return Math.ceil(chars / 4);
 }
 
+function normalizeToolArguments(args) {
+  if (!args) return {};
+  if (typeof args === 'string') {
+    try {
+      return normalizeToolArguments(JSON.parse(args));
+    } catch {
+      return { command: args };
+    }
+  }
+  if (Array.isArray(args)) return { command: args.map(stringifyValue).join(' ') };
+  if (typeof args !== 'object') return { command: String(args) };
+
+  const normalized = { ...args };
+  for (const key of Object.keys(normalized)) {
+    if (normalized[key] != null && typeof normalized[key] === 'object') {
+      normalized[key] = stringifyValue(normalized[key]);
+    }
+  }
+  return normalized;
+}
+
+function stringifyValue(value) {
+  if (typeof value === 'string') return value;
+  if (value == null) return '';
+  if (Array.isArray(value)) return value.map(stringifyValue).join(' ');
+  if (typeof value === 'object') {
+    if (typeof value.text === 'string') return value.text;
+    if (typeof value.content === 'string') return value.content;
+    if (typeof value.value === 'string') return value.value;
+    return JSON.stringify(value);
+  }
+  return String(value);
+}
+
 // Execute a tool and return the result
 async function executeAgentTool(toolName, args, cwd, configStore) {
   const safeArgs = normalizeToolArguments(args);
@@ -232,40 +266,6 @@ async function executeAgentTool(toolName, args, cwd, configStore) {
         } catch (e) {
           return `Error: ${e.message}`;
         }
-      }
-
-      function normalizeToolArguments(args) {
-        if (!args) return {};
-        if (typeof args === 'string') {
-          try {
-            return normalizeToolArguments(JSON.parse(args));
-          } catch {
-            return { command: args };
-          }
-        }
-        if (Array.isArray(args)) return { command: args.map(stringifyValue).join(' ') };
-        if (typeof args !== 'object') return { command: String(args) };
-
-        const normalized = { ...args };
-        for (const key of Object.keys(normalized)) {
-          if (normalized[key] != null && typeof normalized[key] === 'object') {
-            normalized[key] = stringifyValue(normalized[key]);
-          }
-        }
-        return normalized;
-      }
-
-      function stringifyValue(value) {
-        if (typeof value === 'string') return value;
-        if (value == null) return '';
-        if (Array.isArray(value)) return value.map(stringifyValue).join(' ');
-        if (typeof value === 'object') {
-          if (typeof value.text === 'string') return value.text;
-          if (typeof value.content === 'string') return value.content;
-          if (typeof value.value === 'string') return value.value;
-          return JSON.stringify(value);
-        }
-        return String(value);
       }
       default:
         return `Error: Unknown tool: ${toolName}`;
@@ -440,6 +440,20 @@ function registerHandlers(ipcMain, { state, bus, configStore, terminalService })
   // Agent execution with streaming and tool calling, provider-agnostic.
   ipcMain.handle('agent-execute', async (event, prompt, cwd) => {
     const cfg = aiProviders.getActiveProviderConfig(configStore);
+
+    if (cfg.provider === aiProviders.PROVIDER_OLLAMA) {
+      if (!state.availableAITools.ollama) {
+        sendOutput('claude-error', 'Ollama is not installed. Install it from https://ollama.ai\n');
+        sendOutput('claude-done', 1);
+        return 1;
+      }
+      if (state.availableAITools.ollamaModels.length === 0) {
+        sendOutput('claude-error', 'No Ollama models found. Run: ollama pull llama3.2\n');
+        sendOutput('claude-done', 1);
+        return 1;
+      }
+    }
+
     if (!cfg.model) {
       const hint = cfg.provider === 'openai-compatible'
         ? 'Configure it via AI menu → Configure OpenAI-Compatible Endpoint…'
