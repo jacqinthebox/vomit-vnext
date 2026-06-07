@@ -1,3 +1,15 @@
+## [1.14.3](https://github.com/jacqinthebox/vomit-vnext/compare/v1.14.2...v1.14.3) (2026-06-07)
+
+
+### Bug Fixes
+
+* **ai:** improve Ollama failure handling ([085f61f](https://github.com/jacqinthebox/vomit-vnext/commit/085f61f5a93b2a29dd42525d4c101ac48ac91d49))
+
+
+### Chores
+
+* bump version to 1.14.3 ([ca7a7a8](https://github.com/jacqinthebox/vomit-vnext/commit/ca7a7a8b752c812451c81259e41fd2203a8eb0d9))
+
 ## [1.14.2](https://github.com/jacqinthebox/vomit-vnext/compare/v1.14.1...v1.14.2) (2026-06-06)
 
 
