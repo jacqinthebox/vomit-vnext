@@ -1,3 +1,15 @@
+## [1.14.4](https://github.com/jacqinthebox/vomit-vnext/compare/v1.14.3...v1.14.4) (2026-06-08)
+
+
+### Bug Fixes
+
+* **pseudo:** add explicit pseudonymization modes ([43186a0](https://github.com/jacqinthebox/vomit-vnext/commit/43186a007b17089f2b66b64f267ca3d680f4e112))
+
+
+### Chores
+
+* render image files in viewer ([8c0e39c](https://github.com/jacqinthebox/vomit-vnext/commit/8c0e39c05a435ef32c50d1235861ecd72f7a07cc))
+
 ## [1.14.3](https://github.com/jacqinthebox/vomit-vnext/compare/v1.14.2...v1.14.3) (2026-06-07)
 
 
