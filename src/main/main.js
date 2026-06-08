@@ -33,7 +33,7 @@ const pendingOpenFiles = [];
 let launchFilesConsumed = false;
 
 function getLaunchFilePaths(argv) {
-  const supportedExtensions = new Set(['.md', '.markdown', '.pdf', '.drawio']);
+  const supportedExtensions = new Set(['.md', '.markdown', '.pdf', '.drawio', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.bmp', '.ico', '.avif']);
   const executablePaths = new Set([process.argv[0], process.execPath].filter(Boolean).map(p => path.resolve(p)));
   return argv.filter(arg => {
     if (!arg || arg.startsWith('-')) return false;

@@ -27,6 +27,8 @@ function isMarkdownPath(filePath) {
   return ext === '.md' || ext === '.markdown';
 }
 
+const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.bmp', '.ico', '.avif']);
+
 function isSameOrSubPath(childPath, parentPath) {
   const child = path.resolve(childPath);
   const parent = path.resolve(parentPath);
@@ -207,6 +209,7 @@ Questions?
         { name: 'Markdown Files', extensions: ['md', 'markdown'] },
         { name: 'PDF Files', extensions: ['pdf'] },
         { name: 'Draw.io Diagrams', extensions: ['drawio'] },
+        { name: 'Image Files', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico', 'avif'] },
         { name: 'All Files', extensions: ['*'] }
       ],
       properties: ['openFile'],
@@ -313,7 +316,7 @@ Questions?
 
   function isViewerFile(filePath) {
     const ext = path.extname(filePath).toLowerCase();
-    return ['.pdf', '.drawio'].includes(ext);
+    return ['.pdf', '.drawio'].includes(ext) || IMAGE_EXTENSIONS.has(ext);
   }
 
   function getDrawioCliPath() {
@@ -372,7 +375,7 @@ Questions?
 
   function loadFile(filePath) {
     try {
-      // For viewer files (PDF, draw.io), don't read as text — renderer handles loading
+      // For viewer files (PDF, draw.io, images), don't read as text — renderer handles loading.
       const isViewer = isViewerFile(filePath);
       const content = isViewer ? '' : fs.readFileSync(filePath, 'utf-8');
       state.currentFilePath = filePath;

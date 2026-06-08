@@ -177,7 +177,11 @@ class PreviewManager {
   isViewerFile() {
     if (!this.state.currentFilePath) return false;
     const ext = this.state.currentFilePath.split('.').pop().toLowerCase();
-    return ['pdf', 'drawio'].includes(ext);
+    return ['pdf', 'drawio', ...this.getImageExtensions()].includes(ext);
+  }
+
+  getImageExtensions() {
+    return ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico', 'avif'];
   }
 
   parseFrontmatter(content) {
@@ -338,7 +342,7 @@ class PreviewManager {
   }
 
   /**
-   * Show a viewer-mode file (PDF or draw.io) in the preview pane.
+   * Show a viewer-mode file (PDF, draw.io, or image) in the preview pane.
    * Switches to preview-only layout, hides the editor.
    */
   async showViewerFile(filePath) {
@@ -357,6 +361,8 @@ class PreviewManager {
       await this._renderPDF(filePath);
     } else if (ext === 'drawio') {
       await this._renderDrawio(filePath);
+    } else if (this.getImageExtensions().includes(ext)) {
+      await this._renderImage(filePath, ext);
     }
   }
 
@@ -375,6 +381,27 @@ class PreviewManager {
       }
     } catch (err) {
       this.dom.preview.innerHTML = `<div class="viewer-error"><p>Failed to load PDF: ${err.message}</p></div>`;
+    }
+  }
+
+  async _renderImage(filePath, ext) {
+    try {
+      const imageUrl = window.PathUtils.toVomitFileUrl(filePath);
+      const escapedPath = this._escapeHtml(filePath);
+      const escapedName = this._escapeHtml(window.PathUtils.basename(filePath));
+      this.dom.preview.innerHTML = `
+        <div class="viewer-container image-viewer">
+          <div class="image-viewer-stage">
+            <img src="${imageUrl}" alt="${escapedName}" />
+          </div>
+          <button class="viewer-open-external" type="button" data-file-path="${escapedPath}">Open in external viewer</button>
+        </div>`;
+      const button = this.dom.preview.querySelector('.viewer-open-external');
+      if (button) {
+        button.addEventListener('click', () => window.vomit.openWithDefault(filePath));
+      }
+    } catch (err) {
+      this.dom.preview.innerHTML = `<div class="viewer-error"><p>Failed to load image: ${err.message}</p></div>`;
     }
   }
 

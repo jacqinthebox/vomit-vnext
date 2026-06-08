@@ -62,7 +62,8 @@ class TabManager {
 
     // Detect viewer files early (before cm.setValue triggers updatePreview)
     const ext = tab.filePath ? tab.filePath.split('.').pop().toLowerCase() : '';
-    const isViewer = ['pdf', 'drawio'].includes(ext);
+    const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico', 'avif'];
+    const isViewer = ['pdf', 'drawio', ...imageExts].includes(ext);
     const wasViewer = this.editor.state._isViewerMode;
 
     // Prevent change handler from marking tab dirty during restore
@@ -99,7 +100,7 @@ class TabManager {
     // Re-enable change handler
     this.editor.state.isRestoringTab = false;
 
-    // Handle viewer files (PDF, draw.io)
+    // Handle viewer files (PDF, draw.io, images)
     if (isViewer) {
       this.editor.previewManager.showViewerFile(tab.filePath);
       this.editor.previewManager.updateStatus();

@@ -45,7 +45,7 @@ Keyboard shortcuts shown as **Cmd** on macOS use **Ctrl** on Windows/Linux. **Op
 - **PlantUML & Mermaid** - Render sequence diagrams, flowcharts, and more
 - **Emoji Shortcodes** - Use `:smile:` syntax like GitHub/Slack
 - **File Tree** - Browse and open files in your bucket (Cmd+E)
-- **Native Viewers** - Open PDF and draw.io files directly inside Vomit
+- **Native Viewers** - Open PDF, draw.io, and image files directly inside Vomit
 - **Tag & Todo Explorers** - Browse tags and open todos across the current bucket
 - **Search in Files** - Search across all markdown files (Cmd+Shift+F)
 - **Laser Pointer** - Press L during presentation to highlight

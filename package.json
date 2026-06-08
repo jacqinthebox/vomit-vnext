@@ -75,6 +75,21 @@
         "ext": "drawio",
         "name": "Draw.io Diagram",
         "role": "Viewer"
+      },
+      {
+        "ext": [
+          "png",
+          "jpg",
+          "jpeg",
+          "gif",
+          "webp",
+          "svg",
+          "bmp",
+          "ico",
+          "avif"
+        ],
+        "name": "Image File",
+        "role": "Viewer"
       }
     ]
   }

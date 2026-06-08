@@ -14,6 +14,7 @@ Vomit uses "buckets" - dedicated folders to store your notes and presentations. 
 - **Quick switching** - Switch between buckets from the menu
 - New markdown files are automatically created with frontmatter metadata: title, folder, created date, modified date, draft status, and tags
 - Images are saved to `bucket/images/`
+- PDF, draw.io, and image files open directly in Vomit's preview viewer
 
 **Managing buckets:**
 - **Buckets > Add Bucket...** - Add a new folder as a bucket

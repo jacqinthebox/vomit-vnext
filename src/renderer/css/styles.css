@@ -1490,7 +1490,7 @@ html, body {
   display: block;
 }
 
-/* Viewer mode (PDF, draw.io) */
+/* Viewer mode (PDF, draw.io, images) */
 .viewer-mode #preview {
   display: flex;
   flex: 1;
@@ -1534,6 +1534,29 @@ html, body {
   border: none;
   width: 100%;
   flex: 1;
+}
+
+.viewer-container.image-viewer {
+  background: var(--preview-bg, #fafafa);
+  min-height: 0;
+}
+
+.image-viewer-stage {
+  align-items: center;
+  display: flex;
+  flex: 1;
+  justify-content: center;
+  min-height: 0;
+  overflow: auto;
+  padding: 24px;
+  width: 100%;
+}
+
+.image-viewer-stage img {
+  display: block;
+  max-height: 100%;
+  max-width: 100%;
+  object-fit: contain;
 }
 
 .viewer-loading {
