@@ -1,3 +1,10 @@
+## [1.14.5](https://github.com/jacqinthebox/vomit-vnext/compare/v1.14.4...v1.14.5) (2026-06-14)
+
+
+### Bug Fixes
+
+* better pseudomizing ([650a312](https://github.com/jacqinthebox/vomit-vnext/commit/650a312f41a28847a736cff59884247ba2d7c029))
+
 ## [1.14.4](https://github.com/jacqinthebox/vomit-vnext/compare/v1.14.3...v1.14.4) (2026-06-08)
 
 
