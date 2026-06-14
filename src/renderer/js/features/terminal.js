@@ -1072,6 +1072,8 @@ Look for:
 - Azure/cloud IDs (subscription, tenant, object, resource IDs)
 - Paths with usernames
 
+Do NOT map structural IaC/API words or template identifiers such as name, namespace, cluster, basename, cpu, regexp, metadata.name, metadata.namespace, namespaceSelector, clusterResourceWhitelist, namespaceResourceBlacklist, path.basenameNormalized, .Values keys, or YAML/Helm/Kubernetes/ArgoCD field names.
+
 For each item found, provide a fictional replacement.
 
 OUTPUT: Return ONLY a JSON object mapping original values to fake replacements. No other text.
@@ -1115,24 +1117,15 @@ ${docContent}
         }
 
         if (mapping && Object.keys(mapping).length > 0) {
+          const sanitized = this.sanitizePseudoMapping(mapping);
+          mapping = sanitized.mapping;
+        }
+
+        if (mapping && Object.keys(mapping).length > 0) {
           // Apply mapping to original content programmatically
-          let content = docContent;
-          for (const [original, replacement] of Object.entries(mapping)) {
-            const escaped = original.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            // Case-insensitive replacement that preserves original case pattern
-            content = content.replace(new RegExp(escaped, 'gi'), (match) => {
-              // Determine case pattern of matched text and apply to replacement
-              if (match === match.toUpperCase()) {
-                return replacement.toUpperCase();
-              } else if (match === match.toLowerCase()) {
-                return replacement.toLowerCase();
-              } else if (match[0] === match[0].toUpperCase()) {
-                // Title case - capitalize first letter of replacement
-                return replacement.charAt(0).toUpperCase() + replacement.slice(1);
-              }
-              return replacement;
-            });
-          }
+          const sortedKeys = Object.keys(mapping).sort((a, b) => b.length - a.length);
+          const applied = this.applyPseudoMappingToContent(docContent, sortedKeys, mapping);
+          const content = applied.content;
 
           // Save the pseudonymized content
           await window.vomit.writeFile(outputPath, content);
@@ -1214,11 +1207,10 @@ ${docContent}
 
       for (const fake of fakeValues) {
         const original = reverseMapping[fake];
-        const regex = new RegExp(fake.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
-        const matches = content.match(regex);
-        if (matches) {
-          replacements += matches.length;
-          content = content.replace(regex, original);
+        const nextContent = this.replacePseudoToken(content, fake, original);
+        if (nextContent !== content) {
+          replacements++;
+          content = nextContent;
         }
       }
 
@@ -1444,6 +1436,7 @@ File content:
     const trimmed = value.trim();
     const maxLength = category === 'secret' ? 10000 : category === 'connectionString' ? 2000 : 1000;
     if (trimmed.length < 3 || trimmed.length > maxLength) return true;
+    if (this.isPseudoStructuralIdentifier(trimmed)) return true;
     if (trimmed.includes('${') || trimmed.startsWith('var.') || trimmed.startsWith('local.') || trimmed.startsWith('data.')) return true;
     if (/^(true|false|null|none|default|latest|main|master|dev|test|prod|stage|staging)$/i.test(trimmed)) return true;
     if (/^(example|fake|placeholder|changeme|redacted|dummy)/i.test(trimmed)) return true;
@@ -1455,6 +1448,96 @@ File content:
     if (/^10\.254\./.test(trimmed)) return true;
     if (/^00000000-0000-4000-8000-/.test(trimmed)) return true;
     return false;
+  }
+
+  getPseudoStructuralIdentifiers() {
+    return new Set([
+      'apiVersion', 'kind', 'metadata', 'spec', 'status', 'data', 'stringData',
+      'name', 'namespace', 'namespaces', 'namespaceSelector', 'podSelector',
+      'matchLabels', 'matchExpressions', 'selector', 'labels', 'annotations',
+      'roleRef', 'subjects', 'subject', 'apiGroup', 'resource', 'resources', 'verbs',
+      'cluster', 'clusterResourceWhitelist', 'namespaceResourceBlacklist',
+      'destination', 'destinations', 'source', 'sources', 'project',
+      'basename', 'basenameNormalized', 'path', 'server', 'repoURL', 'targetRevision',
+      'cpu', 'memory', 'limits', 'requests', 'regexp', 'regex',
+      'Chart', 'Chart.yaml', 'version', 'appVersion', 'description',
+      'Values', 'Release', 'Template', 'Files', 'Capabilities'
+    ]);
+  }
+
+  isPseudoStructuralIdentifier(value) {
+    if (typeof value !== 'string') return false;
+    const trimmed = value.trim();
+    if (!trimmed) return false;
+    const structural = this.getPseudoStructuralIdentifiers();
+    if (structural.has(trimmed)) return true;
+    const normalized = trimmed.toLowerCase();
+    for (const identifier of structural) {
+      if (identifier.toLowerCase() === normalized) return true;
+    }
+    return /^(metadata|spec|status|data|stringData|path|roleRef|subjects?)\./.test(trimmed);
+  }
+
+  sanitizePseudoMapping(mapping) {
+    const sanitized = {};
+    let removed = 0;
+    for (const [real, fake] of Object.entries(mapping || {})) {
+      if (typeof real !== 'string' || typeof fake !== 'string') {
+        removed++;
+        continue;
+      }
+      const realValue = real.trim();
+      const fakeValue = fake.trim();
+      if (!realValue || !fakeValue || this.shouldSkipPseudoEntity(realValue, 'resource')) {
+        removed++;
+        continue;
+      }
+      sanitized[realValue] = fakeValue;
+    }
+    return { mapping: sanitized, removed };
+  }
+
+  escapeRegex(value) {
+    return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  isPseudoTokenValue(value) {
+    return /^[A-Za-z0-9_.-]+$/.test(value);
+  }
+
+  replacePseudoToken(content, real, fake) {
+    const escaped = this.escapeRegex(real);
+    if (this.isPseudoTokenValue(real)) {
+      return content.replace(
+        new RegExp(`(?<![A-Za-z0-9_.-])${escaped}(?![A-Za-z0-9_.-])`, 'g'),
+        fake
+      );
+    }
+    return content.replace(new RegExp(escaped, 'g'), fake);
+  }
+
+  applyPseudoMappingToContent(content, sortedKeys, mapping) {
+    let nextContent = content;
+    let changed = false;
+
+    for (const real of sortedKeys) {
+      const fake = mapping[real];
+      if (typeof fake !== 'string') continue;
+      const before = nextContent;
+
+      if (this.isPseudoTokenValue(real)) {
+        const escaped = this.escapeRegex(real);
+        nextContent = nextContent.replace(
+          new RegExp(`(^|[^A-Za-z0-9_])\\.Values\\.${escaped}(?=\\b|\\.|\\s|\\}|\\)|\\||,)`, 'g'),
+          (match, prefix) => `${prefix}(index .Values ${JSON.stringify(fake)})`
+        );
+      }
+
+      nextContent = this.replacePseudoToken(nextContent, real, fake);
+      if (nextContent !== before) changed = true;
+    }
+
+    return { content: nextContent, changed };
   }
 
   addPseudoEntity(mapping, counters, value, category) {
@@ -1651,8 +1734,10 @@ File content:
       // Load existing mapping if re-running
       const existingMapping = await window.vomit.pseudoReadMapping(cwd);
       if (existingMapping) {
-        mapping = existingMapping;
-        this.appendTerminalOutput(`Loaded existing mapping (${Object.keys(mapping).length} entities).`, 'system');
+        const sanitized = this.sanitizePseudoMapping(existingMapping);
+        mapping = sanitized.mapping;
+        const removedText = sanitized.removed > 0 ? ` (${sanitized.removed} structural/invalid entries skipped)` : '';
+        this.appendTerminalOutput(`Loaded existing mapping (${Object.keys(mapping).length} entities)${removedText}.`, 'system');
       }
 
       const targetExtensions = this.getPseudoTargetExtensions();
@@ -1692,6 +1777,8 @@ Look for NEW instances of:
 - Cloud resource IDs, subscription IDs, tenant IDs, object IDs, GUIDs/UUIDs
 - Azure DevOps organizations, projects, repositories, pipelines, service connections, environments, and variable groups
 
+Do NOT map structural IaC/API words or template identifiers such as name, namespace, cluster, basename, cpu, regexp, metadata.name, metadata.namespace, namespaceSelector, clusterResourceWhitelist, namespaceResourceBlacklist, path.basenameNormalized, .Values keys, or YAML/Helm/Kubernetes/ArgoCD field names.
+
 For each NEW entity, provide a realistic fake replacement that preserves the same broad type.
 
 OUTPUT: Return ONLY a JSON object with new mappings. No explanations, no code fences.
@@ -1715,8 +1802,9 @@ ${content.substring(0, 12000)}
                 if (jsonMatch) {
                   const newEntities = JSON.parse(jsonMatch[0]);
                   for (const [real, fake] of Object.entries(newEntities)) {
-                    if (typeof real === 'string' && real.trim().length > 0 && !mapping[real]) {
-                      mapping[real] = typeof fake === 'string' && fake.trim().length > 0
+                    const realValue = typeof real === 'string' ? real.trim() : '';
+                    if (realValue && !mapping[realValue] && !this.shouldSkipPseudoEntity(realValue, 'resource')) {
+                      mapping[realValue] = typeof fake === 'string' && fake.trim().length > 0
                         ? fake.trim()
                         : this.createPseudoReplacement('resource', counters);
                       added++;
@@ -1744,6 +1832,9 @@ ${content.substring(0, 12000)}
           }
         }
       }
+
+      const sanitizedFinal = this.sanitizePseudoMapping(mapping);
+      mapping = sanitizedFinal.mapping;
 
       // Save final mapping
       await window.vomit.pseudoSaveMapping(cwd, mapping);
@@ -1777,15 +1868,9 @@ ${content.substring(0, 12000)}
           let content = await window.vomit.readFile(file.path);
           let changed = false;
 
-          for (const real of sortedKeys) {
-            const fake = mapping[real];
-            const escaped = real.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const regex = new RegExp(escaped, 'g');
-            if (regex.test(content)) {
-              content = content.replace(new RegExp(escaped, 'g'), fake);
-              changed = true;
-            }
-          }
+          const applied = this.applyPseudoMappingToContent(content, sortedKeys, mapping);
+          content = applied.content;
+          changed = applied.changed;
 
           if (changed) {
             await window.vomit.writeFile(file.path, content);
@@ -1903,8 +1988,7 @@ ${content.substring(0, 12000)}
           // Apply reverse mapping
           for (const fake of sortedFakes) {
             const real = reverseMapping[fake];
-            const escaped = fake.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            content = content.replace(new RegExp(escaped, 'g'), real);
+            content = this.replacePseudoToken(content, fake, real);
           }
 
           await window.vomit.writeFile(realFilePath, content);
