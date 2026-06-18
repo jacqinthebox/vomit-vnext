@@ -1,3 +1,15 @@
+## [1.14.6](https://github.com/jacqinthebox/vomit-vnext/compare/v1.14.5...v1.14.6) (2026-06-18)
+
+
+### Bug Fixes
+
+* restyle app icon to match Boom (purple glyph on dark tile) ([5438967](https://github.com/jacqinthebox/vomit-vnext/commit/543896719e06657ec39991540738f274d6ae0b5d)), closes [#8b5cf6](https://github.com/jacqinthebox/vomit-vnext/issues/8b5cf6)
+
+
+### Chores
+
+* better terminal ([71d73c7](https://github.com/jacqinthebox/vomit-vnext/commit/71d73c77eab21e618b1aaaa84a4348f2a8453e94))
+
 ## [1.14.5](https://github.com/jacqinthebox/vomit-vnext/compare/v1.14.4...v1.14.5) (2026-06-14)
 
 
