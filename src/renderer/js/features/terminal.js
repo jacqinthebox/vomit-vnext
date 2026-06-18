@@ -1339,11 +1339,35 @@ File content:
   // --- Pseudo-repo workflow (multi-repo bucket pseudonymization) ---
 
   getPseudoTargetExtensions() {
-    return ['.tf', '.tfvars', '.yaml', '.yml', '.json', '.md', '.env', '.sh', '.ps1', '.py', '.js', '.ts', '.tsx', '.jsx', '.go', '.cs', '.fs', '.vb', '.csproj', '.fsproj', '.vbproj', '.sln', '.props', '.targets', '.config', '.hcl', '.bicep', '.toml', '.xml', '.sql', '.ini', '.dockerfile', '.tpl'];
+    return ['.tf', '.tfvars', '.yaml', '.yml', '.json', '.md', '.markdown', '.txt', '.text', '.adoc', '.rst', '.env', '.sh', '.ps1', '.py', '.js', '.ts', '.tsx', '.jsx', '.go', '.cs', '.fs', '.vb', '.csproj', '.fsproj', '.vbproj', '.sln', '.props', '.targets', '.config', '.hcl', '.bicep', '.toml', '.xml', '.sql', '.ini', '.dockerfile', '.tpl'];
   }
 
   getPseudoSkipDirs() {
     return new Set(['.git', '.terraform', '.terragrunt-cache', 'node_modules', 'pseudo', 'pseudonymized', 'dist', 'build', 'bin', 'obj', '.next', 'coverage', 'vendor']);
+  }
+
+  normalizePseudoTargetFolder(targetFolder) {
+    const value = String(targetFolder || '').trim().replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
+    if (!value) return null;
+
+    const parts = value.split('/').filter(Boolean);
+    if (parts.some(part => part === '.' || part === '..')) return null;
+    return parts.join('/');
+  }
+
+  async resolvePseudoTargetFolder(cwd, targetFolder) {
+    const normalized = this.normalizePseudoTargetFolder(targetFolder);
+    if (!normalized) return null;
+
+    let currentPath = cwd;
+    for (const part of normalized.split('/')) {
+      const items = await window.vomit.getDirectoryContents(currentPath);
+      const match = items.find(item => item.isDirectory && item.name === part);
+      if (!match) return null;
+      currentPath = match.path;
+    }
+
+    return { name: normalized, path: currentPath };
   }
 
   createPseudoCounters(mapping) {
@@ -1394,6 +1418,10 @@ File content:
         return `https://example${this.nextPseudoNumber(counters, 'url')}.invalid`;
       case 'domain':
         return `example${this.nextPseudoNumber(counters, 'domain')}.internal`;
+      case 'cidr': {
+        const n = this.nextPseudoNumber(counters, 'cidr');
+        return `10.254.${n % 200}.0/24`;
+      }
       case 'adoOrg':
         return `ado-org-${String(this.nextPseudoNumber(counters, 'ado-org-')).padStart(3, '0')}`;
       case 'adoProject':
@@ -1547,6 +1575,17 @@ File content:
     return true;
   }
 
+  createPseudoContentChunks(content, chunkSize = 12000) {
+    const text = String(content || '');
+    if (text.length <= chunkSize) return [text];
+
+    const chunks = [];
+    for (let start = 0; start < text.length; start += chunkSize) {
+      chunks.push(text.slice(start, start + chunkSize));
+    }
+    return chunks;
+  }
+
   scanIacPseudoEntities(content, relativePath, mapping, counters) {
     let added = 0;
     const add = (value, category) => {
@@ -1571,6 +1610,7 @@ File content:
 
     collect(/(?<![:/])\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, 'email');
     collect(/\b(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)\b/g, 'ip');
+    collect(/\b(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)\/(?:[0-9]|[12]\d|3[0-2])\b/g, 'cidr');
     collect(/\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/gi, 'uuid');
     collect(/\/subscriptions\/[0-9a-f-]{36}\/[^\s"'`<>),]+/gi, 'azureResourceId');
     collect(/\barn:aws[a-z-]*:[^:\s"'`]+:[^:\s"'`]*:\d{12}:[^\s"'`<>]+/g, 'awsArn');
@@ -1587,6 +1627,9 @@ File content:
     collect(/\b([a-z0-9]{3,24})\.(?:blob|queue|table|file|dfs)\.core\.windows\.net\b/gi, 'storageAccount', 1);
     collect(/\b(?:APPINSIGHTS_INSTRUMENTATIONKEY|APPLICATIONINSIGHTS_CONNECTION_STRING|InstrumentationKey)\b\s*[:=]\s*["']([^"'\n]{6,})["']/gi, 'secret', 1);
     collect(/\b(?:AZURE_CLIENT_ID|AZURE_TENANT_ID|AZURE_SUBSCRIPTION_ID|client_id|tenant_id|subscription_id)\b\s*[:=]\s*["']([0-9a-f-]{36})["']/gi, 'uuid', 1);
+    collect(/\b(?:id|spn|uami|umi|mi|app|ag|sg|rg|vnet|snet|nsg|rt|pip|kv|st|sa|acr|aks|aro|vm|nic|lb|fw|dns|zone|quay|devhub|backstage|argocd|eso)-[a-z0-9][a-z0-9-]{2,}\b/gi, 'resource');
+    collect(/\b[a-z0-9][a-z0-9-]{1,}\.(?:apps|api)\.[a-z0-9-]+(?:\.[a-z0-9-]+)+\b/gi, 'domain');
+    collect(/\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:internal|local|corp|lan|fx|cloud|dev|test|example|invalid)\b/gi, 'domain');
 
     let match;
     const devAzure = /https:\/\/dev\.azure\.com\/([^\/\s"'`?#]+)\/([^\/\s"'`?#]+)/gi;
@@ -1682,7 +1725,7 @@ File content:
     const dockerImageRegex = /\b(?:image|container_image|docker_image)\s*[:=]\s*["']?([^"'\s]+\/[^"'\s]+(?::[^"'\s]+)?)["']?/gi;
     while ((match = dockerImageRegex.exec(content)) !== null) addDockerImage(match[1]);
 
-    collect(/\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:com|net|org|io|dev|cloud|local|internal|corp|nl|be|de|fr|uk|us)\b/gi, 'domain');
+    collect(/\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:com|net|org|io|dev|cloud|local|internal|corp|nl|be|de|fr|uk|us|fx)\b/gi, 'domain');
 
     return added;
   }
@@ -1690,36 +1733,42 @@ File content:
   async runPseudoRepo(cwd, targetFolder = null, mode = 'deterministic', commandName = '/pseudo deterministic') {
     const normalizedMode = mode === 'ai' ? 'ai' : 'deterministic';
     this.appendTerminalOutput(`❯ ${commandName}${targetFolder ? ' ' + targetFolder : ''}`, 'input');
-    this.appendTerminalOutput('Detecting repos in bucket...', 'system');
 
     try {
-      // 1. Detect git repos in bucket
-      let repos = await window.vomit.pseudoDetectRepos(cwd);
-      if (repos.length === 0) {
-        // Maybe the bucket itself is a git repo?
-        this.appendTerminalOutput(`No git sub-repos found in: ${cwd}`, 'error');
-        this.appendTerminalOutput('Expected: top-level subdirectories with .git/', 'system');
-        this.appendTerminalOutput('Listing top-level dirs...', 'system');
-        const items = await window.vomit.getDirectoryContents(cwd);
-        const dirs = items.filter(i => i.isDirectory && !i.name.startsWith('.'));
-        for (const d of dirs.slice(0, 10)) {
-          this.appendTerminalOutput(`  ${d.name}/`, 'system');
-        }
-        return;
-      }
-
-      this.appendTerminalOutput(`Found ${repos.length} repo(s): ${repos.map(r => r.name).join(', ')}`, 'system');
-
-      // Filter to single folder if specified
+      // 1. Resolve the target. An explicit folder can be a repo or a plain docs folder.
+      let repos = [];
       if (targetFolder) {
-        const match = repos.find(r => r.name === targetFolder);
-        if (!match) {
-          this.appendTerminalOutput(`Error: "${targetFolder}" not found among repos.`, 'error');
-          this.appendTerminalOutput(`Available: ${repos.map(r => r.name).join(', ')}`, 'system');
+        this.appendTerminalOutput(`Resolving target folder: ${targetFolder}`, 'system');
+        const target = await this.resolvePseudoTargetFolder(cwd, targetFolder);
+        if (!target) {
+          this.appendTerminalOutput(`Error: Folder "${targetFolder}" not found in this bucket.`, 'error');
+          this.appendTerminalOutput('Available top-level folders:', 'system');
+          const items = await window.vomit.getDirectoryContents(cwd);
+          const dirs = items.filter(i => i.isDirectory && !i.name.startsWith('.'));
+          for (const d of dirs.slice(0, 10)) {
+            this.appendTerminalOutput(`  ${d.name}/`, 'system');
+          }
           return;
         }
-        repos = [match];
-        this.appendTerminalOutput(`Targeting: ${targetFolder}`, 'system');
+
+        repos = [target];
+        this.appendTerminalOutput(`Targeting: ${target.name}/`, 'system');
+      } else {
+        this.appendTerminalOutput('Detecting repos in bucket...', 'system');
+        repos = await window.vomit.pseudoDetectRepos(cwd);
+        if (repos.length === 0) {
+          this.appendTerminalOutput(`No git sub-repos found in: ${cwd}`, 'error');
+          this.appendTerminalOutput('Expected: top-level subdirectories with .git/', 'system');
+          this.appendTerminalOutput('Listing top-level dirs...', 'system');
+          const items = await window.vomit.getDirectoryContents(cwd);
+          const dirs = items.filter(i => i.isDirectory && !i.name.startsWith('.'));
+          for (const d of dirs.slice(0, 10)) {
+            this.appendTerminalOutput(`  ${d.name}/`, 'system');
+          }
+          return;
+        }
+
+        this.appendTerminalOutput(`Found ${repos.length} repo(s): ${repos.map(r => r.name).join(', ')}`, 'system');
       }
 
       // 2. Phase 1 — build shared mapping either locally or with AI assistance.
@@ -1758,9 +1807,15 @@ File content:
           const content = await window.vomit.readFile(files[i].path);
           if (!content || content.trim().length === 0) continue;
 
-          let added = 0;
+          let added = this.scanIacPseudoEntities(content, files[i].relativePath, mapping, counters);
           if (normalizedMode === 'ai') {
-            const extractPrompt = `You are an entity extraction tool for GDPR pseudonymization.
+            const chunks = this.createPseudoContentChunks(content);
+            for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
+              if (chunks.length > 1) {
+                this.appendTerminalOutput(`    AI scan chunk ${chunkIndex + 1}/${chunks.length}`, 'system');
+              }
+
+              const extractPrompt = `You are an entity extraction tool for GDPR pseudonymization.
 
 Analyze this file and find ALL sensitive/identifying data NOT already in the known mapping.
 
@@ -1769,6 +1824,7 @@ ${JSON.stringify(mapping, null, 2)}
 
 Look for NEW instances of:
 - Person, team, company, customer, organization, product, project, and code names
+- Company and organization names in titles, headers, footers, legal text, document ownership lines, SharePoint/Teams URLs, and certificate/PKI references
 - Architecture, system, application, environment, and repository names
 - Legal parties, contract references, internal advice context, business processes, and locations
 - Email addresses, phone numbers, usernames, and paths with usernames
@@ -1785,41 +1841,40 @@ OUTPUT: Return ONLY a JSON object with new mappings. No explanations, no code fe
 Example: {"real-value": "fake-replacement", "another@real.com": "user@example.com"}
 If nothing new found, return: {}
 
-File (${files[i].relativePath}):
+File (${files[i].relativePath}${chunks.length > 1 ? `, chunk ${chunkIndex + 1}/${chunks.length}` : ''}):
 \`\`\`
-${content.substring(0, 12000)}
+${chunks[chunkIndex]}
 \`\`\``;
 
-            this.state.pseudoOutput = '';
-            this.state.pseudoCollecting = true;
+              this.state.pseudoOutput = '';
+              this.state.pseudoCollecting = true;
 
-            await window.vomit.claudeExecute(extractPrompt, cwd);
-            await this.waitForAIComplete();
+              await window.vomit.claudeExecute(extractPrompt, cwd);
+              await this.waitForAIComplete();
 
-            if (this.state.pseudoOutput.trim()) {
-              try {
-                const jsonMatch = this.state.pseudoOutput.trim().match(/\{[\s\S]*\}/);
-                if (jsonMatch) {
-                  const newEntities = JSON.parse(jsonMatch[0]);
-                  for (const [real, fake] of Object.entries(newEntities)) {
-                    const realValue = typeof real === 'string' ? real.trim() : '';
-                    if (realValue && !mapping[realValue] && !this.shouldSkipPseudoEntity(realValue, 'resource')) {
-                      mapping[realValue] = typeof fake === 'string' && fake.trim().length > 0
-                        ? fake.trim()
-                        : this.createPseudoReplacement('resource', counters);
-                      added++;
+              if (this.state.pseudoOutput.trim()) {
+                try {
+                  const jsonMatch = this.state.pseudoOutput.trim().match(/\{[\s\S]*\}/);
+                  if (jsonMatch) {
+                    const newEntities = JSON.parse(jsonMatch[0]);
+                    for (const [real, fake] of Object.entries(newEntities)) {
+                      const realValue = typeof real === 'string' ? real.trim() : '';
+                      if (realValue && !mapping[realValue] && !this.shouldSkipPseudoEntity(realValue, 'resource')) {
+                        mapping[realValue] = typeof fake === 'string' && fake.trim().length > 0
+                          ? fake.trim()
+                          : this.createPseudoReplacement('resource', counters);
+                        added++;
+                      }
                     }
                   }
+                } catch (e) {
+                  this.appendTerminalOutput(`    ⚠ Could not parse AI mappings for ${files[i].relativePath}`, 'error');
                 }
-              } catch (e) {
-                this.appendTerminalOutput(`    ⚠ Could not parse AI mappings for ${files[i].relativePath}`, 'error');
               }
-            }
 
-            // Keep AI-assisted document mode gentle on local model servers.
-            await new Promise(r => setTimeout(r, 750));
-          } else {
-            added = this.scanIacPseudoEntities(content, files[i].relativePath, mapping, counters);
+              // Keep AI-assisted document mode gentle on local model servers.
+              await new Promise(r => setTimeout(r, 750));
+            }
           }
 
           totalAdded += added;
@@ -1831,6 +1886,13 @@ ${content.substring(0, 12000)}
             await window.vomit.pseudoSaveMapping(cwd, mapping);
           }
         }
+      }
+
+      if (totalFiles === 0) {
+        this.appendTerminalOutput('\nNo supported text files found to pseudonymize.', 'error');
+        this.appendTerminalOutput('Supported examples: .md, .markdown, .txt, .adoc, .rst, .yaml, .json, .tf, .xml, .sql, and common source/config files.', 'system');
+        this.appendTerminalOutput('Binary formats like .docx, .pdf, .xlsx, and .pptx are skipped.', 'system');
+        return;
       }
 
       const sanitizedFinal = this.sanitizePseudoMapping(mapping);
@@ -1856,6 +1918,10 @@ ${content.substring(0, 12000)}
         // Copy file structure
         const fileCount = await window.vomit.pseudoCopyStructure(repo.path, pseudoPath);
         this.appendTerminalOutput(`  Copied ${fileCount} files.`, 'system');
+        if (fileCount === 0) {
+          this.appendTerminalOutput('  No copyable text files found; skipping git baseline for this target.', 'error');
+          continue;
+        }
 
         // Apply mapping to all files
         const pseudoFiles = await this.getFilesRecursively(pseudoPath, targetExtensions);

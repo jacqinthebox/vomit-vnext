@@ -74,7 +74,7 @@ const COMMAND_REGISTRY = [
   {
     // Must be registered before /pseudo so the longer name matches first
     name: '/pseudo deterministic',
-    description: 'Fast deterministic repo pseudonymization',
+    description: 'Fast deterministic repo/folder pseudonymization',
     args: 'optional',
     argsHint: '[folder-name]',
     requiresCwd: true,
@@ -85,7 +85,7 @@ const COMMAND_REGISTRY = [
   {
     // Must be registered before /pseudo so the longer name matches first
     name: '/pseudo ai',
-    description: 'AI-assisted repo/document pseudonymization',
+    description: 'Hybrid deterministic + AI repo/folder pseudonymization',
     args: 'optional',
     argsHint: '[folder-name]',
     requiresCwd: true,
