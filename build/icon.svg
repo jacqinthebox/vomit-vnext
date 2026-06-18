@@ -1,21 +1,35 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
-  <!-- Purple rounded square - 850px (~83% of canvas) -->
-  <rect x="87" y="87" width="850" height="850" rx="155" ry="155" fill="#8b5cf6"/>
+  <!-- Vomit icon in the Boom app style: dark squircle tile, purple glow,
+       sick-face glyph in a light->purple gradient. -->
+  <defs>
+    <linearGradient id="tile" x1="100" y1="100" x2="924" y2="924" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1b1e25"/>
+      <stop offset="1" stop-color="#0a0b0e"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="512" cy="512" r="340" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8b5cf6" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#8b5cf6" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="face" x1="0" y1="280" x2="0" y2="744" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ede7ff"/>
+      <stop offset="0.5" stop-color="#8b5cf6"/>
+      <stop offset="1" stop-color="#6d28d9"/>
+    </linearGradient>
+  </defs>
 
-  <!-- Vomit face in white -->
-  <g fill="white">
-    <!-- Face circle -->
-    <circle cx="512" cy="512" r="232" fill="none" stroke="white" stroke-width="35"/>
+  <!-- Rounded squircle tile -->
+  <rect x="100" y="100" width="824" height="824" rx="185" ry="185" fill="url(#tile)" stroke="#2a2f39" stroke-width="4"/>
 
-    <!-- Left eye (X shaped - sick) -->
-    <line x1="396" y1="438" x2="466" y2="508" stroke="white" stroke-width="31" stroke-linecap="round"/>
-    <line x1="466" y1="438" x2="396" y2="508" stroke="white" stroke-width="31" stroke-linecap="round"/>
+  <!-- Purple glow -->
+  <circle cx="512" cy="512" r="340" fill="url(#glow)"/>
 
-    <!-- Right eye (X shaped - sick) -->
-    <line x1="558" y1="438" x2="628" y2="508" stroke="white" stroke-width="31" stroke-linecap="round"/>
-    <line x1="628" y1="438" x2="558" y2="508" stroke="white" stroke-width="31" stroke-linecap="round"/>
-
-    <!-- Open mouth -->
-    <ellipse cx="512" cy="608" rx="72" ry="56" fill="white"/>
+  <!-- Vomit sick-face in the light->purple gradient -->
+  <g stroke="url(#face)" stroke-linecap="round" fill="none">
+    <circle cx="512" cy="512" r="232" stroke-width="35"/>
+    <line x1="396" y1="438" x2="466" y2="508" stroke-width="31"/>
+    <line x1="466" y1="438" x2="396" y2="508" stroke-width="31"/>
+    <line x1="558" y1="438" x2="628" y2="508" stroke-width="31"/>
+    <line x1="628" y1="438" x2="558" y2="508" stroke-width="31"/>
   </g>
+  <ellipse cx="512" cy="608" rx="72" ry="56" fill="url(#face)"/>
 </svg>

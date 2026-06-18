@@ -1,0 +1,91 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      html, body { margin: 0; padding: 0; background: transparent; }
+      canvas { display: block; }
+    </style>
+  </head>
+  <body>
+    <canvas id="c" width="1024" height="1024"></canvas>
+    <script>
+      // Vomit icon, drawn in the same style as the Boom app icon: a dark
+      // rounded "squircle" tile with a purple glow, with vomit's sick-face
+      // glyph rendered in a light->purple gradient (echoing Boom's lit core).
+      const ctx = document.getElementById('c').getContext('2d');
+      const A = '#8b5cf6';
+
+      function roundRect(x, y, w, h, r) {
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.arcTo(x + w, y, x + w, y + h, r);
+        ctx.arcTo(x + w, y + h, x, y + h, r);
+        ctx.arcTo(x, y + h, x, y, r);
+        ctx.arcTo(x, y, x + w, y, r);
+        ctx.closePath();
+      }
+
+      ctx.clearRect(0, 0, 1024, 1024);
+
+      // Rounded "squircle" tile with transparent padding (macOS icon grid).
+      const p = 100, size = 1024 - p * 2, radius = 185;
+      const tile = ctx.createLinearGradient(p, p, 1024 - p, 1024 - p);
+      tile.addColorStop(0, '#1b1e25');
+      tile.addColorStop(1, '#0a0b0e');
+      roundRect(p, p, size, size, radius);
+      ctx.fillStyle = tile;
+      ctx.fill();
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = '#2a2f39';
+      ctx.stroke();
+
+      const cx = 512, cy = 512;
+
+      // Purple glow behind the face.
+      const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, 340);
+      glow.addColorStop(0, 'rgba(139,92,246,0.5)');
+      glow.addColorStop(1, 'rgba(139,92,246,0)');
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 340, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Shared light->purple gradient for the face, lit from the top like
+      // Boom's core.
+      const face = ctx.createLinearGradient(0, 280, 0, 744);
+      face.addColorStop(0, '#ede7ff');
+      face.addColorStop(0.5, A);
+      face.addColorStop(1, '#6d28d9');
+      ctx.strokeStyle = face;
+      ctx.fillStyle = face;
+      ctx.lineCap = 'round';
+
+      // Face circle
+      ctx.beginPath();
+      ctx.arc(cx, cy, 232, 0, Math.PI * 2);
+      ctx.lineWidth = 35;
+      ctx.stroke();
+
+      // X-shaped (sick) eyes
+      ctx.lineWidth = 31;
+      const eye = (x1, y1, x2, y2) => {
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+      };
+      eye(396, 438, 466, 508);
+      eye(466, 438, 396, 508);
+      eye(558, 438, 628, 508);
+      eye(628, 438, 558, 508);
+
+      // Open mouth
+      ctx.beginPath();
+      ctx.ellipse(512, 608, 72, 56, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      document.title = 'ready';
+    </script>
+  </body>
+</html>
