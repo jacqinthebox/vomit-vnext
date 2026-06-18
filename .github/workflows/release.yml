@@ -13,6 +13,9 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    outputs:
+      published: ${{ steps.pub.outputs.published }}
+      tag: ${{ steps.pub.outputs.tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -29,7 +32,92 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Latest tag before release
+        id: before
+        run: echo "tag=$(git tag -l 'v*' --sort=-v:refname | head -n1)" >> "$GITHUB_OUTPUT"
+
       - name: Run semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npx semantic-release
+
+      - name: Detect published release
+        id: pub
+        run: |
+          git fetch --tags --force
+          after="$(git tag -l 'v*' --sort=-v:refname | head -n1)"
+          if [ -n "$after" ] && [ "$after" != "${{ steps.before.outputs.tag }}" ]; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "tag=$after" >> "$GITHUB_OUTPUT"
+
+  # Build the installers for the version semantic-release just published and
+  # attach them to that release. Runs in the same workflow because a release
+  # created with GITHUB_TOKEN does not trigger the `release` event elsewhere.
+  build-macos:
+    needs: release
+    if: needs.release.outputs.published == 'true'
+    runs-on: macos-latest
+    steps:
+      - name: Checkout released tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release.outputs.tag }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build macOS DMG
+        run: npm run build:mac
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.release.outputs.tag }}
+          files: dist/*.dmg
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-windows:
+    needs: release
+    if: needs.release.outputs.published == 'true'
+    runs-on: windows-latest
+    steps:
+      - name: Checkout released tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release.outputs.tag }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Windows installer
+        run: npm run build:win
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.release.outputs.tag }}
+          files: |
+            dist/*.exe
+            dist/*.blockmap
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
