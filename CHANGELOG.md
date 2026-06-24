@@ -1,3 +1,10 @@
+## [1.14.7](https://github.com/jacqinthebox/vomit-vnext/compare/v1.14.6...v1.14.7) (2026-06-24)
+
+
+### Bug Fixes
+
+* **ai:** add document formatting and PDF reading ([57e95be](https://github.com/jacqinthebox/vomit-vnext/commit/57e95be030ba560ab3c360bbfdd5ff3a796e5579))
+
 ## [1.14.6](https://github.com/jacqinthebox/vomit-vnext/compare/v1.14.5...v1.14.6) (2026-06-18)
 
 
