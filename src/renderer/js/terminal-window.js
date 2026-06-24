@@ -468,6 +468,7 @@
     '/write',
     '/write-new',
     '/rewrite',
+    '/format-to-md',
     '/append',
     '/presentation',
     '/pseudo',

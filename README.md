@@ -230,6 +230,7 @@ Type `/` in the AI terminal to open an inline command picker. Navigate with `↑
 - `/write <prompt>` - Insert AI response at cursor position
 - `/write-new <prompt>` - Create a new file with AI response
 - `/rewrite <prompt>` - Replace selection with AI response
+- `/format-to-md [instruction]` - Convert selected text, or the whole document, from pasted Word-style formatting to clean Markdown
 - `/append <prompt>` - Add AI response at end of document
 - `/presentation <topic>` - Generate a presentation with slides and speaker notes
 - `/pseudo` - Pseudonymize the current document (names, emails, IPs, secrets)
@@ -243,13 +244,15 @@ Type `/` in the AI terminal to open an inline command picker. Navigate with `↑
 - `/index <folder>` - Refresh only a specific folder inside the current bucket
 - `/reindex` - Clear and rebuild the current bucket's RAG index
 - `/rag <query>` - Search the current bucket index and ask AI with context
-- `/agent <prompt>` - Agentic mode with tools (bash, file read/write, web search)
+- `/agent <prompt>` - Agentic mode with tools (bash, file read/write, PDF text extraction, web search)
 - `/new` - Start a new conversation (clear history)
 - `/help` - Show all available commands
 
 **Web search with Tavily:**
 
 The `/agent` command supports real-time web search via [Tavily](https://tavily.com). Set your API key once via **AI menu → Set Tavily API Key...**. When you ask the agent to search the web (e.g. `/agent search for the latest news on...`), it will automatically call the Tavily search tool and include current results in its response.
+
+The agent can also read PDF documents directly. Ask `/agent summarize ./path/to/document.pdf` and Vomit extracts the PDF text internally, without requiring `pdftotext` or another system PDF utility.
 
 **RAG (Retrieval Augmented Generation):**
 

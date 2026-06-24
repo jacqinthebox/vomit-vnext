@@ -1030,6 +1030,80 @@ Now create the presentation about: ${topic}`;
     this.host.focus();
   }
 
+  stripMarkdownCodeFence(text) {
+    const trimmed = (text || '').trim();
+    const match = trimmed.match(/^```(?:markdown|md)?\s*\n([\s\S]*?)\n```$/i);
+    return match ? match[1].trim() : trimmed;
+  }
+
+  async formatToMarkdown(instruction, cwd) {
+    const extraInstruction = (instruction || '').trim();
+    const cmdLine = extraInstruction ? `/format-to-md ${extraInstruction}` : '/format-to-md';
+    this.appendTerminalOutput(`❯ ${cmdLine}`, 'input');
+    this.appendTerminalOutput('Formatting pasted Word text as Markdown...', 'system');
+
+    const cm = this.host.raw;
+    const hasSelection = this.host.somethingSelected();
+    const originalText = hasSelection ? this.host.getSelection() : this.host.getContent();
+
+    if (!originalText.trim()) {
+      this.appendTerminalOutput(
+        hasSelection ? 'Error: Selected text is empty.' : 'Error: Document is empty.',
+        'error'
+      );
+      return;
+    }
+
+    const selectionFrom = hasSelection ? cm.getCursor('from') : null;
+    const selectionTo = hasSelection ? cm.getCursor('to') : null;
+    const finalPrompt = `Convert the following content pasted from Microsoft Word into clean Markdown.
+
+Rules:
+- Preserve the original meaning, structure, headings, lists, links, and tables where possible.
+- Remove Word-specific artifacts, strange spacing, redundant blank lines, page headers/footers, and decorative formatting.
+- Use standard Markdown only.
+- Do not summarize or add new content.
+- Return ONLY the Markdown content, with no explanations and no fenced code block.
+${extraInstruction ? `- Additional instruction: ${extraInstruction}\n` : ''}
+Content:
+---
+${originalText}
+---`;
+
+    this.state.isClaudeRunning = true;
+    this.terminalStop.classList.remove('hidden');
+    this.showThinkingIndicator();
+    this.state.pseudoOutput = '';
+    this.state.pseudoCollecting = true;
+
+    try {
+      await window.vomit.claudeExecute(finalPrompt, cwd);
+      await this.waitForAIComplete();
+
+      const formatted = this.stripMarkdownCodeFence(this.state.pseudoOutput);
+      if (!formatted.trim()) {
+        this.appendTerminalOutput('Error: AI returned empty Markdown.', 'error');
+        return;
+      }
+
+      if (hasSelection) {
+        this.host.replaceRange(formatted, selectionFrom, selectionTo);
+        this.appendTerminalOutput('✓ Selection formatted as Markdown', 'output');
+      } else {
+        this.host.setContent(formatted);
+        this.appendTerminalOutput('✓ Document formatted as Markdown', 'output');
+      }
+      this.host.focus();
+      this.markOutputComplete();
+    } catch (err) {
+      this.state.pseudoCollecting = false;
+      this.hideThinkingIndicator();
+      this.appendTerminalOutput(`Error: ${err.message}`, 'error');
+      this.state.isClaudeRunning = false;
+      this.terminalStop.classList.add('hidden');
+    }
+  }
+
   async pseudonymizeCurrentDoc(cwd) {
     this.appendTerminalOutput('❯ /pseudo', 'input');
     this.appendTerminalOutput('Pseudonymizing current document...', 'system');

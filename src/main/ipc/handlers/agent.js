@@ -7,6 +7,11 @@ const http = require('http');
 const { execSync } = require('child_process');
 const aiProviders = require('../../services/aiProviders');
 
+async function readPdfText(filePath) {
+  const { extractPdfText } = require('../../services/pdfText');
+  return extractPdfText(filePath);
+}
+
 // Tool definitions for Ollama
 const agentTools = [
   {
@@ -30,13 +35,30 @@ const agentTools = [
     type: 'function',
     function: {
       name: 'read_file',
-      description: 'Read the contents of a file',
+      description: 'Read the contents of a text file or extract text from a PDF document. Use this directly for .pdf files; no external PDF command-line tools are needed.',
       parameters: {
         type: 'object',
         properties: {
           path: {
             type: 'string',
             description: 'The path to the file to read'
+          }
+        },
+        required: ['path']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'read_pdf',
+      description: 'Extract readable text from a PDF document so it can be summarized or analyzed. Use this for .pdf files instead of shell commands like pdftotext.',
+      parameters: {
+        type: 'object',
+        properties: {
+          path: {
+            type: 'string',
+            description: 'The path to the PDF file to read'
           }
         },
         required: ['path']
@@ -172,7 +194,20 @@ async function executeAgentTool(toolName, args, cwd, configStore) {
         if (!fs.existsSync(filePath)) {
           return `Error: File not found: ${filePath}`;
         }
+        if (path.extname(filePath).toLowerCase() === '.pdf') {
+          return await readPdfText(filePath);
+        }
         return fs.readFileSync(filePath, 'utf-8');
+      }
+      case 'read_pdf': {
+        const filePath = path.isAbsolute(safeArgs.path) ? safeArgs.path : path.join(cwd, safeArgs.path);
+        if (!fs.existsSync(filePath)) {
+          return `Error: File not found: ${filePath}`;
+        }
+        if (path.extname(filePath).toLowerCase() !== '.pdf') {
+          return `Error: Not a PDF file: ${filePath}`;
+        }
+        return await readPdfText(filePath);
       }
       case 'write_file': {
         const filePath = path.isAbsolute(safeArgs.path) ? safeArgs.path : path.join(cwd, safeArgs.path);
@@ -483,6 +518,7 @@ function registerHandlers(ipcMain, { state, bus, configStore, terminalService })
       content: `You are a helpful assistant with access to tools. Use tools to help the user accomplish tasks. The current working directory is: ${workingDir}. Today's date is ${today}.
 
 When you need to run commands, read files, write files, or list directories, use the appropriate tool.
+When the user asks about a PDF or provides a .pdf path, use read_pdf or read_file to extract the document text directly. Do not look for pdftotext, Python PDF libraries, or other external PDF utilities first.
 When the user asks you to search the internet, look up current information, find recent news, or uses words like "zoek", "search", "latest", "recent", or "news", ALWAYS use the tavily_search tool — do not answer from memory.
 After using tools, provide a summary of what you did. You have access to conversation history, so you can answer follow-up questions about previous results.`
     };
@@ -524,6 +560,7 @@ After using tools, provide a summary of what you did. You have access to convers
               const parsed = JSON.parse(jsonMatch[0]);
               const toolName = parsed.name === 'Execute a shell command and return the output' ? 'bash' :
                               parsed.name === 'Read the contents of a file' ? 'read_file' :
+                              parsed.name === 'Extract readable text from a PDF document so it can be summarized or analyzed' ? 'read_pdf' :
                               parsed.name === 'Write content to a file' ? 'write_file' :
                               parsed.name === 'List files and directories in a path' ? 'list_files' :
                               parsed.name;

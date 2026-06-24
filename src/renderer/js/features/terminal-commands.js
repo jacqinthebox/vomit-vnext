@@ -62,6 +62,16 @@ const COMMAND_REGISTRY = [
     }
   },
   {
+    name: '/format-to-md',
+    description: 'Format pasted Word text as Markdown',
+    args: 'optional',
+    argsHint: '[instruction]',
+    requiresCwd: true,
+    async handler(args, ctx, cwd) {
+      await ctx.formatToMarkdown(args, cwd);
+    }
+  },
+  {
     name: '/append',
     description: 'Add AI response at end of document',
     args: 'required',
