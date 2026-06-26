@@ -1,3 +1,10 @@
+## [1.14.9](https://github.com/jacqinthebox/vomit-vnext/compare/v1.14.8...v1.14.9) (2026-06-26)
+
+
+### Bug Fixes
+
+* **rag:** list relevant source documents for /rag results ([e1a281d](https://github.com/jacqinthebox/vomit-vnext/commit/e1a281d55f424db7ed3010c8dcb31ff609e58d80))
+
 ## [1.14.8](https://github.com/jacqinthebox/vomit-vnext/compare/v1.14.7...v1.14.8) (2026-06-26)
 
 
