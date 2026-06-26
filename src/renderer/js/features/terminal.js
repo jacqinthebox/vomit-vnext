@@ -94,6 +94,11 @@ class TerminalManager {
       }
     });
 
+    window.addEventListener('vomit:claude-metrics', (e) => {
+      const line = this._formatMetrics(e.detail);
+      if (line) this.appendTerminalOutput(line, 'system');
+    });
+
     window.addEventListener('vomit:toggle-shell-terminal', () => {
       this.toggleShellTerminal();
     });
@@ -2873,6 +2878,25 @@ Provide a helpful, accurate answer based on the context above. Cite the source d
     if (indicator) {
       indicator.remove();
     }
+  }
+
+  // Format LLM performance metrics into a compact one-line summary for
+  // comparing backends/models (e.g. Ollama vs MLX). Returns '' if empty.
+  _formatMetrics(m) {
+    if (!m) return '';
+    const fmtMs = (ms) => (ms >= 1000 ? `${(ms / 1000).toFixed(1)}s` : `${Math.round(ms)}ms`);
+    const parts = [];
+    if (m.model) parts.push(`${m.model}${m.provider ? ` (${m.provider})` : ''}`);
+    if (m.genTokens != null) parts.push(`${m.genTokens} tok`);
+    // Headline rate is overall throughput (gen tokens / total time) — the same
+    // measurement for every backend, so it's comparable.
+    if (m.tokensPerSec != null) parts.push(`${m.estimated ? '~' : ''}${m.tokensPerSec.toFixed(1)} tok/s`);
+    // Extras only available when the backend reports them (Ollama).
+    if (m.decodeTps != null) parts.push(`${m.decodeTps.toFixed(0)} tok/s decode`);
+    if (m.ttftMs != null) parts.push(`TTFT ${fmtMs(m.ttftMs)}`);
+    if (m.totalMs != null) parts.push(fmtMs(m.totalMs));
+    if (!parts.length) return '';
+    return `⚡ ${parts.join(' · ')}`;
   }
 
   markOutputComplete() {

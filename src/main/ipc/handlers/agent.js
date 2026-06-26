@@ -532,6 +532,7 @@ After using tools, provide a summary of what you did. You have access to convers
     try {
       let iterations = 0;
       const maxIterations = 20; // Prevent infinite loops
+      let lastMetrics = null;
 
       while (iterations < maxIterations && !state.agentAborted) {
         iterations++;
@@ -545,6 +546,7 @@ After using tools, provide a summary of what you did. You have access to convers
         if (!assistantMessage) {
           throw new Error('No response from model');
         }
+        if (assistantMessage.metrics) lastMetrics = assistantMessage.metrics;
 
         // Add assistant message to messages for multi-turn tool loop
         messages.push(assistantMessage);
@@ -635,6 +637,7 @@ After using tools, provide a summary of what you did. You have access to convers
       // Notify renderer to update context stats
       bus.send('context-stats-updated');
       bus.sendToTerminal('context-stats-updated');
+      if (lastMetrics) sendOutput('claude-metrics', lastMetrics);
       sendOutput('claude-done', 0);
       return 0;
     } catch (e) {
@@ -700,6 +703,7 @@ After researching, output ONLY the final document body in GitHub-Flavored Markdo
       let iterations = 0;
       const maxIterations = 20;
       let finalContent = '';
+      let lastMetrics = null;
 
       while (iterations < maxIterations && !state.agentAborted) {
         iterations++;
@@ -712,6 +716,7 @@ After researching, output ONLY the final document body in GitHub-Flavored Markdo
         if (!assistantMessage) {
           throw new Error('No response from model');
         }
+        if (assistantMessage.metrics) lastMetrics = assistantMessage.metrics;
 
         messages.push(assistantMessage);
 
@@ -759,6 +764,7 @@ After researching, output ONLY the final document body in GitHub-Flavored Markdo
 
       bus.send('context-stats-updated');
       bus.sendToTerminal('context-stats-updated');
+      if (lastMetrics) sendOutput('claude-metrics', lastMetrics);
       sendOutput('claude-done', 0);
       return finalContent;
     } catch (e) {

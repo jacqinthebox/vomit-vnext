@@ -141,6 +141,9 @@ function registerHandlers(ipcMain, { state, bus, configStore, terminalService })
       if (!aborted && assistant.content) {
         state.chatHistory.push({ role: 'assistant', content: assistant.content });
       }
+      if (!aborted && assistant.metrics) {
+        terminalService.syncTerminalOutput('claude-metrics', assistant.metrics);
+      }
       terminalService.syncTerminalOutput('claude-done', 0);
       return 0;
     } catch (err) {

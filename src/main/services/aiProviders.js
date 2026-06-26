@@ -151,8 +151,62 @@ function streamChat(opts) {
   return streamOllamaChat(opts);
 }
 
+// Rough token estimate when a provider doesn't report usage (~4 chars/token).
+function estimateTokens(text) {
+  return text ? Math.max(1, Math.round(text.length / 4)) : 0;
+}
+
+// Build a metrics object from Ollama's native timing/token counters (ns units).
+// The headline `tokensPerSec` is overall throughput (gen tokens / total wall
+// clock) so it's directly comparable to other backends; Ollama also exposes a
+// true decode rate and time-to-first-token, which we surface as extras.
+function buildOllamaMetrics({ model, startedAt, firstTokenAt, stats }) {
+  const totalMs = Date.now() - startedAt;
+  let genTokens = null;
+  let promptTokens = null;
+  let decodeTps = null;
+  let ttftMs = null;
+  if (stats) {
+    genTokens = stats.eval_count != null ? stats.eval_count : null;
+    promptTokens = stats.prompt_eval_count != null ? stats.prompt_eval_count : null;
+    if (genTokens != null && stats.eval_duration) {
+      decodeTps = genTokens / (stats.eval_duration / 1e9);
+    }
+    if (stats.load_duration != null || stats.prompt_eval_duration != null) {
+      ttftMs = ((stats.load_duration || 0) + (stats.prompt_eval_duration || 0)) / 1e6;
+    }
+  }
+  if (ttftMs == null && firstTokenAt) ttftMs = firstTokenAt - startedAt;
+  const tokensPerSec = (genTokens != null && totalMs > 0) ? genTokens / (totalMs / 1000) : null;
+  return { provider: 'ollama', model, promptTokens, genTokens, tokensPerSec, decodeTps, ttftMs, totalMs, estimated: false };
+}
+
+// Build a metrics object for OpenAI-compatible servers (e.g. mlx_lm.server).
+// These report token usage but no decode timing. The headline is overall
+// throughput (always comparable). If the server genuinely streamed tokens over
+// time — the decode window is a real span and a real fraction of the request —
+// we can also derive a trustworthy decode rate and TTFT from client timing.
+// When it buffered everything into an end-of-request burst, the window collapses
+// and we omit those (a per-window rate there would be wildly inflated).
+function buildOpenAIMetrics({ model, startedAt, firstTokenAt, usage, content }) {
+  const endAt = Date.now();
+  const totalMs = endAt - startedAt;
+  const reported = usage && usage.completion_tokens != null;
+  const genTokens = reported ? usage.completion_tokens : estimateTokens(content);
+  const promptTokens = usage && usage.prompt_tokens != null ? usage.prompt_tokens : null;
+  const tokensPerSec = totalMs > 0 ? genTokens / (totalMs / 1000) : null;
+
+  const decodeMs = firstTokenAt ? endAt - firstTokenAt : null;
+  const streamed = decodeMs != null && decodeMs > 300 && decodeMs > totalMs * 0.25 && genTokens >= 16;
+  const decodeTps = streamed ? genTokens / (decodeMs / 1000) : null;
+  const ttftMs = streamed ? firstTokenAt - startedAt : null;
+
+  return { provider: 'openai', model, promptTokens, genTokens, tokensPerSec, decodeTps, ttftMs, totalMs, estimated: !reported };
+}
+
 function streamOllamaChat({ baseUrl, model, messages, tools, onContent, isAborted, onRequest }) {
   return new Promise((resolve, reject) => {
+    const startedAt = Date.now();
     const url = new URL('/api/chat', baseUrl || OLLAMA_DEFAULT_URL);
     const body = JSON.stringify({
       model,
@@ -184,6 +238,8 @@ function streamOllamaChat({ baseUrl, model, messages, tools, onContent, isAborte
         let buffer = '';
         let content = '';
         let toolCalls = null;
+        let firstTokenAt = null;
+        let finalStats = null;
 
         const handleLine = (line) => {
           if (!line.trim()) return;
@@ -192,12 +248,17 @@ function streamOllamaChat({ baseUrl, model, messages, tools, onContent, isAborte
             if (json.message && json.message.content) {
               const text = contentToText(json.message.content);
               if (text) {
+                if (firstTokenAt === null) firstTokenAt = Date.now();
                 content += text;
                 if (onContent) onContent(text);
               }
             }
             if (json.message && json.message.tool_calls) {
               toolCalls = json.message.tool_calls;
+            }
+            // The final streamed object carries Ollama's timing/token stats.
+            if (json.eval_count != null || json.done) {
+              finalStats = json;
             }
           } catch (_) {
             // Ignore partial JSON
@@ -217,7 +278,8 @@ function streamOllamaChat({ baseUrl, model, messages, tools, onContent, isAborte
           resolve({
             role: 'assistant',
             content,
-            tool_calls: toolCalls || undefined
+            tool_calls: toolCalls || undefined,
+            metrics: buildOllamaMetrics({ model, startedAt, firstTokenAt, stats: finalStats })
           });
         });
       }
@@ -235,6 +297,9 @@ function streamOllamaChat({ baseUrl, model, messages, tools, onContent, isAborte
 
 function streamOpenAIChat({ baseUrl, apiKey, model, messages, tools, onContent, isAborted, onRequest }) {
   return new Promise((resolve, reject) => {
+    const startedAt = Date.now();
+    let firstTokenAt = null;
+    let usage = null;
     if (!baseUrl) {
       reject(new Error('OpenAI-compatible base URL is not configured. Set it via AI menu → Configure OpenAI-Compatible Endpoint…'));
       return;
@@ -254,7 +319,11 @@ function streamOpenAIChat({ baseUrl, apiKey, model, messages, tools, onContent, 
       // The OpenAI spec defaults to a relatively small cap that some servers
       // (notably mlx_lm.server, default 512) honour, which can starve the
       // model before it ever emits real output. Allow a generous budget.
-      max_tokens: 4096
+      max_tokens: 4096,
+      // Ask the server to include token usage in the final stream chunk so we
+      // can report exact tokens/sec (mlx_lm.server and most OpenAI-compatible
+      // servers honour this; we fall back to an estimate if it's absent).
+      stream_options: { include_usage: true }
     };
     if (tools && tools.length) payload.tools = tools;
 
@@ -297,10 +366,14 @@ function streamOpenAIChat({ baseUrl, apiKey, model, messages, tools, onContent, 
         if (trimmed === '[DONE]') return;
         try {
           const json = JSON.parse(trimmed);
+          // Usage typically arrives in a final chunk that has an empty choices
+          // array (when stream_options.include_usage is set).
+          if (json.usage) usage = json.usage;
           const choice = json.choices && json.choices[0];
           if (!choice) return;
           const delta = choice.delta || {};
           if (typeof delta.reasoning === 'string' && delta.reasoning.length) {
+            if (firstTokenAt === null) firstTokenAt = Date.now();
             if (!inReasoning) {
               inReasoning = true;
               if (onContent) onContent('💭 ');
@@ -309,6 +382,7 @@ function streamOpenAIChat({ baseUrl, apiKey, model, messages, tools, onContent, 
           }
           const deltaContent = contentToText(delta.content);
           if (deltaContent.length) {
+            if (firstTokenAt === null) firstTokenAt = Date.now();
             if (inReasoning) {
               inReasoning = false;
               if (onContent) onContent('\n\n');
@@ -374,7 +448,8 @@ function streamOpenAIChat({ baseUrl, apiKey, model, messages, tools, onContent, 
         resolve({
           role: 'assistant',
           content,
-          tool_calls: toolCalls.length ? toolCalls : undefined
+          tool_calls: toolCalls.length ? toolCalls : undefined,
+          metrics: buildOpenAIMetrics({ model, startedAt, firstTokenAt, usage, content })
         });
       });
     });

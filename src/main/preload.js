@@ -188,6 +188,10 @@ ipcRenderer.on('claude-done', (event, code) => {
   window.dispatchEvent(new CustomEvent('vomit:claude-done', { detail: code }));
 });
 
+ipcRenderer.on('claude-metrics', (event, metrics) => {
+  window.dispatchEvent(new CustomEvent('vomit:claude-metrics', { detail: metrics }));
+});
+
 ipcRenderer.on('rag-progress', (event, progress) => {
   window.dispatchEvent(new CustomEvent('vomit:rag-progress', { detail: progress }));
 });
