@@ -1,3 +1,10 @@
+## [1.14.8](https://github.com/jacqinthebox/vomit-vnext/compare/v1.14.7...v1.14.8) (2026-06-26)
+
+
+### Bug Fixes
+
+* **ai:** web-grounded write commands, clickable wikilinks, and /summarize-folder ([880d87d](https://github.com/jacqinthebox/vomit-vnext/commit/880d87d9459fa17552cda48c0ff213d28b43fe10))
+
 ## [1.14.7](https://github.com/jacqinthebox/vomit-vnext/compare/v1.14.6...v1.14.7) (2026-06-24)
 
 
