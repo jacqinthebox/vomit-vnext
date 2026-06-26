@@ -2661,6 +2661,17 @@ ${chunks[chunkIndex]}
     }
   }
 
+  // Show a RAG source path relative to the bucket root when possible, else
+  // just the file name — keeps the sources list and citations readable.
+  _ragDisplayPath(file, root) {
+    if (!file) return '';
+    if (root && window.PathUtils.isSubPath(file, root)) {
+      const rel = window.PathUtils.relativeParts(file, root).join('/');
+      if (rel) return rel;
+    }
+    return window.PathUtils.basename(file);
+  }
+
   async searchWithRAG(query, cwd) {
     this.appendTerminalOutput(`❯ /rag ${query}`, 'input');
 
@@ -2682,12 +2693,31 @@ ${chunks[chunkIndex]}
         return;
       }
 
-      // Build context from search results
-      this.appendTerminalOutput(`Found ${results.chunks.length} relevant chunks. Querying AI...`, 'system');
+      // Summarize which documents the answer draws on (best similarity per
+      // file), so the user can see and verify the sources.
+      const fileStats = new Map();
+      for (const chunk of results.chunks) {
+        const stat = fileStats.get(chunk.file) || { file: chunk.file, best: 0, count: 0, source: chunk.source };
+        stat.best = Math.max(stat.best, chunk.similarity || 0);
+        stat.count += 1;
+        if (chunk.source === 'wikilink') stat.source = 'wikilink';
+        fileStats.set(chunk.file, stat);
+      }
+      const sources = [...fileStats.values()].sort((a, b) => b.best - a.best);
+
+      this.appendTerminalOutput(`Found ${results.chunks.length} relevant chunks across ${sources.length} document(s):`, 'system');
+      for (const s of sources) {
+        const rel = this._ragDisplayPath(s.file, cwd);
+        const pct = Math.round((s.best || 0) * 100);
+        const chunkNote = s.count > 1 ? `, ${s.count} chunks` : '';
+        const via = s.source === 'wikilink' ? ' (via wikilink)' : '';
+        this.appendTerminalOutput(`  • ${rel} (${pct}% match${chunkNote})${via}`, 'output');
+      }
+      this.appendTerminalOutput('Querying AI...', 'system');
 
       const contextParts = results.chunks.map((chunk) => {
         const tag = chunk.source === 'wikilink' ? ' (via wikilink)' : '';
-        return `[Source: ${chunk.file}${tag}]\n${chunk.content}`;
+        return `[Source: ${this._ragDisplayPath(chunk.file, cwd)}${tag}]\n${chunk.content}`;
       });
       const context = contextParts.join('\n\n---\n\n');
 
@@ -2700,7 +2730,7 @@ ${context}
 
 User question: ${query}
 
-Provide a helpful, accurate answer based on the context above. If the context doesn't contain relevant information, say so.`;
+Provide a helpful, accurate answer based on the context above. Cite the source documents you used by their file name (e.g. "(source: notes.md)") next to the relevant points, and end with a short "Sources:" list of the documents you drew from. If the context doesn't contain relevant information, say so.`;
 
       this.state.isClaudeRunning = true;
       this.terminalStop.classList.remove('hidden');
