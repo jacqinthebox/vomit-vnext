@@ -1,3 +1,10 @@
+## [1.14.10](https://github.com/jacqinthebox/vomit-vnext/compare/v1.14.9...v1.14.10) (2026-06-26)
+
+
+### Bug Fixes
+
+* **ai:** show LLM performance metrics for each response ([360568a](https://github.com/jacqinthebox/vomit-vnext/commit/360568a6fa182aa9d3fc9caf6bce0ec7f8a4b43d))
+
 ## [1.14.9](https://github.com/jacqinthebox/vomit-vnext/compare/v1.14.8...v1.14.9) (2026-06-26)
 
 
