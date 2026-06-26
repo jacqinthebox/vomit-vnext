@@ -52,13 +52,23 @@ const COMMAND_REGISTRY = [
     }
   },
   {
-    name: '/rewrite',
+    name: '/write-replace',
     description: 'Replace selection with AI response',
     args: 'required',
     argsHint: '<prompt>',
     requiresCwd: true,
     async handler(args, ctx, cwd) {
       await ctx.executeWriteCommand(args, 'replace', cwd);
+    }
+  },
+  {
+    name: '/summarize-folder',
+    description: 'Summarize the current folder and all subfolders into a new doc',
+    args: 'optional',
+    argsHint: '[subfolder]',
+    requiresCwd: true,
+    async handler(args, ctx, cwd) {
+      await ctx.summarizeFolder(args, cwd);
     }
   },
   {
@@ -72,8 +82,8 @@ const COMMAND_REGISTRY = [
     }
   },
   {
-    name: '/append',
-    description: 'Add AI response at end of document',
+    name: '/write-append',
+    description: 'Research the web and append to the current document',
     args: 'required',
     argsHint: '<prompt>',
     requiresCwd: true,
@@ -83,40 +93,40 @@ const COMMAND_REGISTRY = [
   },
   {
     // Must be registered before /pseudo so the longer name matches first
-    name: '/pseudo deterministic',
+    name: '/pseudo-deterministic',
     description: 'Fast deterministic repo/folder pseudonymization',
     args: 'optional',
     argsHint: '[folder-name]',
     requiresCwd: true,
     async handler(args, ctx, cwd) {
-      await ctx.runPseudoRepo(cwd, args.trim() || null, 'deterministic', '/pseudo deterministic');
+      await ctx.runPseudoRepo(cwd, args.trim() || null, 'deterministic', '/pseudo-deterministic');
     }
   },
   {
     // Must be registered before /pseudo so the longer name matches first
-    name: '/pseudo ai',
+    name: '/pseudo-ai',
     description: 'Hybrid deterministic + AI repo/folder pseudonymization',
     args: 'optional',
     argsHint: '[folder-name]',
     requiresCwd: true,
     async handler(args, ctx, cwd) {
-      await ctx.runPseudoRepo(cwd, args.trim() || null, 'ai', '/pseudo ai');
+      await ctx.runPseudoRepo(cwd, args.trim() || null, 'ai', '/pseudo-ai');
     }
   },
   {
     // Must be registered before /pseudo so the longer name matches first
-    name: '/pseudo run',
+    name: '/pseudo-run',
     description: 'Pseudonymize repos in bucket (alias for deterministic)',
     args: 'optional',
     argsHint: '[folder-name]',
     requiresCwd: true,
     async handler(args, ctx, cwd) {
-      await ctx.runPseudoRepo(cwd, args.trim() || null, 'deterministic', '/pseudo run');
+      await ctx.runPseudoRepo(cwd, args.trim() || null, 'deterministic', '/pseudo-run');
     }
   },
   {
     // Must be registered before /pseudo so the longer name matches first
-    name: '/pseudo all',
+    name: '/pseudo-all',
     description: 'Pseudonymize all files (legacy)',
     args: 'none',
     argsHint: '',
@@ -126,7 +136,7 @@ const COMMAND_REGISTRY = [
     }
   },
   {
-    name: '/pseudo map',
+    name: '/pseudo-map',
     description: 'Show current entity mapping',
     args: 'none',
     argsHint: '',
@@ -146,7 +156,7 @@ const COMMAND_REGISTRY = [
     }
   },
   {
-    name: '/depseudo',
+    name: '/pseudo-depseudo',
     description: 'Reverse-map pseudo repo changes to real repo',
     args: 'optional',
     argsHint: '[repo-name]',
@@ -253,7 +263,7 @@ const COMMAND_REGISTRY = [
 ];
 
 // Sorted by name length descending so the most specific prefix always wins
-// (e.g. /write-new before /write, /pseudo all before /pseudo).
+// (e.g. /write-new before /write, /pseudo-all before /pseudo).
 const _sortedRegistry = [...COMMAND_REGISTRY].sort((a, b) => b.name.length - a.name.length);
 
 /**

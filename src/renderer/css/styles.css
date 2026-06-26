@@ -1367,6 +1367,18 @@ html, body {
   text-decoration: underline;
 }
 
+#preview a.wikilink {
+  font-weight: 600;
+  cursor: pointer;
+  border-bottom: 1px dashed var(--accent-color);
+}
+
+#preview a.wikilink:hover {
+  background: color-mix(in srgb, var(--accent-color) 12%, transparent);
+  border-bottom-style: solid;
+  text-decoration: none;
+}
+
 /* Slide separator in preview */
 #preview .slide-separator {
   text-align: center;

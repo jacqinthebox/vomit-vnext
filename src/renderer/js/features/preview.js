@@ -42,6 +42,21 @@ class PreviewManager {
 
     // Setup scroll synchronization
     this.setupScrollSync();
+
+    // Clicking a rendered [[wikilink]] opens the target document.
+    this.setupWikilinkClicks();
+  }
+
+  setupWikilinkClicks() {
+    this.dom.preview.addEventListener('click', (e) => {
+      const link = e.target.closest('a.wikilink');
+      if (!link) return;
+      e.preventDefault();
+      const target = link.dataset.wikilink;
+      if (target) {
+        window.dispatchEvent(new CustomEvent('vomit:open-wikilink', { detail: target }));
+      }
+    });
   }
 
   setupScrollSync() {
@@ -776,10 +791,27 @@ class PreviewManager {
       }
     );
 
+    processed = this.renderWikilinks(processed);
+
     if (window.marked) {
       return window.marked.parse(processed);
     }
     return this.simpleMarkdown(processed);
+  }
+
+  // Convert [[target]] / [[target|alias]] into clickable anchors, leaving any
+  // wikilink-looking text inside code spans or fenced blocks untouched.
+  renderWikilinks(text) {
+    const tokens = /(```[\s\S]*?```|~~~[\s\S]*?~~~|`[^`\n]*`)|\[\[([^\[\]\n]+?)\]\]/g;
+    return text.replace(tokens, (match, code, inner) => {
+      if (code) return code;
+      const pipeIdx = inner.indexOf('|');
+      const target = (pipeIdx === -1 ? inner : inner.slice(0, pipeIdx)).trim();
+      const label = (pipeIdx === -1 ? inner : inner.slice(pipeIdx + 1)).trim();
+      if (!target) return match;
+      const safeTarget = target.replace(/"/g, '&quot;');
+      return `<a href="#" class="wikilink" data-wikilink="${safeTarget}">${this._escapeHtml(label)}</a>`;
+    });
   }
 
   simpleMarkdown(text) {

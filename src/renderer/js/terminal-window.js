@@ -467,13 +467,14 @@
   const EDITOR_COMMANDS = new Set([
     '/write',
     '/write-new',
-    '/rewrite',
+    '/write-replace',
+    '/summarize-folder',
     '/format-to-md',
-    '/append',
+    '/write-append',
     '/presentation',
     '/pseudo',
-    '/pseudo all',
-    '/depseudo'
+    '/pseudo-all',
+    '/pseudo-depseudo'
   ]);
 
   function persistHistory() {

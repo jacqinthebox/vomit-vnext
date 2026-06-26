@@ -40,7 +40,7 @@ Keyboard shortcuts shown as **Cmd** on macOS use **Ctrl** on Windows/Linux. **Op
 - **Local AI (Privacy First)** - Built-in AI terminal powered by Ollama - your data stays on your machine
 - **RAG Search** - Index a bucket and ask AI questions with context from that bucket
 - **Markdown Todos** - Track `- [ ]` tasks in notes with a bucket-wide Todo Explorer
-- **Pseudonymization** - Anonymize sensitive data (names, emails, IPs) with AI, reversible with `/depseudo`
+- **Pseudonymization** - Anonymize sensitive data (names, emails, IPs) with AI, reversible with `/pseudo-depseudo`
 - **LaTeX Math** - Render formulas with KaTeX (`$inline$` and `$$display$$`)
 - **PlantUML & Mermaid** - Render sequence diagrams, flowcharts, and more
 - **Emoji Shortcodes** - Use `:smile:` syntax like GitHub/Slack
@@ -228,18 +228,20 @@ Type `/` in the AI terminal to open an inline command picker. Navigate with `↑
 **Special commands:**
 - `/doc <prompt>` - Include the current document in your prompt
 - `/write <prompt>` - Insert AI response at cursor position
-- `/write-new <prompt>` - Create a new file with AI response
-- `/rewrite <prompt>` - Replace selection with AI response
+- `/write-new <prompt>` - Prompts for a document name, then **researches the web** (via the agent's Tavily search) and writes a new, web-grounded Markdown file with frontmatter — saved to disk automatically. Requires a tool-capable model and a Tavily API key (see below).
+- `/write-replace <prompt>` - Replace selection with AI response
+- `/summarize-folder [subfolder]` - Reads every Markdown/text file in the current folder (or an optional subfolder) and **all subfolders**, then writes a structured summary into a new `<folder>-summary.md` document
 - `/format-to-md [instruction]` - Convert selected text, or the whole document, from pasted Word-style formatting to clean Markdown
-- `/append <prompt>` - Add AI response at end of document
+- `/write-append <prompt>` - **Researches the web** and adds new, document-aware content at the end of the current doc (saving it if it's on disk). Like `/write-new`, it needs a tool-capable model and a Tavily API key.
 - `/presentation <topic>` - Generate a presentation with slides and speaker notes
 - `/pseudo` - Pseudonymize the current document (names, emails, IPs, secrets)
-- `/pseudo all` - Pseudonymize all files in the current folder
-- `/pseudo deterministic [folder]` - Fast local repo/folder pseudonymization for Terraform/IaC, Azure DevOps, Python/.NET config, Kubernetes, Docker, and common secrets while preserving structural API fields and Helm template syntax
-- `/pseudo ai [folder]` - Hybrid deterministic + AI repo/folder pseudonymization for prose documents, architecture designs, HLDs, legal docs, and advisory text
-- `/pseudo run [folder]` - Alias for `/pseudo deterministic [folder]`
+- `/pseudo-all` - Pseudonymize all files in the current folder
+- `/pseudo-deterministic [folder]` - Fast local repo/folder pseudonymization for Terraform/IaC, Azure DevOps, Python/.NET config, Kubernetes, Docker, and common secrets while preserving structural API fields and Helm template syntax
+- `/pseudo-ai [folder]` - Hybrid deterministic + AI repo/folder pseudonymization for prose documents, architecture designs, HLDs, legal docs, and advisory text
+- `/pseudo-run [folder]` - Alias for `/pseudo-deterministic [folder]`
+- `/pseudo-map` - Show the current entity mapping
 - Pseudonymization processes text-based files such as `.md`, `.markdown`, `.txt`, `.adoc`, `.rst`, YAML/JSON, IaC, config, and source files; binary documents such as `.docx`, `.pdf`, `.xlsx`, and `.pptx` are skipped.
-- `/depseudo` - Restore original data from pseudonymized file using the mapping
+- `/pseudo-depseudo` - Restore original data from pseudonymized file using the mapping
 - `/index` - Index the current bucket for RAG search
 - `/index <folder>` - Refresh only a specific folder inside the current bucket
 - `/reindex` - Clear and rebuild the current bucket's RAG index
@@ -250,7 +252,7 @@ Type `/` in the AI terminal to open an inline command picker. Navigate with `↑
 
 **Web search with Tavily:**
 
-The `/agent` command supports real-time web search via [Tavily](https://tavily.com). Set your API key once via **AI menu → Set Tavily API Key...**. When you ask the agent to search the web (e.g. `/agent search for the latest news on...`), it will automatically call the Tavily search tool and include current results in its response.
+The `/agent`, `/write-new`, and `/write-append` commands support real-time web search via [Tavily](https://tavily.com). Set your API key once via **AI menu → Set Tavily API Key...**. When you ask the agent to search the web (e.g. `/agent search for the latest news on...`), it will automatically call the Tavily search tool and include current results in its response. `/write-new` always searches the web before writing so new documents start from current information; the research activity is shown in the terminal while only the final document is written to the editor.
 
 The agent can also read PDF documents directly. Ask `/agent summarize ./path/to/document.pdf` and Vomit extracts the PDF text internally, without requiring `pdftotext` or another system PDF utility.
 

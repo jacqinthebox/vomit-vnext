@@ -213,11 +213,16 @@ When the picker is closed, `↑`/`↓` navigate command history (persisted acros
 | `/doc <prompt>` | Include current document in prompt |
 | `/write <prompt>` | Insert AI response at cursor |
 | `/write-new <prompt>` | Create new file with AI response |
-| `/rewrite <prompt>` | Replace selection with AI response |
-| `/append <prompt>` | Add AI response at end of document |
+| `/write-replace <prompt>` | Replace selection with AI response |
+| `/write-append <prompt>` | Research the web and append to the current document |
+| `/summarize-folder [subfolder]` | Summarize the current folder and all subfolders into a new doc |
 | `/pseudo` | Pseudonymize current document (names, emails, IPs) |
-| `/pseudo all` | Pseudonymize all files in current folder |
-| `/depseudo` | Restore original data from mapping |
+| `/pseudo-all` | Pseudonymize all files in current folder |
+| `/pseudo-deterministic [folder]` | Fast deterministic repo/folder pseudonymization |
+| `/pseudo-ai [folder]` | Hybrid deterministic + AI repo/folder pseudonymization |
+| `/pseudo-run [folder]` | Alias for `/pseudo-deterministic` |
+| `/pseudo-map` | Show current entity mapping |
+| `/pseudo-depseudo` | Restore original data from mapping |
 | `/index` | Index the current bucket for RAG |
 | `/index <folder>` | Refresh a specific folder in the bucket index |
 | `/reindex` | Clear and rebuild current bucket's RAG index |

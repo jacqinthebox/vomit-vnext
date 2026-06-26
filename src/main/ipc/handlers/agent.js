@@ -644,6 +644,130 @@ After using tools, provide a summary of what you did. You have access to convers
     }
   });
 
+  // Agent execution that researches the web (and other tools) and returns the
+  // final document content for /write-new. Tool activity streams to the terminal
+  // via 'claude-output'; the resolved value is the clean document body to insert
+  // into the editor. Does NOT touch agent conversation history (one-shot).
+  ipcMain.handle('agent-execute-editor', async (event, prompt, cwd) => {
+    const cfg = aiProviders.getActiveProviderConfig(configStore);
+
+    if (cfg.provider === aiProviders.PROVIDER_OLLAMA) {
+      if (!state.availableAITools.ollama) {
+        sendOutput('claude-error', 'Ollama is not installed. Install it from https://ollama.ai\n');
+        sendOutput('claude-done', 1);
+        return '';
+      }
+      if (state.availableAITools.ollamaModels.length === 0) {
+        sendOutput('claude-error', 'No Ollama models found. Run: ollama pull llama3.2\n');
+        sendOutput('claude-done', 1);
+        return '';
+      }
+    }
+
+    if (!cfg.model) {
+      const hint = cfg.provider === 'openai-compatible'
+        ? 'Configure it via AI menu → Configure OpenAI-Compatible Endpoint…'
+        : 'Select one from the AI menu.';
+      sendOutput('claude-error', `No AI model selected. ${hint}\n`);
+      sendOutput('claude-done', 1);
+      return '';
+    }
+
+    state.agentAborted = false;
+    const workingDir = cwd || process.env.HOME;
+    const today = new Date().toISOString().split('T')[0];
+
+    const systemMessage = {
+      role: 'system',
+      content: `You are a research-and-writing assistant with web access. The current working directory is: ${workingDir}. Today's date is ${today}.
+
+ALWAYS use the tavily_search tool to gather the latest, most accurate information BEFORE writing — do not rely on memory, as it may be outdated.
+
+After researching, output ONLY the final document body in GitHub-Flavored Markdown. Do NOT include a preamble, a description of your steps, or a summary of what you did. Do NOT wrap the document in code fences. Do NOT add YAML frontmatter (the editor adds it). Use tables, headings, and lists where they improve clarity.`
+    };
+
+    const messages = [systemMessage, { role: 'user', content: prompt }];
+
+    // Suppress the model's streamed prose from the terminal — it lands in the
+    // editor instead. Tool announcements/results (sent directly below) stay
+    // visible so the user can watch the research happen.
+    const quietOutput = (channel, ...args) => {
+      if (channel === 'claude-output') return;
+      sendOutput(channel, ...args);
+    };
+
+    try {
+      let iterations = 0;
+      const maxIterations = 20;
+      let finalContent = '';
+
+      while (iterations < maxIterations && !state.agentAborted) {
+        iterations++;
+
+        const assistantMessage = await streamProviderChat(
+          cfg, messages, agentTools, quietOutput,
+          () => state.agentAborted
+        );
+
+        if (!assistantMessage) {
+          throw new Error('No response from model');
+        }
+
+        messages.push(assistantMessage);
+
+        let toolCalls = assistantMessage.tool_calls || [];
+
+        if (toolCalls.length === 0 && assistantMessage.content) {
+          const jsonMatch = assistantMessage.content.match(/\{[\s\S]*"name"[\s\S]*"parameters"[\s\S]*\}/);
+          if (jsonMatch) {
+            try {
+              const parsed = JSON.parse(jsonMatch[0]);
+              let toolArgs = parsed.parameters || parsed.arguments || {};
+              if (toolArgs.command && Array.isArray(toolArgs.command)) {
+                toolArgs = { command: toolArgs.command.join(' ') };
+              }
+              toolCalls = [{ function: { name: parsed.name, arguments: toolArgs } }];
+            } catch (e) {
+              // Not valid JSON — treat as final content
+            }
+          }
+        }
+
+        if (toolCalls.length > 0) {
+          for (const toolCall of toolCalls) {
+            if (state.agentAborted) break;
+            const toolName = toolCall.function.name;
+            const toolArgs = normalizeToolArguments(toolCall.function.arguments);
+            sendOutput('claude-output', `\n▶ ${toolName}: ${JSON.stringify(toolArgs)}\n`);
+            const toolResult = await executeAgentTool(toolName, toolArgs, workingDir, configStore);
+            const displayResult = toolResult.length > 2000
+              ? toolResult.substring(0, 2000) + '\n... (truncated)'
+              : toolResult;
+            sendOutput('claude-output', `${displayResult}\n`);
+            messages.push(aiProviders.formatToolResultMessage(cfg.provider, toolCall, toolResult));
+          }
+        } else {
+          // No tool calls — this is the final document.
+          finalContent = assistantMessage.content || '';
+          break;
+        }
+      }
+
+      if (iterations >= maxIterations) {
+        sendOutput('claude-output', '\n(Reached maximum iterations)\n');
+      }
+
+      bus.send('context-stats-updated');
+      bus.sendToTerminal('context-stats-updated');
+      sendOutput('claude-done', 0);
+      return finalContent;
+    } catch (e) {
+      sendOutput('claude-error', `Agent error: ${e.message}\n`);
+      sendOutput('claude-done', 1);
+      return '';
+    }
+  });
+
   // Clear agent conversation history
   ipcMain.handle('agent-clear-history', () => {
     state.agentConversationHistory = [];

@@ -387,6 +387,16 @@ class Editor {
         }
       }
     });
+
+    // Clicking a rendered [[wikilink]] in the preview pane opens the target too.
+    window.addEventListener('vomit:open-wikilink', (e) => {
+      if (e.detail) this._openWikilink(e.detail);
+    });
+
+    // Align all markdown tables on request (e.g. after an AI write command).
+    window.addEventListener('vomit:format-tables', () => {
+      if (this.formatting) this.formatting.formatAllTables();
+    });
   }
 
   async _openWikilink(target) {

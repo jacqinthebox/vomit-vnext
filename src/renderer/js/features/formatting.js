@@ -195,6 +195,19 @@ class FormattingManager {
       tableLines.push(cm.getLine(i));
     }
 
+    const formattedLines = this._alignTableLines(tableLines);
+    if (!formattedLines) return;
+
+    const from = { line: startLine, ch: 0 };
+    const to = { line: endLine, ch: cm.getLine(endLine).length };
+    cm.replaceRange(formattedLines.join('\n'), from, to);
+    cm.focus();
+  }
+
+  // Align a contiguous block of pipe-table lines into padded columns.
+  // Returns the formatted lines, or null if it isn't a real GFM table
+  // (needs a header, a `---` separator row, and at least one body row).
+  _alignTableLines(tableLines) {
     const rows = tableLines.map(line => {
       const cells = line.split('|').map(cell => cell.trim());
       if (cells[0] === '') cells.shift();
@@ -202,7 +215,11 @@ class FormattingManager {
       return cells;
     });
 
-    if (rows.length < 2) return;
+    if (rows.length < 2) return null;
+    // Second row must be a separator row, else this isn't a table to align.
+    const isSeparator = rows[1].length > 0 &&
+      rows[1].every(cell => /^:?-+:?$/.test(cell));
+    if (!isSeparator) return null;
 
     const colCount = Math.max(...rows.map(r => r.length));
     const colWidths = [];
@@ -217,7 +234,7 @@ class FormattingManager {
       colWidths.push(maxWidth);
     }
 
-    const formattedLines = rows.map((row, rowIndex) => {
+    return rows.map((row, rowIndex) => {
       const cells = [];
       for (let col = 0; col < colCount; col++) {
         let cell = row[col] || '';
@@ -242,11 +259,43 @@ class FormattingManager {
       }
       return '| ' + cells.join(' | ') + ' |';
     });
+  }
 
-    const from = { line: startLine, ch: 0 };
-    const to = { line: endLine, ch: cm.getLine(endLine).length };
-    cm.replaceRange(formattedLines.join('\n'), from, to);
-    cm.focus();
+  // Align every markdown table in the document. Used after AI write commands
+  // so streamed tables come out tidy.
+  formatAllTables() {
+    const cm = this.host.cm;
+    const lineCount = cm.lineCount();
+
+    // Collect table blocks first, then rewrite bottom-up so line numbers
+    // stay valid as earlier blocks are replaced.
+    const blocks = [];
+    let i = 0;
+    while (i < lineCount) {
+      if (cm.getLine(i).trim().startsWith('|')) {
+        let end = i;
+        while (end + 1 < lineCount && cm.getLine(end + 1).trim().startsWith('|')) {
+          end++;
+        }
+        if (end > i) blocks.push({ start: i, end });
+        i = end + 1;
+      } else {
+        i++;
+      }
+    }
+
+    for (let b = blocks.length - 1; b >= 0; b--) {
+      const { start, end } = blocks[b];
+      const tableLines = [];
+      for (let j = start; j <= end; j++) tableLines.push(cm.getLine(j));
+      const formatted = this._alignTableLines(tableLines);
+      if (!formatted) continue;
+      cm.replaceRange(
+        formatted.join('\n'),
+        { line: start, ch: 0 },
+        { line: end, ch: cm.getLine(end).length }
+      );
+    }
   }
 
   insertSlide() {
