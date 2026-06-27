@@ -2457,12 +2457,14 @@ li.CodeMirror-hint-active {
   line-height: 1.2;
 }
 
-.terminal-output-stream.complete h1 { font-size: 1.5em; }
-.terminal-output-stream.complete h2 { font-size: 1.3em; }
-.terminal-output-stream.complete h3 { font-size: 1.15em; }
-.terminal-output-stream.complete h4 { font-size: 1.05em; }
-.terminal-output-stream.complete h5 { font-size: 1em; }
-.terminal-output-stream.complete h6 { font-size: 0.9em; }
+/* Keep headings close to body size — in a monospace terminal, large headings
+   break the uniform look. Distinguish them by weight + accent color instead. */
+.terminal-output-stream.complete h1 { font-size: 1.15em; }
+.terminal-output-stream.complete h2 { font-size: 1.1em; }
+.terminal-output-stream.complete h3 { font-size: 1.05em; }
+.terminal-output-stream.complete h4,
+.terminal-output-stream.complete h5,
+.terminal-output-stream.complete h6 { font-size: 1em; }
 
 .terminal-output-stream.complete p {
   margin: 2px 0;
