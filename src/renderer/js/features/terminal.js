@@ -919,7 +919,7 @@ Now create the presentation about: ${topic}`;
           this.appendTerminalOutput('✓ Presentation inserted into editor', 'output');
         } else {
           // Has content - insert at cursor
-          this.host.cm.replaceSelection(presentation);
+          this.host.replaceSelection(presentation);
           this.appendTerminalOutput('✓ Presentation inserted at cursor', 'output');
         }
       }
@@ -1083,20 +1083,15 @@ Now create the presentation about: ${topic}`;
     if (mode === 'cursor' || mode === 'new') {
       this.writeStartCursor = this.host.getCursor();
     } else if (mode === 'replace') {
-      // Get selection range
-      const cm = this.host.raw;
-      this.writeSelectionStart = cm.getCursor('from');
-      this.writeSelectionEnd = cm.getCursor('to');
-      // Delete the selection first
+      // Capture the selection range, then delete it before streaming in.
+      const range = this.host.getSelectionRange();
+      this.writeSelectionStart = range.from;
+      this.writeSelectionEnd = range.to;
       this.host.replaceSelection('');
       this.writeStartCursor = this.host.getCursor();
     } else if (mode === 'append') {
-      // Move cursor to end of document
-      const cm = this.host.raw;
-      const lastLine = cm.lastLine();
-      const lastLineLength = cm.getLine(lastLine).length;
-      cm.setCursor({ line: lastLine, ch: lastLineLength });
-      // Add newlines before appending
+      // Move cursor to end of document, then add newlines before appending.
+      this.host.setCursorToEnd();
       this.host.replaceSelection('\n\n');
       this.writeStartCursor = this.host.getCursor();
     }
@@ -1165,8 +1160,7 @@ Now create the presentation about: ${topic}`;
         this.tabManager.tabs.has(this.writeTabId)) {
       this.tabManager.switchToTab(this.writeTabId);
     }
-    const cm = this.host.raw;
-    cm.setCursor({ line: cm.lastLine(), ch: cm.getLine(cm.lastLine()).length });
+    this.host.setCursorToEnd();
     this.host.replaceSelection(content);
 
     // Tidy any tables the research produced, then persist to disk.
@@ -1225,9 +1219,7 @@ Now create the presentation about: ${topic}`;
         this.tabManager.tabs.has(targetTabId)) {
       this.tabManager.switchToTab(targetTabId);
     }
-    const cm = this.host.raw;
-    const lastLine = cm.lastLine();
-    cm.setCursor({ line: lastLine, ch: cm.getLine(lastLine).length });
+    this.host.setCursorToEnd();
     this.host.replaceSelection(`\n\n${content}`);
 
     // Tidy tables, then persist if the doc is saved on disk.
@@ -1379,8 +1371,7 @@ ${corpus}`;
     this.writeBuffer = '';
     this.writeNewPath = newPath;
     this.writeTabId = this.tabManager.activeTabId;
-    const cm = this.host.raw;
-    cm.setCursor({ line: cm.lastLine(), ch: cm.getLine(cm.lastLine()).length });
+    this.host.setCursorToEnd();
     this.writeStartCursor = this.host.getCursor();
 
     this.appendTerminalOutput(`Summarizing into ${window.PathUtils.basename(newPath)}…`, 'system');
@@ -1416,7 +1407,7 @@ ${corpus}`;
       this.tabManager.switchToTab(this.writeTabId);
       // Continue inserting where the stream left off in the target doc.
       if (this.writeStartCursor) {
-        this.host.raw.setCursor(this.writeStartCursor);
+        this.host.setCursor(this.writeStartCursor);
       }
     }
 
@@ -1490,7 +1481,6 @@ ${corpus}`;
     this.appendTerminalOutput(`❯ ${cmdLine}`, 'input');
     this.appendTerminalOutput('Formatting pasted Word text as Markdown...', 'system');
 
-    const cm = this.host.raw;
     const hasSelection = this.host.somethingSelected();
     const originalText = hasSelection ? this.host.getSelection() : this.host.getContent();
 
@@ -1502,8 +1492,9 @@ ${corpus}`;
       return;
     }
 
-    const selectionFrom = hasSelection ? cm.getCursor('from') : null;
-    const selectionTo = hasSelection ? cm.getCursor('to') : null;
+    const range = hasSelection ? this.host.getSelectionRange() : null;
+    const selectionFrom = range ? range.from : null;
+    const selectionTo = range ? range.to : null;
     const finalPrompt = `Convert the following content pasted from Microsoft Word into clean Markdown.
 
 Rules:

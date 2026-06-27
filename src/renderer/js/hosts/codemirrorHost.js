@@ -103,6 +103,18 @@ class CodemirrorHost {
     return this.cm.somethingSelected();
   }
 
+  // Return the current selection's start/end as { from, to }. Collapses the
+  // getCursor('from') / getCursor('to') pair callers otherwise reach for.
+  getSelectionRange() {
+    return { from: this.cm.getCursor('from'), to: this.cm.getCursor('to') };
+  }
+
+  // Move the cursor to the very end of the document.
+  setCursorToEnd() {
+    const lastLine = this.cm.lastLine();
+    this.cm.setCursor({ line: lastLine, ch: this.cm.getLine(lastLine).length });
+  }
+
   // --- Multi-cursor support ---
   listSelections() {
     return this.cm.listSelections();
