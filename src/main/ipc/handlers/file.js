@@ -416,11 +416,21 @@ Questions?
       defaultPath = path.join(bucketPath, 'untitled.md');
     }
 
+    // Offer Markdown by default, but allow saving any file type so Vomit can be
+    // used for light editing of non-markdown files. When the current file isn't
+    // markdown, put "All Files" first so the dialog doesn't push a .md extension.
+    const currentExt = state.currentFilePath
+      ? path.extname(state.currentFilePath).toLowerCase()
+      : '';
+    const markdownFilter = { name: 'Markdown Files', extensions: ['md', 'markdown'] };
+    const allFilesFilter = { name: 'All Files', extensions: ['*'] };
+    const filters = (currentExt && currentExt !== '.md' && currentExt !== '.markdown')
+      ? [allFilesFilter, markdownFilter]
+      : [markdownFilter, allFilesFilter];
+
     const result = await dialog.showSaveDialog(bus.getMainWindow(), {
-      title: 'Save Markdown File',
-      filters: [
-        { name: 'Markdown Files', extensions: ['md'] }
-      ],
+      title: 'Save File',
+      filters,
       defaultPath
     });
 
