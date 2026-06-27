@@ -1,3 +1,12 @@
+## [1.14.11](https://github.com/jacqinthebox/vomit-vnext/compare/v1.14.10...v1.14.11) (2026-06-27)
+
+
+### Bug Fixes
+
+* allow Save As to write files with any extension ([06f7e60](https://github.com/jacqinthebox/vomit-vnext/commit/06f7e608cf071521be4fa01d059150a3b3a71841))
+* prevent crash when clicking external links in preview ([b6afe6e](https://github.com/jacqinthebox/vomit-vnext/commit/b6afe6e821b212fc044b44c08c75e99b875b24e7))
+* size terminal markdown headings to match monospace output ([56756a7](https://github.com/jacqinthebox/vomit-vnext/commit/56756a7b5d3eba6bdb37ddd3a2a3ea09d5ad8319))
+
 ## [1.14.10](https://github.com/jacqinthebox/vomit-vnext/compare/v1.14.9...v1.14.10) (2026-06-26)
 
 
