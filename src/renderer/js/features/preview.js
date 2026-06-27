@@ -43,18 +43,31 @@ class PreviewManager {
     // Setup scroll synchronization
     this.setupScrollSync();
 
-    // Clicking a rendered [[wikilink]] opens the target document.
-    this.setupWikilinkClicks();
+    // Clicking a rendered [[wikilink]] opens the target document; clicking an
+    // external link opens it in the browser.
+    this.setupLinkClicks();
   }
 
-  setupWikilinkClicks() {
+  setupLinkClicks() {
     this.dom.preview.addEventListener('click', (e) => {
-      const link = e.target.closest('a.wikilink');
+      const link = e.target.closest('a');
       if (!link) return;
-      e.preventDefault();
-      const target = link.dataset.wikilink;
-      if (target) {
-        window.dispatchEvent(new CustomEvent('vomit:open-wikilink', { detail: target }));
+
+      // Internal [[wikilink]] → open the target document in the editor.
+      if (link.classList.contains('wikilink')) {
+        e.preventDefault();
+        const target = link.dataset.wikilink;
+        if (target) {
+          window.dispatchEvent(new CustomEvent('vomit:open-wikilink', { detail: target }));
+        }
+        return;
+      }
+
+      // External http(s) link → open in the default browser. Without this the
+      // click navigates the renderer away from the app and crashes it.
+      if (link.href && (link.href.startsWith('http://') || link.href.startsWith('https://'))) {
+        e.preventDefault();
+        window.vomit.openExternal(link.href);
       }
     });
   }

@@ -1,10 +1,33 @@
 // @ts-check
 'use strict';
 
-const { BrowserWindow, dialog, app } = require('electron');
+const { BrowserWindow, dialog, app, shell } = require('electron');
 const path = require('path');
 
 const mainDir = path.join(__dirname, '..');
+
+/**
+ * Stop a window's renderer from ever navigating away from the app. Any link
+ * that would load a new URL is blocked; http(s) URLs are opened in the user's
+ * default browser instead. Without this, clicking an external link in rendered
+ * content (preview, terminal output) navigates the BrowserWindow and crashes
+ * the editor.
+ * @param {import('electron').WebContents} webContents
+ */
+function guardWindowNavigation(webContents) {
+  webContents.on('will-navigate', (e, url) => {
+    e.preventDefault();
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      shell.openExternal(url);
+    }
+  });
+  webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      shell.openExternal(url);
+    }
+    return { action: 'deny' };
+  });
+}
 
 /**
  * Create window manager with all window creation functions.
@@ -38,6 +61,13 @@ function createWindowManager({ state, bus, getSaveFileAs }) {
     }));
 
     bus.getMainWindow().loadFile(path.join(mainDir, '../renderer/index.html'));
+
+    // Defense-in-depth: the app only ever loads index.html, so any in-page
+    // link click that tries to navigate the window is a mistake — it blanks /
+    // crashes the renderer. Block all navigation; send external URLs to the
+    // user's browser instead. Renderer features may also intercept clicks for
+    // nicer UX, but this is the backstop that guarantees the app never leaves.
+    guardWindowNavigation(bus.getMainWindow().webContents);
 
     // Warning for unsaved untitled files
     bus.getMainWindow().on('close', async (e) => {
@@ -103,6 +133,7 @@ function createWindowManager({ state, bus, getSaveFileAs }) {
     });
 
     newWindow.loadFile(path.join(mainDir, '../renderer/index.html'));
+    guardWindowNavigation(newWindow.webContents);
 
     newWindow.webContents.on('did-finish-load', () => {
       newWindow.webContents.send('set-theme', state.currentTheme);
