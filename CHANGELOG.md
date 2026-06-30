@@ -1,3 +1,10 @@
+# [1.15.0](https://github.com/jacqinthebox/vomit-vnext/compare/v1.14.11...v1.15.0) (2026-06-30)
+
+
+### Features
+
+* add deterministic pseudonymization and tab cleanup ([077e8d7](https://github.com/jacqinthebox/vomit-vnext/commit/077e8d7f48cdf54e9399f6736327c771c1ba9264))
+
 ## [1.14.11](https://github.com/jacqinthebox/vomit-vnext/compare/v1.14.10...v1.14.11) (2026-06-27)
 
 
