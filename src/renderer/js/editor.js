@@ -626,6 +626,10 @@ class Editor {
       this.tabManager.closeCurrentTab();
     });
 
+    window.addEventListener('vomit:close-other-tabs', () => {
+      this.tabManager.closeOtherTabs();
+    });
+
     window.addEventListener('vomit:next-tab', () => {
       this.tabManager.nextTab();
     });

@@ -124,6 +124,10 @@ ipcRenderer.on('close-tab', () => {
   window.dispatchEvent(new CustomEvent('vomit:close-tab'));
 });
 
+ipcRenderer.on('close-other-tabs', () => {
+  window.dispatchEvent(new CustomEvent('vomit:close-other-tabs'));
+});
+
 ipcRenderer.on('next-tab', () => {
   window.dispatchEvent(new CustomEvent('vomit:next-tab'));
 });

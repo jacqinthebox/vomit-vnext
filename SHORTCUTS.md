@@ -17,6 +17,7 @@ Shortcut tables use macOS notation: use **Ctrl** instead of **Cmd** and **Alt** 
 | Cmd+Alt+Shift+N | New folder |
 | Cmd+O | Open file |
 | Cmd+W | Close tab |
+| Cmd+Alt+W | Close other tabs |
 | Cmd+S | Save |
 | Cmd+Shift+S | Save as |
 | Cmd+Shift+E | Export to PDF |
@@ -29,6 +30,7 @@ Shortcut tables use macOS notation: use **Ctrl** instead of **Cmd** and **Alt** 
 |----------|--------|
 | Cmd+T | New tab |
 | Cmd+W | Close tab |
+| Cmd+Alt+W | Close other tabs |
 | Cmd+Shift+] | Next tab |
 | Cmd+Shift+[ | Previous tab |
 | Cmd+2-8 | Go to tab 1-7 |
@@ -216,7 +218,8 @@ When the picker is closed, `↑`/`↓` navigate command history (persisted acros
 | `/write-replace <prompt>` | Replace selection with AI response |
 | `/write-append <prompt>` | Research the web and append to the current document |
 | `/summarize-folder [subfolder]` | Summarize the current folder and all subfolders into a new doc |
-| `/pseudo` | Pseudonymize current document (names, emails, IPs) |
+| `/pseudo` | Pseudonymize current document with AI (names, emails, IPs) |
+| `/pseudo deterministic` | Pseudonymize current document with the fast offline scan (no AI) |
 | `/pseudo-all` | Pseudonymize all files in current folder |
 | `/pseudo-deterministic [folder]` | Fast deterministic repo/folder pseudonymization |
 | `/pseudo-ai [folder]` | Hybrid deterministic + AI repo/folder pseudonymization |

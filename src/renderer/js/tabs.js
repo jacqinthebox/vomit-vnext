@@ -247,6 +247,16 @@ class TabManager {
     }
   }
 
+  closeOtherTabs(keepTabId = this.activeTabId) {
+    if (!keepTabId || !this.tabs.has(keepTabId)) return;
+
+    // Close every tab except the kept one (will prompt for unsaved)
+    const tabIds = this.tabOrder.filter(id => id !== keepTabId);
+    for (const tabId of tabIds) {
+      this.closeTab(tabId);
+    }
+  }
+
   nextTab() {
     if (this.tabOrder.length <= 1) return;
 
@@ -378,6 +388,14 @@ class TabManager {
       }
     });
 
+    // Right-click context menu
+    this.tabBar.addEventListener('contextmenu', (e) => {
+      const tab = e.target.closest('.tab');
+      if (!tab) return;
+      e.preventDefault();
+      this._showTabContextMenu(tab.dataset.tabId, e.clientX, e.clientY);
+    });
+
     // Keyboard navigation in tab bar
     this.tabBar.addEventListener('keydown', (e) => {
       const tab = e.target.closest('.tab');
@@ -399,6 +417,44 @@ class TabManager {
         if (prev) prev.focus();
       }
     });
+  }
+
+  _showTabContextMenu(tabId, x, y) {
+    const existing = document.querySelector('.tab-context-menu');
+    if (existing) existing.remove();
+
+    const hasOthers = this.tabOrder.length > 1;
+
+    const menu = document.createElement('div');
+    menu.className = 'file-context-menu tab-context-menu';
+    menu.innerHTML = `
+      <div class="context-menu-item" data-action="close">Close Tab</div>
+      <div class="context-menu-item${hasOthers ? '' : ' disabled'}" data-action="close-others">Close Other Tabs</div>
+    `;
+    menu.style.left = `${x}px`;
+    menu.style.top = `${y}px`;
+    document.body.appendChild(menu);
+
+    menu.addEventListener('click', (e) => {
+      const action = e.target.dataset.action;
+      switch (action) {
+        case 'close':
+          this.closeTab(tabId);
+          break;
+        case 'close-others':
+          if (hasOthers) this.closeOtherTabs(tabId);
+          break;
+      }
+      menu.remove();
+    });
+
+    const closeMenu = (e) => {
+      if (!menu.contains(e.target)) {
+        menu.remove();
+        document.removeEventListener('click', closeMenu);
+      }
+    };
+    setTimeout(() => document.addEventListener('click', closeMenu), 0);
   }
 
   renderTabBar() {

@@ -147,12 +147,16 @@ const COMMAND_REGISTRY = [
   },
   {
     name: '/pseudo',
-    description: 'Pseudonymize current document',
-    args: 'none',
-    argsHint: '',
+    description: 'Pseudonymize current document (add "deterministic" for offline scan)',
+    args: 'optional',
+    argsHint: '[deterministic]',
     requiresCwd: true,
     async handler(args, ctx, cwd) {
-      await ctx.pseudonymizeCurrentDoc(cwd);
+      const arg = args.trim().toLowerCase();
+      const mode = (arg === 'deterministic' || arg === 'det' || arg === 'fast')
+        ? 'deterministic'
+        : 'ai';
+      await ctx.pseudonymizeCurrentDoc(cwd, mode);
     }
   },
   {

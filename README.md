@@ -234,7 +234,8 @@ Type `/` in the AI terminal to open an inline command picker. Navigate with `↑
 - `/format-to-md [instruction]` - Convert selected text, or the whole document, from pasted Word-style formatting to clean Markdown
 - `/write-append <prompt>` - **Researches the web** and adds new, document-aware content at the end of the current doc (saving it if it's on disk). Like `/write-new`, it needs a tool-capable model and a Tavily API key.
 - `/presentation <topic>` - Generate a presentation with slides and speaker notes
-- `/pseudo` - Pseudonymize the current document (names, emails, IPs, secrets)
+- `/pseudo` - Pseudonymize the current document with AI (names, emails, IPs, secrets)
+- `/pseudo deterministic` - Pseudonymize the current document with the fast offline scan, no AI server required (aliases: `det`, `fast`)
 - `/pseudo-all` - Pseudonymize all files in the current folder
 - `/pseudo-deterministic [folder]` - Fast local repo/folder pseudonymization for Terraform/IaC, Azure DevOps, Python/.NET config, Kubernetes, Docker, and common secrets while preserving structural API fields and Helm template syntax
 - `/pseudo-ai [folder]` - Hybrid deterministic + AI repo/folder pseudonymization for prose documents, architecture designs, HLDs, legal docs, and advisory text

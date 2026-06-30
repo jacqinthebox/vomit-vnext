@@ -30,6 +30,7 @@ class CommandPaletteManager {
       { section: 'File', label: 'Save As', shortcut: '⌘⇧S', action: () => window.vomit.saveAs() },
       { section: 'File', label: 'Export to PDF', shortcut: '⌘⇧E', action: () => window.vomit.exportToPDF() },
       { section: 'File', label: 'Close Tab', shortcut: '⌘W', action: () => actions.tabManager.closeCurrentTab() },
+      { section: 'File', label: 'Close Other Tabs', action: () => actions.tabManager.closeOtherTabs() },
       { section: 'File', label: 'Toggle Auto Save', action: async () => {
         const enabled = await window.vomit.getAutoSaveEnabled();
         window.vomit.setAutoSaveEnabled(!enabled);

@@ -493,6 +493,13 @@ function createMenu() {
             _bus.send('close-tab');
           }
         },
+        {
+          label: 'Close Other Tabs',
+          accelerator: 'CmdOrCtrl+Alt+W',
+          click: () => {
+            _bus.send('close-other-tabs');
+          }
+        },
         { type: 'separator' },
         {
           label: 'Save',

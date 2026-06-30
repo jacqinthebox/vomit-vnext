@@ -1543,9 +1543,15 @@ ${originalText}
     }
   }
 
-  async pseudonymizeCurrentDoc(cwd) {
-    this.appendTerminalOutput('❯ /pseudo', 'input');
-    this.appendTerminalOutput('Pseudonymizing current document...', 'system');
+  async pseudonymizeCurrentDoc(cwd, mode = 'ai') {
+    const normalizedMode = mode === 'deterministic' ? 'deterministic' : 'ai';
+    this.appendTerminalOutput(`❯ /pseudo${normalizedMode === 'deterministic' ? ' deterministic' : ''}`, 'input');
+    this.appendTerminalOutput(
+      normalizedMode === 'deterministic'
+        ? 'Pseudonymizing current document (deterministic)...'
+        : 'Pseudonymizing current document...',
+      'system'
+    );
 
     const docContent = this.host.getContent();
     if (!docContent.trim()) {
@@ -1557,6 +1563,7 @@ ${originalText}
     const currentFile = this.state.currentFilePath;
     let outputPath;
     let mappingPath;
+    let relativeName;
     if (currentFile) {
       const dir = window.PathUtils.dirname(currentFile);
       const filename = window.PathUtils.basename(currentFile);
@@ -1564,9 +1571,40 @@ ${originalText}
       const basename = filename.lastIndexOf('.') > 0 ? filename.substring(0, filename.lastIndexOf('.')) : filename;
       outputPath = window.PathUtils.join(dir, `${basename}-pseudo${ext}`);
       mappingPath = window.PathUtils.join(dir, `${basename}-pseudo.map.json`);
+      relativeName = filename;
     } else {
       outputPath = window.PathUtils.join(cwd, 'untitled-pseudo.md');
       mappingPath = window.PathUtils.join(cwd, 'untitled-pseudo.map.json');
+      relativeName = 'untitled.md';
+    }
+
+    // Deterministic path: build the mapping locally with the same engine the
+    // repo commands use — no AI server required.
+    if (normalizedMode === 'deterministic') {
+      let mapping = {};
+      const counters = this.createPseudoCounters(mapping);
+      this.scanIacPseudoEntities(docContent, relativeName, mapping, counters);
+
+      const sanitized = this.sanitizePseudoMapping(mapping);
+      mapping = sanitized.mapping;
+
+      if (Object.keys(mapping).length === 0) {
+        this.appendTerminalOutput('No sensitive data found to anonymize.', 'system');
+        return;
+      }
+
+      const sortedKeys = Object.keys(mapping).sort((a, b) => b.length - a.length);
+      const applied = this.applyPseudoMappingToContent(docContent, sortedKeys, mapping);
+
+      await window.vomit.writeFile(outputPath, applied.content);
+      this.appendTerminalOutput(`✓ Saved: ${window.PathUtils.basename(outputPath)}`, 'output');
+
+      await window.vomit.writeFile(mappingPath, JSON.stringify(mapping, null, 2));
+      this.appendTerminalOutput(`✓ Mapping saved: ${window.PathUtils.basename(mappingPath)} (${Object.keys(mapping).length} entities)`, 'output');
+
+      const parentDir = window.PathUtils.dirname(outputPath);
+      await this.fileTreeManager.refreshFolder(parentDir);
+      return;
     }
 
     const pseudoPrompt = `Analyze this file and identify ALL sensitive/personal data that should be anonymized for GDPR compliance.
