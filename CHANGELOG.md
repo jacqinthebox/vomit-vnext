@@ -1,3 +1,10 @@
+## [1.15.2](https://github.com/jacqinthebox/vomit-vnext/compare/v1.15.1...v1.15.2) (2026-07-02)
+
+
+### Bug Fixes
+
+* add /pseudo-text and /pseudo-text-ai for selection pseudonymization ([7b2d239](https://github.com/jacqinthebox/vomit-vnext/commit/7b2d2390f20606a0c3f8c8b8e4ab4a5a7d4f9b16))
+
 ## [1.15.1](https://github.com/jacqinthebox/vomit-vnext/compare/v1.15.0...v1.15.1) (2026-07-02)
 
 
