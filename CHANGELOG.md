@@ -1,3 +1,10 @@
+## [1.15.1](https://github.com/jacqinthebox/vomit-vnext/compare/v1.15.0...v1.15.1) (2026-07-02)
+
+
+### Bug Fixes
+
+* reset AI context on model changes ([a2e7e26](https://github.com/jacqinthebox/vomit-vnext/commit/a2e7e26fc40547db10847b6eb08ffeecfa163fab))
+
 # [1.15.0](https://github.com/jacqinthebox/vomit-vnext/compare/v1.14.11...v1.15.0) (2026-06-30)
 
 
