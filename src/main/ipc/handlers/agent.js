@@ -503,7 +503,7 @@ function registerHandlers(ipcMain, { state, bus, configStore, terminalService })
 
     // Check for /clear command to reset conversation
     if (prompt.trim().toLowerCase() === 'clear' || prompt.trim().toLowerCase() === '/clear') {
-      state.agentConversationHistory = [];
+      state.clearAgentConversationHistory();
       bus.send('context-stats-updated');
       bus.sendToTerminal('context-stats-updated');
       sendOutput('claude-output', 'Conversation history cleared.\n');
@@ -776,7 +776,7 @@ After researching, output ONLY the final document body in GitHub-Flavored Markdo
 
   // Clear agent conversation history
   ipcMain.handle('agent-clear-history', () => {
-    state.agentConversationHistory = [];
+    state.clearAgentConversationHistory();
     bus.send('context-stats-updated');
     bus.sendToTerminal('context-stats-updated');
   });

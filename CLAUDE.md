@@ -72,6 +72,7 @@ The pipeline uses **semantic versioning**. On every push to `main`, semantic-rel
 | `feat!:` / `BREAKING CHANGE:` | major (1.6.14 → 2.0.0) | `feat!: new API` |
 | `chore:`, `docs:`, `refactor:` | none | `chore: update deps` |
 
+- **Commit with the semantic-release type that matches the intended release bump**: use `fix:` for a patch, `feat:` for a minor, and `feat!:` or a `BREAKING CHANGE:` footer for a major. If the user asks to "push a patch", make a `fix:` commit and bump `package.json`/`package-lock.json` by one patch version before pushing.
 - **Increment the version in `package.json` before pushing.** Bump it to match the commit type (patch for `fix:`, minor for `feat:`, major for `feat!:`) so the locally built/tested app matches the version about to be released and no "Update available" popup appears.
 - Do not hand-edit `CHANGELOG.md` — semantic-release generates it.
 - **After the release lands, sync and rebuild**: `git pull --ff-only && npx electron-builder --mac --dir`. Semantic-release pushes a follow-up `chore(release): <version>` commit; rebuild before telling the user to test the local app.

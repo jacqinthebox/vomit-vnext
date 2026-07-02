@@ -201,6 +201,9 @@ function registerHandlers(ipcMain, { state, bus, configStore, terminalService })
       provider: configStore.getAIProvider(),
       model: configStore.getActiveModel()
     };
+    state.clearAIConversationHistory();
+    bus.send('context-stats-updated');
+    bus.sendToTerminal('context-stats-updated');
     bus.send('ai-provider-changed', next);
     bus.sendToTerminal('ai-provider-changed', next);
     return next;

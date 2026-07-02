@@ -101,11 +101,20 @@ class SessionState extends EventEmitter {
   get agentConversationHistory() { return this._agentConversationHistory; }
   set agentConversationHistory(v) { this._agentConversationHistory = v; }
 
+  clearAgentConversationHistory() {
+    this._agentConversationHistory = [];
+  }
+
   get chatHistory() { return this._chatHistory; }
   set chatHistory(v) { this._chatHistory = v; }
 
   clearChatHistory() {
     this._chatHistory = [];
+  }
+
+  clearAIConversationHistory() {
+    this.clearChatHistory();
+    this.clearAgentConversationHistory();
   }
 
   // --- Terminal state ---

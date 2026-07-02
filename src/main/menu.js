@@ -119,8 +119,7 @@ function setAIProvider(provider) {
   _configStore.setAIProvider(provider);
   createMenu();
   const payload = { provider, model: _configStore.getActiveModel() };
-  _bus.send('ai-provider-changed', payload);
-  _bus.sendToTerminal('ai-provider-changed', payload);
+  notifyAIProviderChanged(payload);
   _bus.send('show-terminal');
 }
 
@@ -130,9 +129,16 @@ function selectOpenAIEndpoint(index) {
   createMenu();
   const ep = _configStore.getActiveOpenAIEndpoint();
   const payload = { provider: 'openai-compatible', model: ep ? ep.model : '' };
+  notifyAIProviderChanged(payload);
+  _bus.send('show-terminal');
+}
+
+function notifyAIProviderChanged(payload) {
+  _state.clearAIConversationHistory();
+  _bus.send('context-stats-updated');
+  _bus.sendToTerminal('context-stats-updated');
   _bus.send('ai-provider-changed', payload);
   _bus.sendToTerminal('ai-provider-changed', payload);
-  _bus.send('show-terminal');
 }
 
   async function promptString(message, defaultValue, { hidden = false } = {}) {
@@ -284,8 +290,7 @@ async function addOpenAIEndpoint() {
   _configStore.setAIProvider('openai-compatible');
   createMenu();
   const payload = { provider: 'openai-compatible', model: ep.model };
-  _bus.send('ai-provider-changed', payload);
-  _bus.sendToTerminal('ai-provider-changed', payload);
+  notifyAIProviderChanged(payload);
 }
 
 async function editActiveOpenAIEndpoint() {
@@ -297,8 +302,7 @@ async function editActiveOpenAIEndpoint() {
   _configStore.updateOpenAIEndpoint(idx, ep);
   createMenu();
   const payload = { provider: 'openai-compatible', model: ep.model };
-  _bus.send('ai-provider-changed', payload);
-  _bus.sendToTerminal('ai-provider-changed', payload);
+  notifyAIProviderChanged(payload);
 }
 
 async function removeActiveOpenAIEndpoint() {
@@ -319,8 +323,7 @@ async function removeActiveOpenAIEndpoint() {
     provider: _configStore.getAIProvider(),
     model: _configStore.getActiveModel()
   };
-  _bus.send('ai-provider-changed', payload);
-  _bus.sendToTerminal('ai-provider-changed', payload);
+  notifyAIProviderChanged(payload);
 }
 
 async function testAIConnection() {
@@ -357,8 +360,7 @@ function setOllamaModel(model) {
   createMenu();
 
   // Notify renderer and show terminal
-  _bus.send('ai-provider-changed', { provider: 'ollama', model });
-  _bus.sendToTerminal('ai-provider-changed', { provider: 'ollama', model });
+  notifyAIProviderChanged({ provider: 'ollama', model });
   _bus.send('show-terminal');
 }
 
