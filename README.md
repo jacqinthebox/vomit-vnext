@@ -236,6 +236,8 @@ Type `/` in the AI terminal to open an inline command picker. Navigate with `↑
 - `/presentation <topic>` - Generate a presentation with slides and speaker notes
 - `/pseudo` - Pseudonymize the current document with AI (names, emails, IPs, secrets)
 - `/pseudo deterministic` - Pseudonymize the current document with the fast offline scan, no AI server required (aliases: `det`, `fast`)
+- `/pseudo-text` - Pseudonymize the selected editor text (or whole document if nothing is selected) with the fast offline scan and print the result inline in the terminal to copy — nothing is written to disk
+- `/pseudo-text-ai` - Same as `/pseudo-text` but uses the AI to build the mapping (needs a bucket open and the AI server running)
 - `/pseudo-all` - Pseudonymize all files in the current folder
 - `/pseudo-deterministic [folder]` - Fast local repo/folder pseudonymization for Terraform/IaC, Azure DevOps, Python/.NET config, Kubernetes, Docker, and common secrets while preserving structural API fields and Helm template syntax
 - `/pseudo-ai [folder]` - Hybrid deterministic + AI repo/folder pseudonymization for prose documents, architecture designs, HLDs, legal docs, and advisory text

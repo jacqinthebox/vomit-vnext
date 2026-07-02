@@ -160,6 +160,27 @@ const COMMAND_REGISTRY = [
     }
   },
   {
+    // Longer names sort first, so this wins the prefix match over /pseudo.
+    name: '/pseudo-text',
+    description: 'Pseudonymize selected editor text (deterministic), print result in terminal',
+    args: 'none',
+    argsHint: '',
+    requiresCwd: false,
+    async handler(args, ctx, cwd) {
+      await ctx.pseudonymizeSelection(cwd, 'deterministic');
+    }
+  },
+  {
+    name: '/pseudo-text-ai',
+    description: 'Pseudonymize selected editor text (AI), print result in terminal',
+    args: 'none',
+    argsHint: '',
+    requiresCwd: true,
+    async handler(args, ctx, cwd) {
+      await ctx.pseudonymizeSelection(cwd, 'ai');
+    }
+  },
+  {
     name: '/pseudo-depseudo',
     description: 'Reverse-map pseudo repo changes to real repo',
     args: 'optional',

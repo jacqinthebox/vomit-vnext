@@ -220,6 +220,8 @@ When the picker is closed, `↑`/`↓` navigate command history (persisted acros
 | `/summarize-folder [subfolder]` | Summarize the current folder and all subfolders into a new doc |
 | `/pseudo` | Pseudonymize current document with AI (names, emails, IPs) |
 | `/pseudo deterministic` | Pseudonymize current document with the fast offline scan (no AI) |
+| `/pseudo-text` | Pseudonymize selected editor text (offline scan), result printed in terminal |
+| `/pseudo-text-ai` | Pseudonymize selected editor text with AI, result printed in terminal |
 | `/pseudo-all` | Pseudonymize all files in current folder |
 | `/pseudo-deterministic [folder]` | Fast deterministic repo/folder pseudonymization |
 | `/pseudo-ai [folder]` | Hybrid deterministic + AI repo/folder pseudonymization |

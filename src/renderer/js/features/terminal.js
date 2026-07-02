@@ -1702,6 +1702,127 @@ ${docContent}
     }
   }
 
+  // Pseudonymize the current editor selection (or whole document if nothing is
+  // selected) and print the result inline in the terminal. Nothing is written
+  // to disk and the editor is not modified — copy the output from the terminal.
+  async pseudonymizeSelection(cwd, mode = 'deterministic') {
+    const normalizedMode = mode === 'ai' ? 'ai' : 'deterministic';
+    this.appendTerminalOutput(
+      `❯ ${normalizedMode === 'ai' ? '/pseudo-text-ai' : '/pseudo-text'}`,
+      'input'
+    );
+
+    const hasSelection = this.host.somethingSelected();
+    const sourceText = hasSelection ? this.host.getSelection() : this.host.getContent();
+    if (!sourceText.trim()) {
+      this.appendTerminalOutput(
+        hasSelection
+          ? 'Error: Selected text is empty.'
+          : 'Error: Select text in the editor first (or open a document).',
+        'error'
+      );
+      return;
+    }
+
+    const printResult = (mapping, content) => {
+      const count = Object.keys(mapping).length;
+      this.appendTerminalOutput(`✓ Pseudonymized (${count} ${count === 1 ? 'entity' : 'entities'}):`, 'output');
+      this.appendTerminalOutput(content, 'output');
+    };
+
+    // Deterministic: build the mapping locally with the same engine the repo
+    // commands use — no AI server required.
+    if (normalizedMode === 'deterministic') {
+      let mapping = {};
+      const counters = this.createPseudoCounters(mapping);
+      this.scanIacPseudoEntities(sourceText, 'selection.md', mapping, counters);
+      mapping = this.sanitizePseudoMapping(mapping).mapping;
+
+      if (Object.keys(mapping).length === 0) {
+        this.appendTerminalOutput('No sensitive data found to anonymize.', 'system');
+        return;
+      }
+
+      const sortedKeys = Object.keys(mapping).sort((a, b) => b.length - a.length);
+      const applied = this.applyPseudoMappingToContent(sourceText, sortedKeys, mapping);
+      printResult(mapping, applied.content);
+      return;
+    }
+
+    // AI mode: ask the model for a mapping, then apply it programmatically so
+    // the returned text is a faithful copy of the input with values swapped.
+    const pseudoPrompt = `Analyze this text and identify ALL sensitive/personal data that should be anonymized for GDPR compliance.
+
+Look for:
+- Names (people, authors)
+- Company/organization names
+- Phone numbers
+- Email addresses
+- IP addresses
+- Server/hostnames
+- API keys, tokens, passwords
+- Database names
+- Cloud resource IDs
+- GUIDs/UUIDs (e.g. 745c93c0-151d-4cc9-a3d6-xxxxxxxxxxxx)
+- Azure/cloud IDs (subscription, tenant, object, resource IDs)
+- Paths with usernames
+
+Do NOT map structural IaC/API words or template identifiers such as name, namespace, cluster, basename, cpu, regexp, metadata.name, metadata.namespace, namespaceSelector, clusterResourceWhitelist, namespaceResourceBlacklist, path.basenameNormalized, .Values keys, or YAML/Helm/Kubernetes/ArgoCD field names.
+
+For each item found, provide a fictional replacement.
+
+OUTPUT: Return ONLY a JSON object mapping original values to fake replacements. No other text.
+
+Example output:
+{"Annie de Waard": "Sarah Miller", "jan@company.nl": "user@example.com", "192.168.1.1": "10.0.0.1", "745c93c0-151d-4cc9-a3d6-abc123def456": "00000000-0000-0000-0000-000000000001"}
+
+If no sensitive data found, return: {}
+
+Text to analyze:
+\`\`\`
+${sourceText}
+\`\`\``;
+
+    this.state.isClaudeRunning = true;
+    this.terminalStop.classList.remove('hidden');
+    this.showThinkingIndicator();
+    this.state.pseudoOutput = '';
+    this.state.pseudoCollecting = true;
+
+    try {
+      await window.vomit.claudeExecute(pseudoPrompt, cwd);
+      await this.waitForAIComplete();
+
+      const output = this.state.pseudoOutput.trim();
+      let mapping = null;
+      try {
+        const jsonMatch = output.match(/\{[\s\S]*\}/);
+        if (jsonMatch) mapping = JSON.parse(jsonMatch[0]);
+      } catch (e) {
+        this.appendTerminalOutput('Warning: Could not parse mapping JSON', 'error');
+      }
+
+      if (mapping && Object.keys(mapping).length > 0) {
+        mapping = this.sanitizePseudoMapping(mapping).mapping;
+      }
+
+      if (mapping && Object.keys(mapping).length > 0) {
+        const sortedKeys = Object.keys(mapping).sort((a, b) => b.length - a.length);
+        const applied = this.applyPseudoMappingToContent(sourceText, sortedKeys, mapping);
+        printResult(mapping, applied.content);
+      } else {
+        this.appendTerminalOutput('No sensitive data found to anonymize.', 'system');
+      }
+      this.markOutputComplete();
+    } catch (err) {
+      this.state.pseudoCollecting = false;
+      this.hideThinkingIndicator();
+      this.appendTerminalOutput(`Error: ${err.message}`, 'error');
+      this.state.isClaudeRunning = false;
+      this.terminalStop.classList.add('hidden');
+    }
+  }
+
   async depseudonymizeCurrentDoc() {
     this.appendTerminalOutput('❯ /pseudo-depseudo', 'input');
 
