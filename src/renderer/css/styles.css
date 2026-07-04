@@ -2429,6 +2429,12 @@ li.CodeMirror-hint-active {
   font-style: italic;
 }
 
+.thinking-elapsed {
+  color: var(--text-muted);
+  font-size: 0.85em;
+  margin-left: 6px;
+}
+
 /* Agent write-diff preview (diff-before-write approval gate) */
 .terminal-line.diff-add,
 .terminal-line.diff-del,

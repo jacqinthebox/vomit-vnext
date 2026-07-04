@@ -780,6 +780,10 @@ Provide a helpful, accurate answer based on the context above. If the context do
       appendTerminalOutput(e.detail, 'output');
     });
 
+    window.addEventListener('vomit:claude-status', (e) => {
+      appendTerminalOutput(e.detail, 'system');
+    });
+
     window.addEventListener('vomit:claude-error', (e) => {
       appendTerminalOutput(e.detail, 'error');
     });

@@ -101,6 +101,17 @@ class TerminalManager {
       if (line) this.appendTerminalOutput(line, 'system');
     });
 
+    // Pre-flight notices (truncation, attached images, retries) — shown as
+    // system lines but the thinking indicator stays alive below them.
+    window.addEventListener('vomit:claude-status', (e) => {
+      this.appendTerminalOutput(this.normalizeTerminalText(e.detail), 'system');
+      const indicator = this.terminalOutput.querySelector('.terminal-thinking-indicator');
+      if (indicator) {
+        this.terminalOutput.appendChild(indicator);
+        this.terminalOutput.scrollTop = this.terminalOutput.scrollHeight;
+      }
+    });
+
     window.addEventListener('vomit:agent-permission-request', (e) => {
       this._onPermissionRequest(e.detail || {});
     });
@@ -3097,12 +3108,26 @@ Provide a helpful, accurate answer based on the context above. Cite the source d
 
     const indicator = document.createElement('div');
     indicator.className = 'terminal-line terminal-thinking-indicator';
-    indicator.innerHTML = '<span class="thinking-dots"><span>.</span><span>.</span><span>.</span></span>';
+    indicator.innerHTML = '<span class="thinking-dots"><span>.</span><span>.</span><span>.</span></span><span class="thinking-elapsed"></span>';
     this.terminalOutput.appendChild(indicator);
     this.terminalOutput.scrollTop = this.terminalOutput.scrollHeight;
+
+    // Local models can be silent for minutes during prompt evaluation —
+    // an elapsed counter shows time is passing, not just pixels animating.
+    const startedAt = Date.now();
+    this._thinkingTimer = setInterval(() => {
+      const el = this.terminalOutput.querySelector('.terminal-thinking-indicator .thinking-elapsed');
+      if (!el) return;
+      const seconds = Math.round((Date.now() - startedAt) / 1000);
+      if (seconds >= 3) el.textContent = ` ${seconds}s`;
+    }, 1000);
   }
 
   hideThinkingIndicator() {
+    if (this._thinkingTimer) {
+      clearInterval(this._thinkingTimer);
+      this._thinkingTimer = null;
+    }
     const indicator = this.terminalOutput.querySelector('.terminal-thinking-indicator');
     if (indicator) {
       indicator.remove();

@@ -196,6 +196,11 @@ ipcRenderer.on('claude-metrics', (event, metrics) => {
   window.dispatchEvent(new CustomEvent('vomit:claude-metrics', { detail: metrics }));
 });
 
+// Pre-flight/progress notices that must NOT dismiss the thinking indicator
+ipcRenderer.on('claude-status', (event, data) => {
+  window.dispatchEvent(new CustomEvent('vomit:claude-status', { detail: data }));
+});
+
 ipcRenderer.on('agent-permission-request', (event, data) => {
   window.dispatchEvent(new CustomEvent('vomit:agent-permission-request', { detail: data }));
 });
