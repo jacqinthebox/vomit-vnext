@@ -1,3 +1,10 @@
+## [1.16.1](https://github.com/jacqinthebox/vomit-vnext/compare/v1.16.0...v1.16.1) (2026-07-04)
+
+
+### Bug Fixes
+
+* self-repair the Electron binary after silent install failures ([ba0d568](https://github.com/jacqinthebox/vomit-vnext/commit/ba0d56823ffc22a3f94dc324ecba505f8eb777cb))
+
 # [1.16.0](https://github.com/jacqinthebox/vomit-vnext/compare/v1.15.2...v1.16.0) (2026-07-04)
 
 
