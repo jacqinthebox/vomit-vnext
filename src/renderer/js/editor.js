@@ -360,9 +360,9 @@ class Editor {
       }
 
       e.preventDefault();
-      const doc = cm.getDoc();
-      const cursor = doc.getCursor();
-      doc.replaceRange(textToInsert, cursor);
+      // Replace the selection (all of them, with multi-cursor) rather than
+      // inserting at the cursor next to still-selected text.
+      cm.getDoc().replaceSelection(textToInsert);
     });
 
     // Cmd/Ctrl + click on [[wikilink]] opens the target file.
