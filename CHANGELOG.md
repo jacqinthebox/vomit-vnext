@@ -1,3 +1,25 @@
+# [1.16.0](https://github.com/jacqinthebox/vomit-vnext/compare/v1.15.2...v1.16.0) (2026-07-04)
+
+
+### Bug Fixes
+
+* **ai:** request an effective Ollama context window and cap oversized prompts ([ce59b6f](https://github.com/jacqinthebox/vomit-vnext/commit/ce59b6f4fd86898f717f801913ceda90a37dcb00))
+* **editor:** paste replaces the active selection ([5e4259b](https://github.com/jacqinthebox/vomit-vnext/commit/5e4259b0b813eb8887da550ce3afa2960a309272))
+* **terminal:** keep the thinking indicator alive through pre-flight notices ([a2e9c69](https://github.com/jacqinthebox/vomit-vnext/commit/a2e9c6953ad9e78396e547c029b9e40756f1bb09))
+
+
+### Chores
+
+* bump version to 1.16.0 to match the upcoming release ([aeb7276](https://github.com/jacqinthebox/vomit-vnext/commit/aeb7276d77193b2480b594e2efb219d5cfbdb0af))
+
+
+### Features
+
+* **agent:** permission-gated agent harness with context discipline, new tools, and diff-approved writes ([e7518bf](https://github.com/jacqinthebox/vomit-vnext/commit/e7518bfa52914dde2c7c7f9075738a28ef7d854d))
+* **ai:** attach referenced images to Ollama vision models ([7454023](https://github.com/jacqinthebox/vomit-vnext/commit/745402369d4285d2e07046af9cd2766a63848ca5))
+* **git:** add main-process git service with status parsing, line diffs, and repo watching ([8be4cce](https://github.com/jacqinthebox/vomit-vnext/commit/8be4cce79bf7f8fb0fca063848bf8664411e9c46))
+* **ui:** git gutter indicators, file tree status badges, and app wiring ([bfd4659](https://github.com/jacqinthebox/vomit-vnext/commit/bfd465950fd69f8570b1474eb1cf4eb4435ac085))
+
 ## [1.15.2](https://github.com/jacqinthebox/vomit-vnext/compare/v1.15.1...v1.15.2) (2026-07-02)
 
 
