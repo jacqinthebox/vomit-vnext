@@ -723,6 +723,35 @@ html, body {
   font-weight: 500;
 }
 
+/* Git status badges — colored dot after the file/folder name */
+.file-item.git-modified > .name::after,
+.file-item.git-untracked > .name::after,
+.file-item.git-staged > .name::after {
+  content: '●';
+  margin-left: 6px;
+  font-size: 8px;
+  vertical-align: middle;
+}
+
+.file-item.git-modified > .name::after {
+  color: var(--git-modified, #d29922);
+}
+
+.file-item.git-untracked > .name::after {
+  color: var(--git-added, #2ea043);
+}
+
+.file-item.git-staged > .name::after {
+  color: var(--git-staged, #3fb950);
+}
+
+/* Keep the dot readable on the accent-colored active row */
+.file-item.active.git-modified > .name::after,
+.file-item.active.git-untracked > .name::after,
+.file-item.active.git-staged > .name::after {
+  color: white;
+}
+
 /* Chevron for expand/collapse */
 .file-item .chevron {
   width: 16px;
@@ -1126,6 +1155,38 @@ html, body {
   color: var(--text-muted);
   padding: 0 8px 0 12px;
   font-size: 0.85em;
+}
+
+/* Git change indicators gutter */
+#editor .CodeMirror .git-gutter {
+  width: 6px;
+}
+
+.git-gutter-marker {
+  width: 3px;
+  height: 100%;
+  margin-left: 1px;
+  border-radius: 1px;
+}
+
+.git-gutter-marker.git-added {
+  background: var(--git-added, #2ea043);
+}
+
+.git-gutter-marker.git-modified {
+  background: var(--git-modified, #d29922);
+}
+
+.git-gutter-marker.git-deleted {
+  /* Triangle pointing right at the deletion point */
+  width: 0;
+  height: 0;
+  margin-left: 0;
+  border-radius: 0;
+  background: transparent;
+  border-left: 6px solid var(--git-deleted, #f85149);
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
 }
 
 /* Markdown syntax highlighting - override CodeMirror default theme */
@@ -2366,6 +2427,32 @@ li.CodeMirror-hint-active {
 .terminal-line.system {
   color: var(--text-muted);
   font-style: italic;
+}
+
+/* Agent write-diff preview (diff-before-write approval gate) */
+.terminal-line.diff-add,
+.terminal-line.diff-del,
+.terminal-line.diff-hunk,
+.terminal-line.diff-ctx {
+  margin-bottom: 0;
+  font-family: 'SF Mono', 'Monaco', 'Menlo', monospace;
+  white-space: pre-wrap;
+}
+
+.terminal-line.diff-add {
+  color: var(--git-added, #2ea043);
+}
+
+.terminal-line.diff-del {
+  color: var(--git-deleted, #f85149);
+}
+
+.terminal-line.diff-hunk {
+  color: var(--git-staged, #58a6ff);
+}
+
+.terminal-line.diff-ctx {
+  color: var(--text-muted);
 }
 
 .terminal-line.terminal-banner {

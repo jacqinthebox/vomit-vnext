@@ -36,6 +36,7 @@ Keyboard shortcuts shown as **Cmd** on macOS use **Ctrl** on Windows/Linux. **Op
 - **Right Outline Bar** - Always-visible document outline on the right (Cmd+Alt+O)
 - **Multi-Cursor Editing** - PyCharm-style multi-cursor: double-tap Option, then use Option+Up/Down
 - **Drag & Drop** - Drag files and folders to reorganize your file tree
+- **Git Awareness** - Change indicators in the editor gutter and status badges in the file tree when the folder is a git repo
 - **Presenter View** - Current slide, next slide preview, speaker notes, timer
 - **Local AI (Privacy First)** - Built-in AI terminal powered by Ollama - your data stays on your machine
 - **RAG Search** - Index a bucket and ask AI questions with context from that bucket
@@ -249,7 +250,7 @@ Type `/` in the AI terminal to open an inline command picker. Navigate with `↑
 - `/index <folder>` - Refresh only a specific folder inside the current bucket
 - `/reindex` - Clear and rebuild the current bucket's RAG index
 - `/rag <query>` - Search the current bucket index and ask AI with context
-- `/agent <prompt>` - Agentic mode with tools (bash, file read/write, PDF text extraction, web search)
+- `/agent <prompt>` - Agentic mode with tools (bash, file read/write/edit, project search, PDF text extraction, URL fetch, web search)
 - `/new` - Start a new conversation (clear history)
 - `/help` - Show all available commands
 
@@ -258,6 +259,33 @@ Type `/` in the AI terminal to open an inline command picker. Navigate with `↑
 The `/agent`, `/write-new`, and `/write-append` commands support real-time web search via [Tavily](https://tavily.com). Set your API key once via **AI menu → Set Tavily API Key...**. When you ask the agent to search the web (e.g. `/agent search for the latest news on...`), it will automatically call the Tavily search tool and include current results in its response. `/write-new` always searches the web before writing so new documents start from current information; the research activity is shown in the terminal while only the final document is written to the editor.
 
 The agent can also read PDF documents directly. Ask `/agent summarize ./path/to/document.pdf` and Vomit extracts the PDF text internally, without requiring `pdftotext` or another system PDF utility.
+
+**Agent tools:**
+
+The agent works in a loop: the model calls tools, sees the results, and continues until the task is done. Available tools:
+
+- `bash` — run a shell command (60s timeout, killable with the Stop button)
+- `read_file` / `read_pdf` — read text files (in chunks, for large files) and PDFs
+- `write_file` — create or overwrite a file
+- `edit_file` — make a targeted change to an existing file by replacing an exact snippet
+- `search_files` — search file contents recursively with a regex (skips `node_modules`, `.git`, binaries)
+- `fetch_url` — fetch a web page and read its text content
+- `tavily_search` — web search (requires a Tavily API key)
+
+**Agent permissions:**
+
+By default, read-only tools (file reads, searches, listings, web lookups, and read-only shell commands like `ls`, `cat`, `grep`, `git status`) run without asking. Anything that can change your system — file writes, edits, and other shell commands — shows a prompt in the terminal:
+
+```
+⚠ Allow bash? npm install
+[y = yes / n = no / a = always this session]
+```
+
+Answer `y` to allow once, `n` (or Escape) to deny — the model is told and adjusts its approach — or `a` to allow that command (by its first word, e.g. all `npm …`) or tool for the rest of the session. A single keypress answers when the input line is empty. Unanswered prompts deny automatically after 2 minutes. Change the behavior via **AI menu → Agent Permissions**: *Auto-allow read-only tools* (default), *Always ask*, or *Never ask (unrestricted)*.
+
+**Diff preview for file writes:** when the agent wants to write or edit a file, the prompt shows the exact change as a colored unified diff with a `path | +n -m` header (repo-relative when the folder is a git repo), and the keys become `[a]pprove / [r]eject / [s] = always this session`. Rejecting tells the model "User rejected this edit" so it can adapt. Toggle via **AI menu → Diff Preview for File Writes** (on by default; off falls back to the plain prompt above).
+
+For OpenAI-compatible endpoints you can also raise the response length cap via **AI menu → Set Max Output Tokens…** (default 4096).
 
 **RAG (Retrieval Augmented Generation):**
 

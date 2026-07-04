@@ -196,6 +196,18 @@ ipcRenderer.on('claude-metrics', (event, metrics) => {
   window.dispatchEvent(new CustomEvent('vomit:claude-metrics', { detail: metrics }));
 });
 
+ipcRenderer.on('agent-permission-request', (event, data) => {
+  window.dispatchEvent(new CustomEvent('vomit:agent-permission-request', { detail: data }));
+});
+
+ipcRenderer.on('agent-permission-resolved', (event, data) => {
+  window.dispatchEvent(new CustomEvent('vomit:agent-permission-resolved', { detail: data }));
+});
+
+ipcRenderer.on('git-status-changed', (event, data) => {
+  window.dispatchEvent(new CustomEvent('vomit:git-status-changed', { detail: data }));
+});
+
 ipcRenderer.on('rag-progress', (event, progress) => {
   window.dispatchEvent(new CustomEvent('vomit:rag-progress', { detail: progress }));
 });
@@ -341,6 +353,11 @@ contextBridge.exposeInMainWorld('vomit', {
   agentExecute: (prompt, cwd) => ipcRenderer.invoke('agent-execute', prompt, cwd),
   agentExecuteEditor: (prompt, cwd) => ipcRenderer.invoke('agent-execute-editor', prompt, cwd),
   agentClearHistory: () => ipcRenderer.invoke('agent-clear-history'),
+  agentPermissionResponse: (id, answer) => ipcRenderer.invoke('agent-permission-response', { id, answer }),
+  // Git awareness
+  gitRepoInfo: () => ipcRenderer.invoke('git-repo-info'),
+  gitStatus: () => ipcRenderer.invoke('git-status'),
+  gitLineDiff: (filePath, content) => ipcRenderer.invoke('git-line-diff', filePath, content),
   getContextStats: () => ipcRenderer.invoke('get-context-stats'),
   onContextStatsUpdated: (cb) => ipcRenderer.on('context-stats-updated', cb),
   // File operations for pseudonymization
