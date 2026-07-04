@@ -30,6 +30,8 @@ const FETCH_MAX_CHARS = 20 * 1024;
 const FETCH_TIMEOUT_MS = 20000;
 const FETCH_MAX_REDIRECTS = 3;
 const HISTORY_HARD_CAP = 200;
+const MAX_PROMPT_IMAGES = 4;
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
 async function readPdfText(filePath) {
   const { extractPdfText } = require('./pdfText');
@@ -382,20 +384,23 @@ function isReadOnlyToolCall(toolName, args) {
 // ---- Model-facing truncation ----
 
 /**
- * Cap a tool result before it enters the model's message list. Keeps the head
- * and tail (errors and summaries tend to live at the edges) with an explicit
- * marker so the model knows content is missing.
+ * Cap text before it enters the model's message list (tool results, or huge
+ * prompts like /doc's embedded document). Keeps a head and tail proportional
+ * to the budget (edges carry errors, titles, and conclusions) with an
+ * explicit marker so the model knows content is missing.
  * @param {string} text
  * @param {number} [max]
  */
 function truncateForModel(text, max = MODEL_RESULT_MAX_CHARS) {
   const value = String(text == null ? '' : text);
   if (value.length <= max) return value;
-  const omitted = value.length - MODEL_RESULT_HEAD - MODEL_RESULT_TAIL;
+  const head = Math.floor(max * 0.62);
+  const tail = Math.max(1, max - head - 120); // reserve room for the marker
+  const omitted = value.length - head - tail;
   return (
-    value.slice(0, MODEL_RESULT_HEAD) +
-    `\n\n...[truncated ${omitted} chars — output too large; refine the command or read in smaller chunks]...\n\n` +
-    value.slice(-MODEL_RESULT_TAIL)
+    value.slice(0, head) +
+    `\n\n...[truncated ${omitted} chars — content too large for the context window]...\n\n` +
+    value.slice(-tail)
   );
 }
 
@@ -885,6 +890,95 @@ function tavilySearch(safeArgs, configStore) {
   });
 }
 
+// ---- Vision: image references in prompts ----
+
+/**
+ * Find image references in prompt/document text: markdown image links,
+ * bare paths with an image extension, and inline base64 data URIs.
+ * Pure — no filesystem access; returns raw refs in order of appearance.
+ * @param {string} text
+ * @returns {string[]}
+ */
+function extractImageRefs(text) {
+  const source = String(text || '');
+  const refs = [];
+  let m;
+
+  // Markdown image links: ![alt](path "optional title")
+  const mdRe = /!\[[^\]]*\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g;
+  while ((m = mdRe.exec(source)) !== null) refs.push(m[1]);
+
+  // Inline data URIs (pasted images)
+  const dataRe = /data:image\/[a-z0-9.+-]+;base64,[A-Za-z0-9+/=]+/gi;
+  while ((m = dataRe.exec(source)) !== null) refs.push(m[0]);
+
+  // Bare paths ending in an image extension
+  const bareRe = /(?:^|[\s"'`(<])((?:[A-Za-z]:)?[^\s"'`()<>]+\.(?:png|jpe?g|gif|webp|bmp))(?=$|[\s"'`)>.,;:])/gim;
+  while ((m = bareRe.exec(source)) !== null) refs.push(m[1]);
+
+  return [...new Set(refs)];
+}
+
+function resolveExistingFile(ref, baseDirs) {
+  if (path.isAbsolute(ref)) return fs.existsSync(ref) ? ref : null;
+  for (const dir of baseDirs) {
+    if (!dir) continue;
+    const full = path.join(dir, ref);
+    if (fs.existsSync(full)) return full;
+  }
+  return null;
+}
+
+/**
+ * Collect base64-encoded images referenced by a prompt, for vision models
+ * (Ollama expects raw base64 strings in the message's `images` array).
+ * Local paths resolve against baseDirs in order; remote URLs are skipped.
+ * An optional opts.encoder (filePath → base64 | null) lets callers downscale
+ * or re-encode; when it returns null the raw file bytes are used instead.
+ * @param {string} text
+ * @param {Array<string|null>} baseDirs e.g. [dirname(currentFile), cwd]
+ * @param {{maxImages?: number, encoder?: (filePath: string) => string|null}} [opts]
+ * @returns {{images: string[], names: string[]}}
+ */
+function collectPromptImages(text, baseDirs, opts = {}) {
+  const maxImages = opts.maxImages || MAX_PROMPT_IMAGES;
+  const images = [];
+  const names = [];
+
+  for (const ref of extractImageRefs(text)) {
+    if (images.length >= maxImages) break;
+
+    if (ref.startsWith('data:')) {
+      const b64 = ref.slice(ref.indexOf('base64,') + 7);
+      if (b64.length * 0.75 <= MAX_IMAGE_BYTES) {
+        images.push(b64);
+        names.push('(inline image)');
+      }
+      continue;
+    }
+    if (/^[a-z][a-z0-9+.-]*:\/\//i.test(ref)) continue; // remote URL — skip
+
+    let decoded = ref;
+    try {
+      decoded = decodeURIComponent(ref);
+    } catch (_) {
+      // Keep the raw ref if it isn't valid percent-encoding.
+    }
+    const full = resolveExistingFile(decoded, baseDirs);
+    if (!full) continue;
+    try {
+      if (fs.statSync(full).size > MAX_IMAGE_BYTES) continue;
+      const encoded = opts.encoder ? opts.encoder(full) : null;
+      images.push(encoded || fs.readFileSync(full).toString('base64'));
+      names.push(path.basename(full));
+    } catch (_) {
+      // Unreadable — skip.
+    }
+  }
+
+  return { images, names };
+}
+
 // ---- Tool executor ----
 
 function resolveAgainstCwd(p, cwd) {
@@ -995,6 +1089,8 @@ module.exports = {
   pageFileContent,
   estimateTokens,
   trimHistoryToTokenBudget,
+  extractImageRefs,
+  collectPromptImages,
   LIMITS: {
     BASH_TIMEOUT_MS,
     BASH_OUTPUT_CAP,

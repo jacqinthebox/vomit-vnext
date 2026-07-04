@@ -260,6 +260,10 @@ The `/agent`, `/write-new`, and `/write-append` commands support real-time web s
 
 The agent can also read PDF documents directly. Ask `/agent summarize ./path/to/document.pdf` and Vomit extracts the PDF text internally, without requiring `pdftotext` or another system PDF utility.
 
+**Vision (Ollama multimodal models):** with a vision-capable model selected (llava, gemma, qwen-vl, …), the agent can see images you reference. Mention an image path in your prompt (`what's in ./shot.png?`) or use `/doc` on a document containing image links — referenced images (up to 4) are downscaled to 1024px and attached to the request automatically; you'll see `(attached 1 image: shot.png)` in the terminal. Remote URLs are not fetched. Text-only models will return an Ollama error if you attach images to them.
+
+**Ollama context window:** Ollama serves every model with a 4096-token window by default, no matter what the model supports. Vomit requests a larger window (default 16384, capped by the model's own maximum) so long documents and images fit. Adjust via **AI menu → Set Ollama Context Size…** — larger values use more RAM. The context bar reflects the effective window.
+
 **Agent tools:**
 
 The agent works in a loop: the model calls tools, sees the results, and continues until the task is done. Available tools:
