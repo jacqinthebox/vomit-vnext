@@ -25,6 +25,11 @@
   --syntax-quote: #6b7280;
   --syntax-hr: #c0c0c0;
   --selection-bg: rgba(53, 132, 228, 0.3);
+  /* Git indicators */
+  --git-added: #1a7f37;
+  --git-modified: #bf8700;
+  --git-deleted: #cf222e;
+  --git-staged: #0969da;
 }
 
 /* CherryTree CodeMirror syntax */
@@ -146,6 +151,11 @@
   --syntax-code: #cf222e;
   --syntax-quote: #57606a;
   --syntax-hr: #d0d7de;
+  /* Git indicators */
+  --git-added: #1a7f37;
+  --git-modified: #bf8700;
+  --git-deleted: #cf222e;
+  --git-staged: #0969da;
 }
 
 /* Dark Theme */
@@ -175,6 +185,11 @@
   --syntax-code: #d7ba7d;
   --syntax-quote: #6a9955;
   --syntax-hr: #808080;
+  /* Git indicators */
+  --git-added: #3fb950;
+  --git-modified: #d29922;
+  --git-deleted: #f85149;
+  --git-staged: #58a6ff;
 }
 
 /* Dark Theme CodeMirror syntax */
@@ -240,6 +255,11 @@
   --syntax-quote: #7dc4e4;    /* Sapphire */
   --syntax-hr: #c6a0f6;       /* Mauve */
   --selection-bg: rgba(198, 160, 246, 0.3);
+  /* Git indicators */
+  --git-added: #a6da95;       /* Green */
+  --git-modified: #eed49f;    /* Yellow */
+  --git-deleted: #ed8796;     /* Red */
+  --git-staged: #8aadf4;      /* Blue */
 }
 
 /* Nord Theme */
@@ -269,6 +289,11 @@
   --syntax-quote: #5e81ac;
   --syntax-hr: #d8dee9;
   --selection-bg: rgba(136, 192, 208, 0.3);
+  /* Git indicators */
+  --git-added: #a3be8c;
+  --git-modified: #ebcb8b;
+  --git-deleted: #bf616a;
+  --git-staged: #81a1c1;
 }
 
 /* Nord Theme CodeMirror syntax */
@@ -334,6 +359,11 @@
   --syntax-quote: #9699a3;      /* Comment */
   --syntax-hr: #b4b5b9;         /* Border */
   --selection-bg: rgba(52, 84, 138, 0.25);
+  /* Git indicators */
+  --git-added: #33635c;         /* Green */
+  --git-modified: #8f5e15;      /* Yellow */
+  --git-deleted: #8c4351;       /* Red */
+  --git-staged: #34548a;        /* Blue */
 }
 
 /* Tokyo Night Light CodeMirror syntax */
@@ -399,6 +429,11 @@
   --syntax-quote: #565f89;    /* Comment */
   --syntax-hr: #3b4261;       /* Dark3 */
   --selection-bg: rgba(122, 162, 247, 0.3);
+  /* Git indicators */
+  --git-added: #9ece6a;       /* Green */
+  --git-modified: #e0af68;    /* Yellow */
+  --git-deleted: #f7768e;     /* Red */
+  --git-staged: #7aa2f7;      /* Blue */
 }
 
 /* Solarized Dark Theme */
@@ -428,6 +463,11 @@
   --syntax-quote: #6c71c4;
   --syntax-hr: #657b83;
   --selection-bg: rgba(38, 139, 210, 0.3);
+  /* Git indicators */
+  --git-added: #859900;
+  --git-modified: #b58900;
+  --git-deleted: #dc322f;
+  --git-staged: #268bd2;
 }
 
 /* Solarized Theme CodeMirror syntax */

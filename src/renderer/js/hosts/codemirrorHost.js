@@ -252,6 +252,23 @@ class CodemirrorHost {
     return this.cm.addLineWidget(line, node, options);
   }
 
+  // --- Gutters ---
+  setGutters(ids) {
+    this.cm.setOption('gutters', ids || []);
+  }
+
+  setGutterMarker(line, gutterId, node) {
+    this.cm.setGutterMarker(line, gutterId, node);
+  }
+
+  clearGutter(gutterId) {
+    this.cm.clearGutter(gutterId);
+  }
+
+  lineCount() {
+    return this.cm.lineCount();
+  }
+
   // --- Code Block Styling ---
   updateCodeBlockStyles() {
     const lineCount = this.cm.lineCount();

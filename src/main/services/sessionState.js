@@ -30,6 +30,12 @@ class SessionState extends EventEmitter {
     this._availableAITools = { ollama: null, ollamaModels: [] };
     /** @type {boolean} */
     this._agentAborted = false;
+    /** @type {import('child_process').ChildProcess|null} */
+    this._agentChildProcess = null;
+    /** @type {import('http').ClientRequest|null} */
+    this._agentActiveRequest = null;
+    /** @type {Set<string>} */
+    this._agentSessionAllowlist = new Set();
     /** @type {Array<object>} */
     this._agentConversationHistory = [];
     /** @type {Array<{role: 'user'|'assistant', content: string}>} */
@@ -97,6 +103,14 @@ class SessionState extends EventEmitter {
 
   get agentAborted() { return this._agentAborted; }
   set agentAborted(v) { this._agentAborted = v; }
+
+  get agentChildProcess() { return this._agentChildProcess; }
+  set agentChildProcess(v) { this._agentChildProcess = v; }
+
+  get agentActiveRequest() { return this._agentActiveRequest; }
+  set agentActiveRequest(v) { this._agentActiveRequest = v; }
+
+  get agentSessionAllowlist() { return this._agentSessionAllowlist; }
 
   get agentConversationHistory() { return this._agentConversationHistory; }
   set agentConversationHistory(v) { this._agentConversationHistory = v; }

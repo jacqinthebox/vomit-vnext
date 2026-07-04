@@ -108,6 +108,10 @@ class Editor {
       getTabManager: () => this.tabManager,
       getPreviewManager: () => this.previewManager
     });
+    this.gitBadgesManager = new GitBadgesManager({
+      treeView: this.fileTreeManager.treeView,
+      dataModel: this.fileTreeManager.dataModel
+    });
     this.tagExplorerManager = new TagExplorerManager({
       state: this.state,
       dom: {
@@ -266,6 +270,9 @@ class Editor {
     });
     this.cm = this.host.cm;  // Backward compat alias
 
+    // Git change indicators in the editor gutter (inert outside a git repo)
+    this.gitGutterManager = new GitGutterManager({ host: this.host, state: this.state });
+
     // Handle changes
     this.cm.on('change', () => {
       this.host.updateCodeBlockStyles();
@@ -353,9 +360,9 @@ class Editor {
       }
 
       e.preventDefault();
-      const doc = cm.getDoc();
-      const cursor = doc.getCursor();
-      doc.replaceRange(textToInsert, cursor);
+      // Replace the selection (all of them, with multi-cursor) rather than
+      // inserting at the cursor next to still-selected text.
+      cm.getDoc().replaceSelection(textToInsert);
     });
 
     // Cmd/Ctrl + click on [[wikilink]] opens the target file.

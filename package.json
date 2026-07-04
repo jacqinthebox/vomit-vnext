@@ -1,10 +1,11 @@
 {
   "name": "vomit-vnext",
-  "version": "1.15.2",
+  "version": "1.16.0",
   "description": "A keyboard-centric markdown editor and presentation app with IntelliSense, live preview, and presenter view",
   "main": "src/main/main.js",
   "scripts": {
     "start": "electron .",
+    "test": "node --test",
     "build": "electron-builder --mac",
     "build:mac": "electron-builder --mac",
     "build:win": "electron-builder --win",
@@ -34,6 +35,7 @@
     "@xterm/xterm": "^6.0.0",
     "better-sqlite3": "^12.10.0",
     "chokidar": "^5.0.0",
+    "diff": "^9.0.0",
     "electron-store": "11.0.2",
     "highlight.js": "^11.9.0",
     "marked": "18.0.5",

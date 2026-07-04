@@ -11,6 +11,8 @@ const { createFileService } = require('./ipc/handlers/file');
 const { createPresentationService } = require('./ipc/handlers/presentation');
 const { createBucketService } = require('./ipc/handlers/bucket');
 const { createTerminalService } = require('./ipc/handlers/terminal');
+const { createPermissionBroker } = require('./services/agentPermissions');
+const { createGitService } = require('./ipc/handlers/git');
 const aiHandlers = require('./ipc/handlers/ai');
 const agentHandlers = require('./ipc/handlers/agent');
 const shellHandlers = require('./ipc/handlers/shell');
@@ -108,6 +110,19 @@ const terminalService = createTerminalService({
   state, bus, windowManager
 });
 
+// Permission broker for agent tool execution — prompts go to both terminal
+// windows via syncTerminalOutput; answers come back over IPC (agent.js).
+const permissionBroker = createPermissionBroker({
+  sendOutput: (channel, ...args) => terminalService.syncTerminalOutput(channel, ...args),
+  state
+});
+
+// Git awareness: repo status for tree badges, line diffs for the editor
+// gutter, .git watching for external changes. Silently inert without git.
+const gitService = createGitService({ state, bus, configStore });
+app.on('browser-window-focus', () => gitService.onWindowFocus());
+app.on('will-quit', () => gitService.dispose());
+
 // Register menu module with all action references
 menuModule.register({
   state,
@@ -139,8 +154,9 @@ fileService.registerHandlers(ipcMain);
 presentationService.registerHandlers(ipcMain);
 bucketService.registerHandlers(ipcMain);
 terminalService.registerHandlers(ipcMain);
-aiHandlers.registerHandlers(ipcMain, { state, bus, configStore, terminalService });
-agentHandlers.registerHandlers(ipcMain, { state, bus, configStore, terminalService });
+aiHandlers.registerHandlers(ipcMain, { state, bus, configStore, terminalService, permissionBroker });
+agentHandlers.registerHandlers(ipcMain, { state, bus, configStore, terminalService, permissionBroker, gitService });
+gitService.registerHandlers(ipcMain);
 shellHandlers.registerHandlers(ipcMain, { state, bus, terminalService });
 pseudoHandlers.registerHandlers(ipcMain, { state, configStore });
 rag.registerHandlers(ipcMain, { state, bus });

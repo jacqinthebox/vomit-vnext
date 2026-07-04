@@ -112,7 +112,85 @@ function buildAISubmenu() {
     click: () => setTavilyApiKey()
   });
 
+  submenu.push({ type: 'separator' });
+  const permissionMode = _configStore.getAgentPermissionMode();
+  submenu.push({
+    label: 'Agent Permissions',
+    submenu: [
+      {
+        label: 'Auto-allow read-only tools',
+        type: 'radio',
+        checked: permissionMode === 'auto',
+        click: () => setAgentPermissionMode('auto')
+      },
+      {
+        label: 'Always ask',
+        type: 'radio',
+        checked: permissionMode === 'always',
+        click: () => setAgentPermissionMode('always')
+      },
+      {
+        label: 'Never ask (unrestricted)',
+        type: 'radio',
+        checked: permissionMode === 'never',
+        click: () => setAgentPermissionMode('never')
+      }
+    ]
+  });
+  submenu.push({
+    label: 'Diff Preview for File Writes',
+    type: 'checkbox',
+    checked: _configStore.getAgentDiffGate(),
+    click: (menuItem) => {
+      _configStore.setAgentDiffGate(menuItem.checked);
+      createMenu();
+    }
+  });
+  submenu.push({
+    label: 'Set Max Output Tokens…',
+    click: () => setMaxOutputTokens()
+  });
+  submenu.push({
+    label: 'Set Ollama Context Size…',
+    click: () => setOllamaContextSize()
+  });
+
   return submenu;
+}
+
+async function setOllamaContextSize() {
+  const current = _configStore.getOllamaNumCtx();
+  const raw = await promptString(
+    `Ollama context window (num_ctx) in tokens (current: ${current}).\nCapped by the model's own maximum. Larger values use more RAM:`,
+    String(current)
+  );
+  if (raw == null || raw === '') return;
+  const n = parseInt(raw, 10);
+  if (Number.isFinite(n) && n >= 1024) {
+    _configStore.setOllamaNumCtx(n);
+    createMenu();
+    _bus.send('context-stats-updated');
+    _bus.sendToTerminal('context-stats-updated');
+  }
+}
+
+function setAgentPermissionMode(mode) {
+  _configStore.setAgentPermissionMode(mode);
+  createMenu();
+}
+
+async function setMaxOutputTokens() {
+  const current = _configStore.getOpenAIMaxTokens();
+  const raw = await promptString(
+    `Max output tokens per response for OpenAI-compatible endpoints (current: ${current}):`,
+    String(current)
+  );
+  if (raw == null || raw === '') return;
+  const n = parseInt(raw, 10);
+  if (Number.isFinite(n) && n > 0) {
+    _configStore.setOpenAIMaxTokens(n);
+    createMenu();
+  }
 }
 
 function setAIProvider(provider) {

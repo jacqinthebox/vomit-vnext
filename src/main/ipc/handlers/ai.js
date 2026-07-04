@@ -5,6 +5,8 @@ const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const aiProviders = require('../../services/aiProviders');
+const modelInfo = require('../../services/modelInfo');
+const { killChildProcess } = require('../../services/agentTools');
 
 // Find executable path
 function findExecutable(name) {
@@ -70,9 +72,9 @@ function detectAITools(state) {
 /**
  * Register AI IPC handlers.
  * @param {import('electron').IpcMain} ipcMain
- * @param {{ state: import('../../services/sessionState').SessionState, bus: import('../rendererBus').RendererBus, configStore: typeof import('../../services/configStore'), terminalService: ReturnType<import('./terminal').createTerminalService> }} deps
+ * @param {{ state: import('../../services/sessionState').SessionState, bus: import('../rendererBus').RendererBus, configStore: typeof import('../../services/configStore'), terminalService: ReturnType<import('./terminal').createTerminalService>, permissionBroker?: ReturnType<import('../../services/agentPermissions').createPermissionBroker> }} deps
  */
-function registerHandlers(ipcMain, { state, bus, configStore, terminalService }) {
+function registerHandlers(ipcMain, { state, bus, configStore, terminalService, permissionBroker }) {
   // Chat execution — provider-agnostic. The IPC channel name is kept as
   // `claude-execute` for backward compatibility with the renderer.
   ipcMain.handle('claude-execute', async (event, command, cwd) => {
@@ -125,11 +127,16 @@ function registerHandlers(ipcMain, { state, bus, configStore, terminalService })
     };
 
     try {
+      const numCtx = cfg.provider === aiProviders.PROVIDER_OLLAMA
+        ? await modelInfo.getEffectiveContextLimit(configStore)
+        : undefined;
       const assistant = await aiProviders.streamChat({
         provider: cfg.provider,
         baseUrl: cfg.baseUrl,
         apiKey: cfg.apiKey,
         model: cfg.model,
+        maxTokens: cfg.maxTokens,
+        numCtx,
         messages: state.chatHistory,
         onContent: (chunk) => {
           if (!aborted) terminalService.syncTerminalOutput('claude-output', chunk);
@@ -162,8 +169,18 @@ function registerHandlers(ipcMain, { state, bus, configStore, terminalService })
       state.ollamaAbortController = null;
       terminalService.syncTerminalOutput('claude-done', -1);
     }
-    // Also stop agent mode
+    // Also stop agent mode: flag the loop, destroy the in-flight HTTP stream,
+    // kill any running shell command, and deny pending permission prompts.
     state.agentAborted = true;
+    if (state.agentActiveRequest) {
+      try { state.agentActiveRequest.destroy(); } catch (_) { /* already closed */ }
+      state.agentActiveRequest = null;
+    }
+    if (state.agentChildProcess) {
+      killChildProcess(state.agentChildProcess);
+      state.agentChildProcess = null;
+    }
+    if (permissionBroker) permissionBroker.abortAll();
   });
 
   // Clear conversation history
