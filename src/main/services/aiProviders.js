@@ -54,8 +54,10 @@ function pickHttpModule(parsedUrl) {
 }
 
 // Default idle timeout for streaming requests. A hung connection (server up
-// but never responding) otherwise stalls the agent loop forever.
-const DEFAULT_STREAM_TIMEOUT_MS = 120000;
+// but never responding) otherwise stalls the agent loop forever. Local models
+// can legitimately be silent for minutes (cold load + long prompt eval with
+// images), so the ceiling is generous — Stop always works meanwhile.
+const DEFAULT_STREAM_TIMEOUT_MS = 300000;
 
 // Wrap a low-level request error in a user-facing message while preserving
 // err.code so callers can distinguish transient connection errors (retryable)
@@ -193,7 +195,9 @@ function buildOllamaMetrics({ model, startedAt, firstTokenAt, stats }) {
   if (stats) {
     genTokens = stats.eval_count != null ? stats.eval_count : null;
     promptTokens = stats.prompt_eval_count != null ? stats.prompt_eval_count : null;
-    if (genTokens != null && stats.eval_duration) {
+    // A decode rate over a handful of tokens (or a sub-100ms window) is
+    // meaningless noise (e.g. "1000000 tok/s" on a 1-token reply) — omit it.
+    if (genTokens != null && genTokens >= 4 && stats.eval_duration >= 1e8) {
       decodeTps = genTokens / (stats.eval_duration / 1e9);
     }
     if (stats.load_duration != null || stats.prompt_eval_duration != null) {
@@ -228,7 +232,7 @@ function buildOpenAIMetrics({ model, startedAt, firstTokenAt, usage, content }) 
   return { provider: 'openai', model, promptTokens, genTokens, tokensPerSec, decodeTps, ttftMs, totalMs, estimated: !reported };
 }
 
-function streamOllamaChat({ baseUrl, model, messages, tools, onContent, isAborted, onRequest, timeoutMs }) {
+function streamOllamaChat({ baseUrl, model, messages, tools, onContent, isAborted, onRequest, timeoutMs, numCtx }) {
   return new Promise((resolve, reject) => {
     const startedAt = Date.now();
     const url = new URL('/api/chat', baseUrl || OLLAMA_DEFAULT_URL);
@@ -236,7 +240,10 @@ function streamOllamaChat({ baseUrl, model, messages, tools, onContent, isAborte
       model,
       messages,
       tools,
-      stream: true
+      stream: true,
+      // Ollama serves num_ctx=4096 by default regardless of the model's
+      // maximum — request the effective window explicitly.
+      options: (typeof numCtx === 'number' && numCtx > 0) ? { num_ctx: numCtx } : undefined
     });
 
     const req = pickHttpModule(url).request(
@@ -249,7 +256,10 @@ function streamOllamaChat({ baseUrl, model, messages, tools, onContent, isAborte
           let errBody = '';
           res.on('data', (c) => (errBody += c));
           res.on('end', () => {
-            if (res.statusCode === 400) {
+            const lower = errBody.toLowerCase();
+            if (res.statusCode === 400 && (lower.includes('context') || lower.includes('exceed'))) {
+              reject(new Error(`Prompt too large for the model's context window. Shorten the document or images, or raise it via AI menu → Set Ollama Context Size….\n\nDetails: ${errBody}`));
+            } else if (res.statusCode === 400 && lower.includes('tool')) {
               reject(new Error(`Model may not support tool calling. Try llama3.2, llama3.1, mistral, or qwen2.5.\n\nDetails: ${errBody}`));
             } else {
               reject(new Error(formatOllamaApiError(res.statusCode, errBody)));

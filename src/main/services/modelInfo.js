@@ -129,8 +129,25 @@ async function getContextLimit(configStore) {
   return DEFAULT_CONTEXT_LIMIT;
 }
 
+/**
+ * The context window actually in effect for requests: for Ollama this is the
+ * configured num_ctx capped by the model's maximum (Ollama serves 4096 by
+ * default no matter what the model supports, so we must request more and the
+ * history budget / context bar must reflect what we request, not the max).
+ * @param {typeof import('./configStore')} configStore
+ * @returns {Promise<number>}
+ */
+async function getEffectiveContextLimit(configStore) {
+  const max = await getContextLimit(configStore);
+  if (configStore.getAIProvider() === 'ollama' && typeof configStore.getOllamaNumCtx === 'function') {
+    return Math.min(max, configStore.getOllamaNumCtx());
+  }
+  return max;
+}
+
 module.exports = {
   getContextLimit,
+  getEffectiveContextLimit,
   getOllamaModelContextLength,
   getOpenAIModelContextLength,
   DEFAULT_CONTEXT_LIMIT

@@ -14,7 +14,8 @@ const {
   parseFallbackToolCalls,
   estimateTokens,
   trimHistoryToTokenBudget,
-  applyEdit
+  applyEdit,
+  collectPromptImages
 } = require('../../services/agentTools');
 const { buildWriteDiff } = require('../../services/diffPreview');
 
@@ -30,6 +31,29 @@ const PERMISSION_DENIED_RESULT =
   'User denied permission for this command. Ask the user or try a different approach.';
 
 const EDIT_REJECTED_RESULT = 'User rejected this edit';
+
+// Vision models tokenize large images very expensively (a full-res screenshot
+// can cost thousands of tokens). Downscale to this bound before attaching.
+const IMAGE_MAX_DIMENSION = 1024;
+
+// Downscale + JPEG-encode an image via Electron's nativeImage. Returns null
+// on any failure so the caller falls back to the raw file bytes.
+function encodePromptImage(filePath) {
+  try {
+    const { nativeImage } = require('electron');
+    let img = nativeImage.createFromPath(filePath);
+    if (img.isEmpty()) return null;
+    const { width, height } = img.getSize();
+    if (Math.max(width, height) > IMAGE_MAX_DIMENSION) {
+      img = width >= height
+        ? img.resize({ width: IMAGE_MAX_DIMENSION })
+        : img.resize({ height: IMAGE_MAX_DIMENSION });
+    }
+    return img.toJPEG(80).toString('base64');
+  } catch (_) {
+    return null;
+  }
+}
 
 /**
  * Register agent IPC handlers.
@@ -48,7 +72,7 @@ function registerHandlers(ipcMain, { state, bus, configStore, terminalService, p
     const model = configStore.getActiveModel();
     const history = state.agentConversationHistory;
     const estimatedTokens = estimateTokens(history);
-    const contextLimit = await modelInfo.getContextLimit(configStore);
+    const contextLimit = await modelInfo.getEffectiveContextLimit(configStore);
 
     return {
       model: model || 'none',
@@ -106,6 +130,7 @@ function registerHandlers(ipcMain, { state, bus, configStore, terminalService, p
       apiKey: cfg.apiKey,
       model: cfg.model,
       maxTokens: cfg.maxTokens,
+      numCtx: cfg.numCtx,
       messages,
       tools: agentTools,
       onContent: (chunk) => {
@@ -121,7 +146,7 @@ function registerHandlers(ipcMain, { state, bus, configStore, terminalService, p
     } catch (e) {
       const code = e && e.code;
       if (!contentStarted && !state.agentAborted && RETRYABLE_CODES.has(code)) {
-        sendOutput('claude-output', '\n(connection error, retrying...)\n');
+        sendOutput('claude-status', '(connection error, retrying...)');
         return await doStream();
       }
       throw e;
@@ -278,15 +303,58 @@ After using tools, provide a summary of what you did. You have access to convers
 
     // Trim history to the model's context budget BEFORE building messages so
     // an over-budget history (e.g. after a model switch) can't blow the request.
-    const contextLimit = await modelInfo.getContextLimit(configStore);
+    const contextLimit = await modelInfo.getEffectiveContextLimit(configStore);
     const historyBudget = Math.floor(contextLimit * HISTORY_BUDGET_FRACTION);
+    if (cfg.provider === aiProviders.PROVIDER_OLLAMA) cfg.numCtx = contextLimit;
+
+    // Cap the prompt itself: /doc embeds whole documents, which can dwarf
+    // the window (a 286KB note is ~66k tokens). The current request wins
+    // over old history — if a big prompt is squeezed, trim history harder.
+    const RESPONSE_HEADROOM_TOKENS = 1024;
+    const sysTokens = estimateTokens([systemMessage]);
+    const promptTokens = estimateTokens([{ content: prompt }]);
+    let promptForModel = prompt;
+    let available = contextLimit - sysTokens - RESPONSE_HEADROOM_TOKENS - estimateTokens(state.agentConversationHistory);
+    if (promptTokens > available) {
+      const minPromptTokens = Math.floor(contextLimit * 0.25);
+      if (available < minPromptTokens) {
+        state.agentConversationHistory = trimHistoryToTokenBudget(
+          state.agentConversationHistory,
+          Math.max(0, contextLimit - sysTokens - RESPONSE_HEADROOM_TOKENS - minPromptTokens)
+        );
+        available = minPromptTokens;
+      }
+      if (promptTokens > available) {
+        promptForModel = truncateForModel(prompt, available * 4);
+        sendOutput('claude-status', `(prompt truncated to fit the ${contextLimit}-token context window — for whole-document questions try /rag, or raise it via AI menu → Set Ollama Context Size…)`);
+      }
+    }
     state.agentConversationHistory = trimHistoryToTokenBudget(state.agentConversationHistory, historyBudget);
 
-    // Start with system message, then history, then new prompt
-    const messages = [systemMessage, ...state.agentConversationHistory, { role: 'user', content: prompt }];
+    // Vision: if the prompt (or embedded document) references images and the
+    // provider is Ollama, attach them base64-encoded to the outgoing user
+    // message so multimodal models (llava, gemma, qwen-vl, …) can see them.
+    // Only the request copy carries the pixels — history stays text-only.
+    // Images are collected from the ORIGINAL prompt so truncation can't cut
+    // away the references; the message text sent is the capped version.
+    let userMessage = { role: 'user', content: promptForModel };
+    if (cfg.provider === aiProviders.PROVIDER_OLLAMA) {
+      const baseDirs = [
+        state.currentFilePath ? path.dirname(state.currentFilePath) : null,
+        workingDir
+      ];
+      const { images, names } = collectPromptImages(prompt, baseDirs, { encoder: encodePromptImage });
+      if (images.length > 0) {
+        userMessage = { role: 'user', content: promptForModel, images };
+        sendOutput('claude-status', `(attached ${images.length} image${images.length === 1 ? '' : 's'}: ${names.join(', ')})`);
+      }
+    }
 
-    // Add user message to history
-    state.agentConversationHistory.push({ role: 'user', content: prompt });
+    // Start with system message, then history, then new prompt
+    const messages = [systemMessage, ...state.agentConversationHistory, userMessage];
+
+    // Add user message to history (capped text only — never the base64 payload)
+    state.agentConversationHistory.push({ role: 'user', content: promptForModel });
 
     try {
       let iterations = 0;
@@ -364,6 +432,10 @@ After using tools, provide a summary of what you did. You have access to convers
     state.agentAborted = false;
     const workingDir = cwd || process.env.HOME;
     const today = new Date().toISOString().split('T')[0];
+    const editorContextLimit = await modelInfo.getEffectiveContextLimit(configStore);
+    if (cfg.provider === aiProviders.PROVIDER_OLLAMA) {
+      cfg.numCtx = editorContextLimit;
+    }
 
     const systemMessage = {
       role: 'system',
@@ -374,7 +446,15 @@ ALWAYS use the tavily_search tool to gather the latest, most accurate informatio
 After researching, output ONLY the final document body in GitHub-Flavored Markdown. Do NOT include a preamble, a description of your steps, or a summary of what you did. Do NOT wrap the document in code fences. Do NOT add YAML frontmatter (the editor adds it). Use tables, headings, and lists where they improve clarity.`
     };
 
-    const messages = [systemMessage, { role: 'user', content: prompt }];
+    // Cap oversized prompts (e.g. /write-append embeds the current document).
+    const editorPromptBudget = editorContextLimit - estimateTokens([systemMessage]) - 1024;
+    let editorPrompt = prompt;
+    if (estimateTokens([{ content: prompt }]) > editorPromptBudget) {
+      editorPrompt = truncateForModel(prompt, editorPromptBudget * 4);
+      sendOutput('claude-status', `(prompt truncated to fit the ${editorContextLimit}-token context window)`);
+    }
+
+    const messages = [systemMessage, { role: 'user', content: editorPrompt }];
 
     // Suppress the model's streamed prose from the terminal — it lands in the
     // editor instead. Tool announcements/results (sent via sendOutput inside

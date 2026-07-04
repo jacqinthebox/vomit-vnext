@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const aiProviders = require('../../services/aiProviders');
+const modelInfo = require('../../services/modelInfo');
 const { killChildProcess } = require('../../services/agentTools');
 
 // Find executable path
@@ -126,12 +127,16 @@ function registerHandlers(ipcMain, { state, bus, configStore, terminalService, p
     };
 
     try {
+      const numCtx = cfg.provider === aiProviders.PROVIDER_OLLAMA
+        ? await modelInfo.getEffectiveContextLimit(configStore)
+        : undefined;
       const assistant = await aiProviders.streamChat({
         provider: cfg.provider,
         baseUrl: cfg.baseUrl,
         apiKey: cfg.apiKey,
         model: cfg.model,
         maxTokens: cfg.maxTokens,
+        numCtx,
         messages: state.chatHistory,
         onContent: (chunk) => {
           if (!aborted) terminalService.syncTerminalOutput('claude-output', chunk);

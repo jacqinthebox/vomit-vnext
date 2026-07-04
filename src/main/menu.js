@@ -150,8 +150,28 @@ function buildAISubmenu() {
     label: 'Set Max Output Tokens…',
     click: () => setMaxOutputTokens()
   });
+  submenu.push({
+    label: 'Set Ollama Context Size…',
+    click: () => setOllamaContextSize()
+  });
 
   return submenu;
+}
+
+async function setOllamaContextSize() {
+  const current = _configStore.getOllamaNumCtx();
+  const raw = await promptString(
+    `Ollama context window (num_ctx) in tokens (current: ${current}).\nCapped by the model's own maximum. Larger values use more RAM:`,
+    String(current)
+  );
+  if (raw == null || raw === '') return;
+  const n = parseInt(raw, 10);
+  if (Number.isFinite(n) && n >= 1024) {
+    _configStore.setOllamaNumCtx(n);
+    createMenu();
+    _bus.send('context-stats-updated');
+    _bus.sendToTerminal('context-stats-updated');
+  }
 }
 
 function setAgentPermissionMode(mode) {
