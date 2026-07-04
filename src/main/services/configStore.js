@@ -26,7 +26,15 @@ const store = new Store({
     fontSize: 14,
     tavilyApiKey: '',
     showImagesFolder: false,
-    fileSortOrder: 'name'
+    fileSortOrder: 'name',
+    // Agent tool permission mode: 'auto' (auto-allow read-only tools),
+    // 'always' (prompt for every tool), 'never' (no prompts).
+    agentPermissionMode: 'auto',
+    // Show a unified diff for agent file writes/edits instead of the plain
+    // permission prompt. When off, writes fall back to the plain prompt.
+    agentDiffGate: true,
+    // Max output tokens for OpenAI-compatible chat completions.
+    openaiMaxTokens: 4096
   }
 });
 
@@ -108,6 +116,34 @@ function setMermaidCurve(curve) { store.set('mermaidCurve', curve); }
 function getFontSize() { return store.get('fontSize'); }
 /** @param {number} size */
 function setFontSize(size) { store.set('fontSize', size); }
+
+const AGENT_PERMISSION_MODES = ['auto', 'always', 'never'];
+/** @returns {string} 'auto' | 'always' | 'never' */
+function getAgentPermissionMode() {
+  const v = store.get('agentPermissionMode');
+  return AGENT_PERMISSION_MODES.includes(v) ? v : 'auto';
+}
+/** @param {string} mode */
+function setAgentPermissionMode(mode) {
+  store.set('agentPermissionMode', AGENT_PERMISSION_MODES.includes(mode) ? mode : 'auto');
+}
+
+/** @returns {boolean} */
+function getAgentDiffGate() { return store.get('agentDiffGate') !== false; }
+/** @param {boolean} enabled */
+function setAgentDiffGate(enabled) { store.set('agentDiffGate', enabled !== false); }
+
+/** @returns {number} */
+function getOpenAIMaxTokens() {
+  const v = store.get('openaiMaxTokens');
+  const n = typeof v === 'number' ? v : parseInt(String(v), 10);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 4096;
+}
+/** @param {number} n */
+function setOpenAIMaxTokens(n) {
+  const value = Number.isFinite(n) && n > 0 ? Math.floor(n) : 4096;
+  store.set('openaiMaxTokens', value);
+}
 
 /** @returns {string} */
 function getTavilyApiKey() { return store.get('tavilyApiKey') || ''; }
@@ -377,6 +413,12 @@ module.exports = {
   updateOpenAIEndpoint,
   removeOpenAIEndpoint,
   getActiveModel,
+  getAgentPermissionMode,
+  setAgentPermissionMode,
+  getAgentDiffGate,
+  setAgentDiffGate,
+  getOpenAIMaxTokens,
+  setOpenAIMaxTokens,
   getTavilyApiKey,
   setTavilyApiKey,
   getShowImagesFolder,

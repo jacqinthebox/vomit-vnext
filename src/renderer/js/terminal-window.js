@@ -35,6 +35,9 @@
   let xterm = null;
   let xtermFitAddon = null;
 
+  // Agent permission prompt shown in this window: the next Enter answers it.
+  let pendingPermissionId = null;
+
   // --- Terminal tab switching ---
 
   function switchTerminalTab(tabName) {
@@ -356,6 +359,18 @@
       terminalOutput.appendChild(pickerState.blockEl);
     }
     terminalOutput.scrollTop = terminalOutput.scrollHeight;
+  }
+
+  // Render a unified diff with per-line +/- coloring. Uses dedicated diff-*
+  // classes (not 'output') so lines don't merge into the AI stream element.
+  function renderDiffBlock(text) {
+    for (const line of String(text || '').split('\n')) {
+      let cls = 'diff-ctx';
+      if (line.startsWith('@@')) cls = 'diff-hunk';
+      else if (line.startsWith('+')) cls = 'diff-add';
+      else if (line.startsWith('-')) cls = 'diff-del';
+      appendTerminalOutput(line, cls);
+    }
   }
 
   function renderMarkdownInto(element) {
@@ -780,6 +795,34 @@ Provide a helpful, accurate answer based on the context above. If the context do
       updateContextBar();
     });
 
+    // Agent permission prompts. This window always shows them (it only exists
+    // while the terminal is detached); the main window suppresses its own
+    // prompt in that case, so the two never both capture input.
+    window.addEventListener('vomit:agent-permission-request', (e) => {
+      const detail = e.detail || {};
+      if (!detail.id) return;
+      pendingPermissionId = detail.id;
+      if (detail.kind === 'diff' && detail.diff) {
+        appendTerminalOutput(`⚠ ${detail.toolName}: ${detail.diff.header}`, 'system');
+        renderDiffBlock(detail.diff.text);
+        appendTerminalOutput('[a]pprove / [r]eject / [s] = always this session', 'system');
+      } else {
+        appendTerminalOutput(
+          `⚠ Allow ${detail.toolName}? ${detail.summary}\n[y = yes / n = no / a = always this session]`,
+          'system'
+        );
+      }
+      terminalInput.focus();
+    });
+
+    window.addEventListener('vomit:agent-permission-resolved', (e) => {
+      const detail = e.detail || {};
+      if (detail.id && pendingPermissionId === detail.id) {
+        pendingPermissionId = null;
+        appendTerminalOutput('(permission prompt answered elsewhere)', 'system');
+      }
+    });
+
     // RAG progress events fire while indexing — mirror main TerminalManager.
     window.addEventListener('vomit:rag-progress', (e) => {
       const progress = e.detail;
@@ -857,8 +900,31 @@ Provide a helpful, accurate answer based on the context above. If the context do
 
     // Terminal input - keyboard shortcuts
     terminalInput.addEventListener('keydown', (e) => {
+      // Single-keypress answers for agent permission prompts (empty input).
+      if (pendingPermissionId && terminalInput.value === '' &&
+          !e.metaKey && !e.ctrlKey && !e.altKey &&
+          ['a', 'r', 's', 'y', 'n'].includes((e.key || '').toLowerCase())) {
+        e.preventDefault();
+        const key = e.key.toLowerCase();
+        appendTerminalOutput(`❯ ${key}`, 'input');
+        const id = pendingPermissionId;
+        pendingPermissionId = null;
+        window.vomit.agentPermissionResponse(id, key);
+        return;
+      }
       if (e.key === 'Enter') {
         e.preventDefault();
+        // An agent permission prompt is waiting — capture this line as the answer.
+        if (pendingPermissionId) {
+          closePicker();
+          const answer = terminalInput.value.trim().toLowerCase();
+          terminalInput.value = '';
+          appendTerminalOutput(`❯ ${answer}`, 'input');
+          const id = pendingPermissionId;
+          pendingPermissionId = null;
+          window.vomit.agentPermissionResponse(id, answer);
+          return;
+        }
         if (pickerState.active && pickerState.items.length > 0) {
           const selected = pickerState.items[pickerState.selectedIndex];
           if (selected.args === 'none') {
@@ -911,7 +977,12 @@ Provide a helpful, accurate answer based on the context above. If the context do
           terminalInput.value = '';
         }
       } else if (e.key === 'Escape') {
-        if (pickerState.active) {
+        if (pendingPermissionId) {
+          const id = pendingPermissionId;
+          pendingPermissionId = null;
+          terminalInput.value = '';
+          window.vomit.agentPermissionResponse(id, ''); // empty answer = deny
+        } else if (pickerState.active) {
           closePicker();
         }
       }

@@ -37,7 +37,8 @@ function getActiveProviderConfig(configStore) {
       provider,
       baseUrl: configStore.getOpenAIBaseUrl(),
       apiKey: configStore.getOpenAIApiKey(),
-      model: configStore.getOpenAIModel() || ''
+      model: configStore.getOpenAIModel() || '',
+      maxTokens: configStore.getOpenAIMaxTokens()
     };
   }
   return {
@@ -50,6 +51,29 @@ function getActiveProviderConfig(configStore) {
 
 function pickHttpModule(parsedUrl) {
   return parsedUrl.protocol === 'https:' ? https : http;
+}
+
+// Default idle timeout for streaming requests. A hung connection (server up
+// but never responding) otherwise stalls the agent loop forever.
+const DEFAULT_STREAM_TIMEOUT_MS = 120000;
+
+// Wrap a low-level request error in a user-facing message while preserving
+// err.code so callers can distinguish transient connection errors (retryable)
+// from HTTP-level failures.
+function connectionError(message, err) {
+  const wrapped = new Error(message);
+  // @ts-ignore - code is a de-facto standard field on Node errors
+  wrapped.code = err && err.code ? err.code : undefined;
+  return wrapped;
+}
+
+function armIdleTimeout(req, timeoutMs) {
+  req.setTimeout(timeoutMs || DEFAULT_STREAM_TIMEOUT_MS, () => {
+    const err = new Error('Request timed out');
+    // @ts-ignore
+    err.code = 'ETIMEDOUT';
+    req.destroy(err);
+  });
 }
 
 /**
@@ -204,7 +228,7 @@ function buildOpenAIMetrics({ model, startedAt, firstTokenAt, usage, content }) 
   return { provider: 'openai', model, promptTokens, genTokens, tokensPerSec, decodeTps, ttftMs, totalMs, estimated: !reported };
 }
 
-function streamOllamaChat({ baseUrl, model, messages, tools, onContent, isAborted, onRequest }) {
+function streamOllamaChat({ baseUrl, model, messages, tools, onContent, isAborted, onRequest, timeoutMs }) {
   return new Promise((resolve, reject) => {
     const startedAt = Date.now();
     const url = new URL('/api/chat', baseUrl || OLLAMA_DEFAULT_URL);
@@ -286,16 +310,17 @@ function streamOllamaChat({ baseUrl, model, messages, tools, onContent, isAborte
     );
 
     req.on('error', (err) => {
-      reject(new Error(`Connection error: ${err.message}\nMake sure Ollama is running: ollama serve`));
+      reject(connectionError(`Connection error: ${err.message}\nMake sure Ollama is running: ollama serve`, err));
     });
 
+    armIdleTimeout(req, timeoutMs);
     if (onRequest) onRequest(req);
     req.write(body);
     req.end();
   });
 }
 
-function streamOpenAIChat({ baseUrl, apiKey, model, messages, tools, onContent, isAborted, onRequest }) {
+function streamOpenAIChat({ baseUrl, apiKey, model, messages, tools, onContent, isAborted, onRequest, timeoutMs, maxTokens }) {
   return new Promise((resolve, reject) => {
     const startedAt = Date.now();
     let firstTokenAt = null;
@@ -318,8 +343,9 @@ function streamOpenAIChat({ baseUrl, apiKey, model, messages, tools, onContent, 
       // tokens on chain-of-thought before producing any user-visible content.
       // The OpenAI spec defaults to a relatively small cap that some servers
       // (notably mlx_lm.server, default 512) honour, which can starve the
-      // model before it ever emits real output. Allow a generous budget.
-      max_tokens: 4096,
+      // model before it ever emits real output. Allow a generous budget,
+      // configurable via AI menu → Set Max Output Tokens….
+      max_tokens: (typeof maxTokens === 'number' && maxTokens > 0) ? maxTokens : 4096,
       // Ask the server to include token usage in the final stream chunk so we
       // can report exact tokens/sec (mlx_lm.server and most OpenAI-compatible
       // servers honour this; we fall back to an estimate if it's absent).
@@ -455,9 +481,10 @@ function streamOpenAIChat({ baseUrl, apiKey, model, messages, tools, onContent, 
     });
 
     req.on('error', (err) => {
-      reject(new Error(`Connection error to ${baseUrl}: ${err.message}\nMake sure your OpenAI-compatible server is running.`));
+      reject(connectionError(`Connection error to ${baseUrl}: ${err.message}\nMake sure your OpenAI-compatible server is running.`, err));
     });
 
+    armIdleTimeout(req, timeoutMs);
     if (onRequest) onRequest(req);
     req.write(body);
     req.end();

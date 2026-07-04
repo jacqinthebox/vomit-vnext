@@ -43,6 +43,8 @@ class TerminalManager {
     // When set, the next terminal Enter is captured as a free-text answer
     // (e.g. the filename prompt for /write-new) instead of a command.
     this._pendingInputResolver = null;
+    // Id of the agent permission prompt this window is currently showing.
+    this._activePermissionId = null;
   }
 
   get tabManager() { return this._getTabManager(); }
@@ -97,6 +99,14 @@ class TerminalManager {
     window.addEventListener('vomit:claude-metrics', (e) => {
       const line = this._formatMetrics(e.detail);
       if (line) this.appendTerminalOutput(line, 'system');
+    });
+
+    window.addEventListener('vomit:agent-permission-request', (e) => {
+      this._onPermissionRequest(e.detail || {});
+    });
+
+    window.addEventListener('vomit:agent-permission-resolved', (e) => {
+      this._onPermissionResolved(e.detail || {});
     });
 
     window.addEventListener('vomit:toggle-shell-terminal', () => {
@@ -199,6 +209,19 @@ class TerminalManager {
 
     // Handle input submission
     this.terminalInput.addEventListener('keydown', async (e) => {
+      // Agent permission prompts accept single-keypress answers when the
+      // input is empty (a/r/s for diff prompts, y/n/a for plain ones).
+      if (this._activePermissionId && this._pendingInputResolver && this.terminalInput.value === '' &&
+          !e.metaKey && !e.ctrlKey && !e.altKey &&
+          ['a', 'r', 's', 'y', 'n'].includes((e.key || '').toLowerCase())) {
+        e.preventDefault();
+        const key = e.key.toLowerCase();
+        this.appendTerminalOutput(`❯ ${key}`, 'input');
+        const resolve = this._pendingInputResolver;
+        this._pendingInputResolver = null;
+        resolve(key);
+        return;
+      }
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         // A prompt is awaiting a free-text answer — capture this line as the answer.
@@ -942,6 +965,62 @@ Now create the presentation about: ${topic}`;
     return new Promise((resolve) => {
       this._pendingInputResolver = resolve;
     });
+  }
+
+  // --- Agent permission prompts ---
+
+  // The main process asks whether an agent tool call may run. Show a y/n/a
+  // prompt using the free-text input machinery; the answer goes back over IPC.
+  // When the terminal is detached, the detached window owns the prompt — the
+  // main window must not arm _pendingInputResolver or the user's next Enter
+  // in the editor-side terminal would be swallowed as an answer.
+  async _onPermissionRequest({ id, toolName, summary, kind, diff }) {
+    if (!id) return;
+    if (this.state.isTerminalDetached) return;
+    if (this._pendingInputResolver) {
+      // Another prompt (e.g. /write-new filename) is already waiting — deny
+      // rather than clobbering its resolver.
+      window.vomit.agentPermissionResponse(id, 'n');
+      return;
+    }
+    this._activePermissionId = id;
+
+    let question;
+    if (kind === 'diff' && diff) {
+      this.appendTerminalOutput(`⚠ ${toolName}: ${diff.header}`, 'system');
+      this._renderDiffBlock(diff.text);
+      question = '[a]pprove / [r]eject / [s] = always this session';
+    } else {
+      question = `⚠ Allow ${toolName}? ${summary}\n[y = yes / n = no / a = always this session]`;
+    }
+
+    const answer = await this.askTerminalInput(question);
+    if (this._activePermissionId !== id) return; // resolved elsewhere
+    this._activePermissionId = null;
+    window.vomit.agentPermissionResponse(id, (answer || '').trim().toLowerCase());
+  }
+
+  // Render a unified diff with per-line +/- coloring. Uses dedicated diff-*
+  // classes (not 'output') so lines don't merge into the AI stream element.
+  _renderDiffBlock(text) {
+    for (const line of String(text || '').split('\n')) {
+      let cls = 'diff-ctx';
+      if (line.startsWith('@@')) cls = 'diff-hunk';
+      else if (line.startsWith('+')) cls = 'diff-add';
+      else if (line.startsWith('-')) cls = 'diff-del';
+      this.appendTerminalOutput(line, cls);
+    }
+  }
+
+  // Another window answered (or the prompt timed out / was aborted) — clear
+  // our pending prompt so the next Enter is a normal command again.
+  _onPermissionResolved({ id }) {
+    if (!id || this._activePermissionId !== id) return;
+    this._activePermissionId = null;
+    if (this._pendingInputResolver) {
+      this._pendingInputResolver = null;
+      this.appendTerminalOutput('(permission prompt answered elsewhere)', 'system');
+    }
   }
 
   // Turn a user-typed document name into a unique .md path inside baseDir,

@@ -112,7 +112,65 @@ function buildAISubmenu() {
     click: () => setTavilyApiKey()
   });
 
+  submenu.push({ type: 'separator' });
+  const permissionMode = _configStore.getAgentPermissionMode();
+  submenu.push({
+    label: 'Agent Permissions',
+    submenu: [
+      {
+        label: 'Auto-allow read-only tools',
+        type: 'radio',
+        checked: permissionMode === 'auto',
+        click: () => setAgentPermissionMode('auto')
+      },
+      {
+        label: 'Always ask',
+        type: 'radio',
+        checked: permissionMode === 'always',
+        click: () => setAgentPermissionMode('always')
+      },
+      {
+        label: 'Never ask (unrestricted)',
+        type: 'radio',
+        checked: permissionMode === 'never',
+        click: () => setAgentPermissionMode('never')
+      }
+    ]
+  });
+  submenu.push({
+    label: 'Diff Preview for File Writes',
+    type: 'checkbox',
+    checked: _configStore.getAgentDiffGate(),
+    click: (menuItem) => {
+      _configStore.setAgentDiffGate(menuItem.checked);
+      createMenu();
+    }
+  });
+  submenu.push({
+    label: 'Set Max Output Tokens…',
+    click: () => setMaxOutputTokens()
+  });
+
   return submenu;
+}
+
+function setAgentPermissionMode(mode) {
+  _configStore.setAgentPermissionMode(mode);
+  createMenu();
+}
+
+async function setMaxOutputTokens() {
+  const current = _configStore.getOpenAIMaxTokens();
+  const raw = await promptString(
+    `Max output tokens per response for OpenAI-compatible endpoints (current: ${current}):`,
+    String(current)
+  );
+  if (raw == null || raw === '') return;
+  const n = parseInt(raw, 10);
+  if (Number.isFinite(n) && n > 0) {
+    _configStore.setOpenAIMaxTokens(n);
+    createMenu();
+  }
 }
 
 function setAIProvider(provider) {
