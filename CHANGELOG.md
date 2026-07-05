@@ -1,3 +1,17 @@
+## [1.16.2](https://github.com/jacqinthebox/vomit-vnext/compare/v1.16.1...v1.16.2) (2026-07-05)
+
+
+### Bug Fixes
+
+* explain the silent exit when another Vomit instance holds the single-instance lock ([e151bab](https://github.com/jacqinthebox/vomit-vnext/commit/e151babcea83b666dddd0e3d44dcb047d3903abb))
+* **menu:** stop Format > Code from hijacking Ctrl+J on Windows/Linux ([fb70b9c](https://github.com/jacqinthebox/vomit-vnext/commit/fb70b9c35675e1707026fd6ab7b79ee6ec1b5188))
+* **terminal:** add /chat command that skips tool schemas for a faster first token ([5cb9cef](https://github.com/jacqinthebox/vomit-vnext/commit/5cb9cef16241aa45461c569458a023de0d089f8b))
+
+
+### Chores
+
+* bump version to 1.16.2 to match the upcoming release ([79ae3e1](https://github.com/jacqinthebox/vomit-vnext/commit/79ae3e1f217be65302a6be1b08cd03ccb845710e))
+
 ## [1.16.1](https://github.com/jacqinthebox/vomit-vnext/compare/v1.16.0...v1.16.1) (2026-07-04)
 
 
