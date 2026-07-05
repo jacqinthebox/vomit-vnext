@@ -571,7 +571,7 @@
         : 'Indexing current bucket for RAG...',
       'system'
     );
-    appendTerminalOutput('This requires the nomic-embed-text model. Run: ollama pull nomic-embed-text', 'system');
+    appendTerminalOutput('Embeddings need nomic-embed-text: via Ollama (ollama pull nomic-embed-text) or the active OpenAI-compatible endpoint (e.g. LM Studio)', 'system');
 
     try {
       const result = await window.vomit.ragIndex(projectRoot, targetPath);
@@ -602,7 +602,7 @@
         : 'No existing RAG database found.';
       appendTerminalOutput(removed, 'system');
       appendTerminalOutput('Rebuilding full bucket index...', 'system');
-      appendTerminalOutput('This requires the nomic-embed-text model. Run: ollama pull nomic-embed-text', 'system');
+      appendTerminalOutput('Embeddings need nomic-embed-text: via Ollama (ollama pull nomic-embed-text) or the active OpenAI-compatible endpoint (e.g. LM Studio)', 'system');
 
       const result = await window.vomit.ragIndex(cwd, cwd);
       if (result.success) {

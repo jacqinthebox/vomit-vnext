@@ -163,7 +163,7 @@ agentHandlers.registerHandlers(ipcMain, { state, bus, configStore, terminalServi
 gitService.registerHandlers(ipcMain);
 shellHandlers.registerHandlers(ipcMain, { state, bus, terminalService });
 pseudoHandlers.registerHandlers(ipcMain, { state, configStore });
-rag.registerHandlers(ipcMain, { state, bus });
+rag.registerHandlers(ipcMain, { state, bus, configStore });
 wiki.registerHandlers(ipcMain, { state, bus });
 
 // App info handler

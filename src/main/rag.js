@@ -36,18 +36,63 @@ function cosineSimilarity(a, b) {
   return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
 }
 
-// Get embedding from Ollama
-async function getEmbedding(text) {
+// Resolve which embedding backend to use. Ollama with nomic-embed-text wins
+// when present (existing setups keep working unchanged); otherwise fall back
+// to the active OpenAI-compatible endpoint (e.g. LM Studio), which serves
+// embedding models via /v1/embeddings. Returns null when neither is usable.
+function resolveEmbedBackend(state, configStore) {
+  const tools = state && state.availableAITools;
+  if (tools && tools.ollama && tools.ollamaModels.some(m => m.includes('nomic-embed-text'))) {
+    return { kind: 'ollama' };
+  }
+  if (configStore && configStore.getAIProvider() === 'openai-compatible') {
+    const ep = configStore.getActiveOpenAIEndpoint();
+    if (ep && ep.baseUrl) {
+      return {
+        kind: 'openai',
+        baseUrl: ep.baseUrl,
+        apiKey: ep.apiKey || '',
+        model: configStore.getOpenAIEmbedModel()
+      };
+    }
+  }
+  return null;
+}
+
+const NO_EMBED_BACKEND_ERROR =
+  'No embedding backend available. Either install Ollama and run: ollama pull nomic-embed-text — ' +
+  'or select an OpenAI-compatible provider (e.g. LM Studio) with an embedding model downloaded ' +
+  '(model name via AI menu → Set Embeddings Model…).';
+
+// Get embedding from the resolved backend: Ollama's native API, or an
+// OpenAI-compatible /embeddings endpoint. No backend argument means Ollama
+// (the historical default).
+async function getEmbedding(text, backend) {
   try {
-    const response = await fetch('http://localhost:11434/api/embeddings', {
+    if (!backend || backend.kind === 'ollama') {
+      const response = await fetch('http://localhost:11434/api/embeddings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: 'nomic-embed-text', prompt: text }),
+        signal: AbortSignal.timeout(30000)
+      });
+      if (!response.ok) return null;
+      const json = await response.json();
+      return json.embedding || null;
+    }
+
+    const url = backend.baseUrl.replace(/\/+$/, '') + '/embeddings';
+    const headers = { 'Content-Type': 'application/json' };
+    if (backend.apiKey) headers['Authorization'] = `Bearer ${backend.apiKey}`;
+    const response = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'nomic-embed-text', prompt: text }),
+      headers,
+      body: JSON.stringify({ model: backend.model, input: text }),
       signal: AbortSignal.timeout(30000)
     });
     if (!response.ok) return null;
     const json = await response.json();
-    return json.embedding || null;
+    return (json.data && json.data[0] && json.data[0].embedding) || null;
   } catch (e) {
     return null;
   }
@@ -104,7 +149,7 @@ function clearRAGDatabase(folderPath) {
 }
 
 // Index all documents in a bucket, or refresh one folder/file within the bucket.
-async function indexFolder(projectRoot, targetPath, progressCallback) {
+async function indexFolder(projectRoot, targetPath, progressCallback, backend) {
   const extensions = ['.md', '.txt', '.js', '.ts', '.py', '.json', '.yaml', '.yml', '.xml', '.html', '.css', '.tf', '.sh', '.tpl'];
   // Always store database at bucket scope
   const db = getRAGDatabase(projectRoot);
@@ -182,7 +227,7 @@ async function indexFolder(projectRoot, targetPath, progressCallback) {
 
       for (let i = 0; i < chunks.length; i++) {
         const chunk = chunks[i];
-        const embedding = await getEmbedding(chunk);
+        const embedding = await getEmbedding(chunk, backend);
 
         if (embedding) {
           // Store embedding as JSON blob
@@ -215,7 +260,7 @@ async function searchIndex(query, folderPath, topK = 5, opts = {}) {
     return { error: 'not_indexed' };
   }
 
-  const queryEmbedding = await getEmbedding(query);
+  const queryEmbedding = await getEmbedding(query, opts.backend);
   if (!queryEmbedding) {
     return { error: 'Failed to embed query.' };
   }
@@ -304,16 +349,12 @@ async function searchIndex(query, folderPath, topK = 5, opts = {}) {
 /**
  * Register RAG IPC handlers
  */
-function registerHandlers(ipcMain, { state, bus }) {
+function registerHandlers(ipcMain, { state, bus, configStore }) {
   // RAG: Index bucket, or refresh one folder/file within the bucket
   ipcMain.handle('rag-index', async (event, projectRoot, targetPath) => {
-    if (!state.availableAITools.ollama) {
-      return { error: 'Ollama not installed' };
-    }
-
-    // Check if nomic-embed-text is available
-    if (!state.availableAITools.ollamaModels.some(m => m.includes('nomic-embed-text'))) {
-      return { error: 'nomic-embed-text model not found. Run: ollama pull nomic-embed-text' };
+    const backend = resolveEmbedBackend(state, configStore);
+    if (!backend) {
+      return { error: NO_EMBED_BACKEND_ERROR };
     }
 
     // Send progress updates to both the main window and the detached
@@ -325,7 +366,16 @@ function registerHandlers(ipcMain, { state, bus }) {
     };
 
     try {
-      const result = await indexFolder(projectRoot, targetPath, progressCallback);
+      const result = await indexFolder(projectRoot, targetPath, progressCallback, backend);
+      if (result.chunksIndexed === 0 && result.filesProcessed > 0) {
+        // Every embedding request failed — a wrong model name or a stopped
+        // server would otherwise masquerade as a successful empty index.
+        return {
+          error: backend.kind === 'openai'
+            ? `Embedding requests to ${backend.baseUrl} failed for every chunk. Check that the server is running and that the embedding model "${backend.model}" matches one it has downloaded (AI menu → Set Embeddings Model…).`
+            : 'Embedding requests to Ollama failed for every chunk. Check that Ollama is running and nomic-embed-text is pulled.'
+        };
+      }
       return { success: true, indexed: result.chunksIndexed, files: result.filesProcessed };
     } catch (e) {
       return { error: e.message };
@@ -344,12 +394,13 @@ function registerHandlers(ipcMain, { state, bus }) {
 
   // RAG: Search
   ipcMain.handle('rag-search', async (event, query, folderPath) => {
-    if (!state.availableAITools.ollama) {
-      return { success: false, error: 'Ollama not installed' };
+    const backend = resolveEmbedBackend(state, configStore);
+    if (!backend) {
+      return { success: false, error: NO_EMBED_BACKEND_ERROR };
     }
 
     try {
-      const results = await searchIndex(query, folderPath, 5);
+      const results = await searchIndex(query, folderPath, 5, { backend });
       if (results.error) {
         return { success: false, error: results.error };
       }
@@ -371,6 +422,7 @@ module.exports = {
   chunkText,
   cosineSimilarity,
   getEmbedding,
+  resolveEmbedBackend,
   getRAGDatabasePath,
   getRAGDatabase,
   clearRAGDatabase,

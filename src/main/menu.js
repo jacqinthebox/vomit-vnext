@@ -154,8 +154,23 @@ function buildAISubmenu() {
     label: 'Set Ollama Context Size…',
     click: () => setOllamaContextSize()
   });
+  submenu.push({
+    label: 'Set Embeddings Model…',
+    click: () => setEmbedModel()
+  });
 
   return submenu;
+}
+
+async function setEmbedModel() {
+  const current = _configStore.getOpenAIEmbedModel();
+  const raw = await promptString(
+    `Embedding model name on the OpenAI-compatible endpoint, used for /index and /rag when Ollama's nomic-embed-text is not available (current: ${current}):`,
+    current
+  );
+  if (raw == null || raw.trim() === '') return;
+  _configStore.setOpenAIEmbedModel(raw.trim());
+  createMenu();
 }
 
 async function setOllamaContextSize() {

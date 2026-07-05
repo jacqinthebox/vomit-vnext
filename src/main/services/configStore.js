@@ -149,6 +149,20 @@ function getAgentDiffGate() { return store.get('agentDiffGate') !== false; }
 /** @param {boolean} enabled */
 function setAgentDiffGate(enabled) { store.set('agentDiffGate', enabled !== false); }
 
+// RAG embedding model name for OpenAI-compatible endpoints (only used when
+// Ollama's nomic-embed-text isn't available). The default matches LM Studio's
+// identifier for the nomic GGUF.
+const DEFAULT_OPENAI_EMBED_MODEL = 'text-embedding-nomic-embed-text-v1.5';
+/** @returns {string} */
+function getOpenAIEmbedModel() {
+  const v = store.get('openaiEmbedModel');
+  return (typeof v === 'string' && v.trim()) ? v.trim() : DEFAULT_OPENAI_EMBED_MODEL;
+}
+/** @param {string} model */
+function setOpenAIEmbedModel(model) {
+  store.set('openaiEmbedModel', String(model || '').trim());
+}
+
 /** @returns {number} */
 function getOpenAIMaxTokens() {
   const v = store.get('openaiMaxTokens');
@@ -437,6 +451,8 @@ module.exports = {
   setOpenAIMaxTokens,
   getOllamaNumCtx,
   setOllamaNumCtx,
+  getOpenAIEmbedModel,
+  setOpenAIEmbedModel,
   getTavilyApiKey,
   setTavilyApiKey,
   getShowImagesFolder,

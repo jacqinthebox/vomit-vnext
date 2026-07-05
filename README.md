@@ -219,8 +219,12 @@ All AI processing happens locally — your data never leaves your machine.
 
 **Multiple endpoints:** Repeat step 2 to add more (e.g. a remote vLLM box, a second MLX model). Each endpoint shows up as a radio item in the AI menu — click one to switch. Use **Edit "…"** and **Remove "…"** to manage the active endpoint.
 
-> RAG embeddings still use Ollama's `nomic-embed-text` model — only chat/agent
-> calls go through the OpenAI-compatible endpoint.
+> RAG embeddings prefer Ollama's `nomic-embed-text` model when Ollama is
+> installed. Without Ollama, they fall back to the active OpenAI-compatible
+> endpoint's `/embeddings` API (e.g. LM Studio with a nomic embedding model
+> downloaded) — set the model name via **AI menu → Set Embeddings Model…**
+> if it differs from the default. Re-run `/reindex` after switching
+> embedding backends so index and queries use the same embedder.
 
 **Command picker:**
 
@@ -296,8 +300,12 @@ For OpenAI-compatible endpoints you can also raise the response length cap via *
 
 RAG allows the AI to answer questions using documents from the current bucket as context. First index the bucket with `/index`, then use `/rag <question>` to query that bucket with relevant context automatically retrieved.
 
+Embeddings come from Ollama's `nomic-embed-text` when available, or otherwise
+from the active OpenAI-compatible endpoint (e.g. LM Studio) — see the note in
+the OpenAI-compatible section above.
+
 ```bash
-# First, pull the embedding model
+# First, pull the embedding model (Ollama route)
 ollama pull nomic-embed-text
 
 # In Vomit AI terminal
