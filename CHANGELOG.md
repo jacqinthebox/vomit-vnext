@@ -1,3 +1,10 @@
+## [1.16.4](https://github.com/jacqinthebox/vomit-vnext/compare/v1.16.3...v1.16.4) (2026-07-05)
+
+
+### Bug Fixes
+
+* add /pseudo-depseudo-text to reverse selection pseudonymization ([ca9b16b](https://github.com/jacqinthebox/vomit-vnext/commit/ca9b16bc62de568b23c337c7bb46b68d0f3b84ef))
+
 ## [1.16.3](https://github.com/jacqinthebox/vomit-vnext/compare/v1.16.2...v1.16.3) (2026-07-05)
 
 
