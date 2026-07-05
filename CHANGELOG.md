@@ -1,3 +1,15 @@
+## [1.16.3](https://github.com/jacqinthebox/vomit-vnext/compare/v1.16.2...v1.16.3) (2026-07-05)
+
+
+### Bug Fixes
+
+* **rag:** support OpenAI-compatible embedding endpoints so RAG works without Ollama ([03fc810](https://github.com/jacqinthebox/vomit-vnext/commit/03fc810b1244544331b792e25b94f874594401cc))
+
+
+### Chores
+
+* bump version to 1.16.3 to match the upcoming release ([34d6387](https://github.com/jacqinthebox/vomit-vnext/commit/34d6387856be1bdfc9aa0820508bef7feaffdf3b))
+
 ## [1.16.2](https://github.com/jacqinthebox/vomit-vnext/compare/v1.16.1...v1.16.2) (2026-07-05)
 
 
