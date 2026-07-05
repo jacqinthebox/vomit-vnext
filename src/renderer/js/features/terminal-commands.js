@@ -181,6 +181,16 @@ const COMMAND_REGISTRY = [
     }
   },
   {
+    name: '/pseudo-depseudo-text',
+    description: 'Restore selected text using this session\'s /pseudo-text mapping',
+    args: 'none',
+    argsHint: '',
+    requiresCwd: false,
+    async handler(args, ctx) {
+      await ctx.depseudonymizeSelection();
+    }
+  },
+  {
     name: '/pseudo-depseudo',
     description: 'Reverse-map pseudo repo changes to real repo',
     args: 'optional',

@@ -32,6 +32,11 @@ class TerminalManager {
     // pseudonymization output path
     this.pseudoOutputPath = null;
 
+    // Session-scoped real→fake mapping accumulated by /pseudo-text and
+    // /pseudo-text-ai, so /pseudo-depseudo-text can reverse pasted text. In memory
+    // only — cleared on restart.
+    this.pseudoTextMap = {};
+
     // Inline command picker state
     this.pickerState = { active: false, items: [], selectedIndex: 0, blockEl: null };
 
@@ -1834,9 +1839,12 @@ ${docContent}
     }
 
     const printResult = (mapping, content) => {
+      // Accumulate into the session map so /pseudo-depseudo-text can reverse it.
+      Object.assign(this.pseudoTextMap, mapping);
       const count = Object.keys(mapping).length;
       this.appendTerminalOutput(`✓ Pseudonymized (${count} ${count === 1 ? 'entity' : 'entities'}):`, 'output');
       this.appendTerminalOutput(content, 'output');
+      this.appendTerminalOutput('Reverse with /pseudo-depseudo-text (select the pseudonymized text first).', 'system');
     };
 
     // Deterministic: build the mapping locally with the same engine the repo
@@ -1930,6 +1938,47 @@ ${sourceText}
       this.state.isClaudeRunning = false;
       this.terminalStop.classList.add('hidden');
     }
+  }
+
+  // Reverse the current editor selection using the session mapping built by
+  // /pseudo-text and /pseudo-text-ai. Prints the restored text in the terminal.
+  async depseudonymizeSelection() {
+    this.appendTerminalOutput('❯ /pseudo-depseudo-text', 'input');
+
+    const entries = Object.entries(this.pseudoTextMap || {});
+    if (entries.length === 0) {
+      this.appendTerminalOutput('Error: No mapping this session. Run /pseudo-text or /pseudo-text-ai first.', 'error');
+      return;
+    }
+
+    const hasSelection = this.host.somethingSelected();
+    const sourceText = hasSelection ? this.host.getSelection() : this.host.getContent();
+    if (!sourceText.trim()) {
+      this.appendTerminalOutput(
+        hasSelection
+          ? 'Error: Selected text is empty.'
+          : 'Error: Select the pseudonymized text in the editor first (or open a document).',
+        'error'
+      );
+      return;
+    }
+
+    // Invert real→fake into fake→real, then apply with the same engine.
+    const reverse = {};
+    for (const [real, fake] of entries) {
+      if (typeof fake === 'string' && fake.trim()) reverse[fake] = real;
+    }
+
+    const sortedKeys = Object.keys(reverse).sort((a, b) => b.length - a.length);
+    const applied = this.applyPseudoMappingToContent(sourceText, sortedKeys, reverse);
+
+    if (!applied.changed) {
+      this.appendTerminalOutput('No pseudonymized values from this session found in the selection.', 'system');
+      return;
+    }
+
+    this.appendTerminalOutput('✓ Restored:', 'output');
+    this.appendTerminalOutput(applied.content, 'output');
   }
 
   async depseudonymizeCurrentDoc() {
