@@ -74,6 +74,10 @@ function openExternalFile(filePath) {
 
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {
+  // Another Vomit (packaged or `npm start`) already owns this profile. Say so
+  // before exiting — a silent 0-exit looks like a broken install. One guarded
+  // write, not console.log (see EPIPE note in CLAUDE.md).
+  try { process.stdout.write('Vomit is already running — quit the other instance first. This one will exit.\n'); } catch (_) { /* stdout may be closed (e.g. Finder launch) */ }
   app.exit(0);
 } else {
   app.on('second-instance', (_event, argv) => {
