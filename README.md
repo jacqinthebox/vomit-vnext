@@ -251,6 +251,7 @@ Type `/` in the AI terminal to open an inline command picker. Navigate with `↑
 - `/reindex` - Clear and rebuild the current bucket's RAG index
 - `/rag <query>` - Search the current bucket index and ask AI with context
 - `/agent <prompt>` - Agentic mode with tools (bash, file read/write/edit, project search, PDF text extraction, URL fetch, web search)
+- `/chat <prompt>` - Ask the AI directly, without tools. The request skips the tool schemas, so the model starts answering much sooner — ideal for plain questions on slow local backends. Shares conversation history with agent mode, so you can mix `/chat` and `/agent` turns freely.
 - `/new` - Start a new conversation (clear history)
 - `/help` - Show all available commands
 

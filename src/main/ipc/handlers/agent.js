@@ -121,8 +121,9 @@ function registerHandlers(ipcMain, { state, bus, configStore, terminalService, p
    * @param {object} cfg active provider config
    * @param {Array<object>} messages
    * @param {(channel: string, ...args: any[]) => void} contentOutput where streamed prose goes
+   * @param {{tools?: Array<object>|null}} [opts] pass tools: null for a plain chat completion
    */
-  async function streamChatWithRetry(cfg, messages, contentOutput) {
+  async function streamChatWithRetry(cfg, messages, contentOutput, { tools = agentTools } = {}) {
     let contentStarted = false;
     const doStream = () => aiProviders.streamChat({
       provider: cfg.provider,
@@ -132,7 +133,7 @@ function registerHandlers(ipcMain, { state, bus, configStore, terminalService, p
       maxTokens: cfg.maxTokens,
       numCtx: cfg.numCtx,
       messages,
-      tools: agentTools,
+      tools,
       onContent: (chunk) => {
         contentStarted = true;
         contentOutput('claude-output', chunk);
@@ -270,12 +271,16 @@ function registerHandlers(ipcMain, { state, bus, configStore, terminalService, p
   }
 
   // Agent execution with streaming and tool calling, provider-agnostic.
-  ipcMain.handle('agent-execute', async (event, prompt, cwd) => {
+  ipcMain.handle('agent-execute', async (event, prompt, cwd, opts) => {
     const cfg = aiProviders.getActiveProviderConfig(configStore);
     if (!ensureProviderReady(cfg)) return 1;
 
     state.agentAborted = false;
     const workingDir = cwd || process.env.HOME;
+    // /chat mode: no tool schemas in the request and a much shorter system
+    // prompt — thousands fewer tokens to prompt-eval, so the first token
+    // arrives far sooner on slow local backends. Shares the same history.
+    const noTools = !!(opts && opts.noTools);
 
     // Check for /clear command to reset conversation
     if (prompt.trim().toLowerCase() === 'clear' || prompt.trim().toLowerCase() === '/clear') {
@@ -289,7 +294,10 @@ function registerHandlers(ipcMain, { state, bus, configStore, terminalService, p
 
     // Build messages array - include conversation history for context
     const today = new Date().toISOString().split('T')[0];
-    const systemMessage = {
+    const systemMessage = noTools ? {
+      role: 'system',
+      content: `You are a helpful assistant. Answer the user directly in GitHub-Flavored Markdown. Today's date is ${today}. You have access to conversation history, so you can answer follow-up questions about previous results.`
+    } : {
       role: 'system',
       content: `You are a helpful assistant with access to tools. Use tools to help the user accomplish tasks. The current working directory is: ${workingDir}. Today's date is ${today}.
 
@@ -365,7 +373,7 @@ After using tools, provide a summary of what you did. You have access to convers
         iterations++;
 
         // Stream a chat completion from whichever provider is active.
-        const assistantMessage = await streamChatWithRetry(cfg, messages, sendOutput);
+        const assistantMessage = await streamChatWithRetry(cfg, messages, sendOutput, { tools: noTools ? null : agentTools });
 
         if (!assistantMessage) {
           throw new Error('No response from model');
@@ -376,9 +384,10 @@ After using tools, provide a summary of what you did. You have access to convers
         messages.push(assistantMessage);
 
         // Native tool calls, falling back to JSON-in-text for models without
-        // native tool calling.
-        let toolCalls = assistantMessage.tool_calls || [];
-        if (toolCalls.length === 0 && assistantMessage.content) {
+        // native tool calling. In /chat mode no tools were offered, so any
+        // JSON in the reply is just content — never execute it.
+        let toolCalls = noTools ? [] : (assistantMessage.tool_calls || []);
+        if (!noTools && toolCalls.length === 0 && assistantMessage.content) {
           toolCalls = parseFallbackToolCalls(assistantMessage.content, TOOL_NAMES);
         }
 

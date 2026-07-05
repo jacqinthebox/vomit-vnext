@@ -544,6 +544,23 @@
     }
   }
 
+  // Helper: /chat — shared history, no tool schemas (faster first token).
+  async function executeChatCommand(prompt, cwd) {
+    appendTerminalOutput(`❯ /chat ${prompt}`, 'input');
+    window.vomit.syncTerminalInput(`/chat ${prompt}`);
+
+    terminalState.isClaudeRunning = true;
+    terminalStop.classList.remove('hidden');
+
+    try {
+      await window.vomit.agentExecute(prompt, cwd, { noTools: true });
+    } catch (err) {
+      appendTerminalOutput(`Error: ${err.message}`, 'error');
+      terminalState.isClaudeRunning = false;
+      terminalStop.classList.add('hidden');
+    }
+  }
+
   // Helper: /index — kick off RAG indexing for current bucket or subpath.
   async function indexFolderForRAG(projectRoot, targetPath, subpath) {
     const displayPath = subpath ? `/index ${subpath}` : '/index';
@@ -697,6 +714,7 @@ Provide a helpful, accurate answer based on the context above. If the context do
       updateContextBar,
       executeDocCommand,
       executeAgentCommand,
+      executeChatCommand,
       indexFolderForRAG,
       reindexRAG,
       searchWithRAG,

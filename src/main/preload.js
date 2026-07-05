@@ -355,7 +355,7 @@ contextBridge.exposeInMainWorld('vomit', {
   getMermaidCurve: () => ipcRenderer.invoke('get-mermaid-curve'),
   getFontSize: () => ipcRenderer.invoke('get-font-size'),
   // Agent mode with tool calling
-  agentExecute: (prompt, cwd) => ipcRenderer.invoke('agent-execute', prompt, cwd),
+  agentExecute: (prompt, cwd, opts) => ipcRenderer.invoke('agent-execute', prompt, cwd, opts),
   agentExecuteEditor: (prompt, cwd) => ipcRenderer.invoke('agent-execute-editor', prompt, cwd),
   agentClearHistory: () => ipcRenderer.invoke('agent-clear-history'),
   agentPermissionResponse: (id, answer) => ipcRenderer.invoke('agent-permission-response', { id, answer }),

@@ -879,6 +879,25 @@ class TerminalManager {
     }
   }
 
+  // /chat — same conversation history as agent mode, but no tool schemas in
+  // the request, so prompt eval (time to first token) is much faster.
+  async executeChatCommand(prompt, cwd) {
+    this.appendTerminalOutput(`❯ /chat ${prompt}`, 'input');
+
+    this.state.isClaudeRunning = true;
+    this.terminalStop.classList.remove('hidden');
+    this.showThinkingIndicator();
+
+    try {
+      await window.vomit.agentExecute(prompt, cwd, { noTools: true });
+    } catch (err) {
+      this.hideThinkingIndicator();
+      this.appendTerminalOutput(`Error: ${err.message}`, 'error');
+      this.state.isClaudeRunning = false;
+      this.terminalStop.classList.add('hidden');
+    }
+  }
+
   async generatePresentation(topic, cwd) {
     this.appendTerminalOutput(`❯ /presentation ${topic}`, 'input');
     this.appendTerminalOutput('Generating presentation...', 'system');

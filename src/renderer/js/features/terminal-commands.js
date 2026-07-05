@@ -255,6 +255,16 @@ const COMMAND_REGISTRY = [
     }
   },
   {
+    name: '/chat',
+    description: 'Ask the AI without tools (faster first token)',
+    args: 'required',
+    argsHint: '<prompt>',
+    requiresCwd: true,
+    async handler(args, ctx, cwd) {
+      await ctx.executeChatCommand(args, cwd);
+    }
+  },
+  {
     name: '/presentation',
     description: 'Generate a presentation',
     args: 'required',
