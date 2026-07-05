@@ -658,8 +658,10 @@ function createMenu() {
           click: () => _actions.sendFormatCommand('italic')
         },
         {
+          // No accelerator: CmdOrCtrl+J belongs to Toggle AI Terminal — a
+          // duplicate here hijacked Ctrl+J on Windows/Linux. Inline code is
+          // still Cmd/Ctrl+` via the editor keymap.
           label: 'Code',
-          accelerator: 'CmdOrCtrl+J',
           click: () => _actions.sendFormatCommand('code')
         },
         {

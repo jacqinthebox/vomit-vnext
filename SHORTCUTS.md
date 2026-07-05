@@ -129,8 +129,8 @@ The Tag Explorer scans saved markdown files in the current bucket and groups doc
 
 | Shortcut | Action |
 |----------|--------|
-| Ctrl+J | Trigger autocomplete |
-| Ctrl+Space | Trigger autocomplete (alternative) |
+| Ctrl+Space | Trigger autocomplete |
+| Ctrl+J | Trigger autocomplete (macOS only — on Windows/Linux Ctrl+J toggles the AI terminal) |
 | Enter | Accept suggestion |
 | Escape | Dismiss suggestions |
 
