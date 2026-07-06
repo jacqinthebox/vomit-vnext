@@ -1,3 +1,10 @@
+## [1.16.6](https://github.com/jacqinthebox/vomit-vnext/compare/v1.16.5...v1.16.6) (2026-07-06)
+
+
+### Bug Fixes
+
+* reload keeps bucket root and active bucket; clearer /pseudo folder errors ([f49a4ea](https://github.com/jacqinthebox/vomit-vnext/commit/f49a4eab6b6cbc9b6ab02fc5e9fe7564151781c7))
+
 ## [1.16.5](https://github.com/jacqinthebox/vomit-vnext/compare/v1.16.4...v1.16.5) (2026-07-06)
 
 
