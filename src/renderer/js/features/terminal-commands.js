@@ -125,17 +125,6 @@ const COMMAND_REGISTRY = [
     }
   },
   {
-    // Must be registered before /pseudo so the longer name matches first
-    name: '/pseudo-all',
-    description: 'Pseudonymize all files (legacy)',
-    args: 'none',
-    argsHint: '',
-    requiresCwd: true,
-    async handler(args, ctx, cwd) {
-      await ctx.runPseudonymization(cwd);
-    }
-  },
-  {
     name: '/pseudo-map',
     description: 'Show current entity mapping',
     args: 'none',
@@ -308,7 +297,7 @@ const COMMAND_REGISTRY = [
 ];
 
 // Sorted by name length descending so the most specific prefix always wins
-// (e.g. /write-new before /write, /pseudo-all before /pseudo).
+// (e.g. /write-new before /write, /pseudo-ai before /pseudo).
 const _sortedRegistry = [...COMMAND_REGISTRY].sort((a, b) => b.name.length - a.name.length);
 
 /**

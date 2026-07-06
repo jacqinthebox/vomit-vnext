@@ -2081,91 +2081,6 @@ ${sourceText}
     }
   }
 
-  async runPseudonymization(cwd) {
-    this.appendTerminalOutput('❯ /pseudo-all', 'input');
-    this.appendTerminalOutput('Starting batch pseudonymization...', 'system');
-
-    // File extensions to process
-    const targetExtensions = ['.tf', '.yaml', '.yml', '.json', '.md', '.env', '.sh', '.ps1', '.py', '.js', '.ts'];
-
-    try {
-      // Get all files recursively
-      const files = await this.getFilesRecursively(cwd, targetExtensions);
-
-      if (files.length === 0) {
-        this.appendTerminalOutput('No files found to pseudonymize.', 'system');
-        return;
-      }
-
-      this.appendTerminalOutput(`Found ${files.length} files to process.`, 'system');
-
-      // Create output directory
-      const outputDir = `${cwd}/pseudonymized`;
-      await window.vomit.createDirectory(outputDir);
-
-      const pseudoPrompt = `You are a pseudonymization tool. Replace ALL sensitive and identifying data in this file with realistic fake data:
-
-- Person names → John Doe, Jane Smith, etc.
-- Company/organization names → Acme Corp, Example Inc, etc.
-- Email addresses → fake@example.com format
-- Phone numbers → +1-555-XXX-XXXX format
-- IP addresses → 10.0.0.x or 192.168.x.x ranges
-- Server names/hostnames → server-001, app-server-prod, etc.
-- FQDNs → *.example.com or *.internal.local
-- URLs → https://example.com/...
-- API keys/secrets → FAKE_API_KEY_XXXXX
-- Passwords → FAKE_PASSWORD_XXXXX
-- AWS/Azure/GCP resource IDs → fake resource IDs
-- GUIDs/UUIDs → 00000000-0000-0000-0000-00000000XXXX format
-- Subscription/tenant/object IDs → fake GUIDs
-- Database connection strings → fake connection strings
-- Usernames → user001, admin001, etc.
-- Dates of birth → randomize the year
-- National ID numbers (SSN, BSN, etc.) → FAKE_ID_XXXXX
-- Addresses → 123 Example Street, Anytown
-
-Keep the file structure and syntax valid. Output ONLY the pseudonymized file content, no explanations or code fences.
-
-File content:
-`;
-
-      let processed = 0;
-      for (const file of files) {
-        this.appendTerminalOutput(`[${processed + 1}/${files.length}] Processing: ${file.relativePath}`, 'system');
-
-        try {
-          const content = await window.vomit.readFile(file.path);
-          const fullPrompt = pseudoPrompt + '\n```\n' + content + '\n```';
-
-          // Collect the AI response
-          this.state.pseudoOutput = '';
-          this.state.pseudoCollecting = true;
-
-          await window.vomit.claudeExecute(fullPrompt, cwd);
-
-          // Wait for completion
-          await this.waitForAIComplete();
-
-          // Save pseudonymized content
-          const outputPath = `${outputDir}/${file.relativePath}`;
-          await window.vomit.writeFile(outputPath, this.state.pseudoOutput);
-
-          processed++;
-          this.appendTerminalOutput(`✓ Saved: pseudo/${file.relativePath}`, 'output');
-          this.markOutputComplete();
-        } catch (err) {
-          this.appendTerminalOutput(`✗ Error processing ${file.relativePath}: ${err.message}`, 'error');
-        }
-      }
-
-      this.appendTerminalOutput(`\nDone! Processed ${processed}/${files.length} files.`, 'system');
-      this.appendTerminalOutput(`Output saved to: ${outputDir}`, 'system');
-
-    } catch (err) {
-      this.appendTerminalOutput(`Error: ${err.message}`, 'error');
-    }
-  }
-
   // --- Pseudo-repo workflow (multi-repo bucket pseudonymization) ---
 
   getPseudoTargetExtensions() {
@@ -2572,6 +2487,18 @@ File content:
         const target = await this.resolvePseudoTargetFolder(cwd, targetFolder);
         if (!target) {
           this.appendTerminalOutput(`Error: Folder "${targetFolder}" not found in this bucket.`, 'error');
+          const rawTarget = String(targetFolder).trim();
+          const bucketName = window.PathUtils.basename(cwd);
+          const normalizedTarget = this.normalizePseudoTargetFolder(rawTarget);
+          const firstPart = normalizedTarget ? normalizedTarget.split('/')[0] : null;
+          if (rawTarget.startsWith('~') || rawTarget.startsWith('/') || /^[A-Za-z]:[\\/]/.test(rawTarget)) {
+            this.appendTerminalOutput(`Hint: the folder must be a path relative to the bucket root (${cwd}), not an absolute or ~ path.`, 'system');
+          } else if (firstPart === bucketName) {
+            const withoutBucket = normalizedTarget.split('/').slice(1).join('/');
+            this.appendTerminalOutput(`Hint: the path is resolved inside the bucket "${bucketName}" — don't repeat the bucket name. Try: ${commandName}${withoutBucket ? ' ' + withoutBucket : ''}`, 'system');
+          } else {
+            this.appendTerminalOutput(`Hint: the folder must be a path relative to the bucket root (${cwd}). Names are matched exactly (case-sensitive).`, 'system');
+          }
           this.appendTerminalOutput('Available top-level folders:', 'system');
           const items = await window.vomit.getDirectoryContents(cwd);
           const dirs = items.filter(i => i.isDirectory && !i.name.startsWith('.'));

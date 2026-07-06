@@ -488,7 +488,6 @@
     '/write-append',
     '/presentation',
     '/pseudo',
-    '/pseudo-all',
     '/pseudo-depseudo'
   ]);
 

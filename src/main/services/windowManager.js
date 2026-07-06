@@ -105,11 +105,9 @@ function createWindowManager({ state, bus, getSaveFileAs }) {
     bus.getMainWindow().webContents.on('did-finish-load', () => {
       // Apply saved theme
       bus.send('set-theme', state.currentTheme);
-
-      if (state.currentFilePath && state.currentContent) {
-        const basePath = path.dirname(state.currentFilePath);
-        bus.send('load-content', state.currentContent, state.currentFilePath, basePath);
-      }
+      // Note: the current file is re-sent from main.js's did-finish-load
+      // handler, AFTER open-folder — the bucket must become the tree root
+      // before load-content sets currentDirectory to the file's folder.
     });
   }
 

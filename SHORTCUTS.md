@@ -223,7 +223,6 @@ When the picker is closed, `↑`/`↓` navigate command history (persisted acros
 | `/pseudo-text` | Pseudonymize selected editor text (offline scan), result printed in terminal |
 | `/pseudo-text-ai` | Pseudonymize selected editor text with AI, result printed in terminal |
 | `/pseudo-depseudo-text` | Restore selected text using this session's `/pseudo-text` mapping |
-| `/pseudo-all` | Pseudonymize all files in current folder |
 | `/pseudo-deterministic [folder]` | Fast deterministic repo/folder pseudonymization |
 | `/pseudo-ai [folder]` | Hybrid deterministic + AI repo/folder pseudonymization |
 | `/pseudo-run [folder]` | Alias for `/pseudo-deterministic` |

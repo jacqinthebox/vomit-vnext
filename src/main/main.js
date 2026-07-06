@@ -310,8 +310,17 @@ app.whenReady().then(async () => {
 
   // Auto-open bucket (on initial load and reload)
   bus.getMainWindow().webContents.on('did-finish-load', () => {
-    bus.send('open-folder', activeBucket.path);
-    bus.getMainWindow()?.setTitle(`${activeBucket.name} - Vomit`);
+    // Read the bucket fresh — the user may have switched buckets since startup,
+    // and a window reload must come back in the active one, not the initial one.
+    const currentBucket = configStore.getActiveBucket() || activeBucket;
+    bus.send('open-folder', currentBucket.path);
+    bus.getMainWindow()?.setTitle(`${currentBucket.name} - Vomit`);
+
+    // Re-open the current file after a window reload — after open-folder, so
+    // the tree stays rooted at the bucket instead of the file's folder.
+    if (state.currentFilePath && state.currentContent) {
+      bus.send('load-content', state.currentContent, state.currentFilePath, path.dirname(state.currentFilePath));
+    }
 
     for (const filePath of pendingOpenFiles.splice(0)) {
       openExternalFile(filePath);
@@ -327,7 +336,7 @@ app.whenReady().then(async () => {
     // Build the wikilink index in the background so [[ autocomplete and the
     // backlinks panel work immediately. Best-effort — never blocks startup.
     setTimeout(() => {
-      wiki.indexBucket(activeBucket.path).then(() => {
+      wiki.indexBucket(currentBucket.path).then(() => {
         bus.send('wiki-changed', { type: 'reindex' });
         bus.sendToTerminal('wiki-changed', { type: 'reindex' });
       }).catch(() => {});
