@@ -273,7 +273,8 @@ class PreviewManager {
       'xml': 'xml', 'html': 'xml', 'htm': 'xml',
       'css': 'css',
       'dockerfile': 'dockerfile',
-      'tf': 'javascript', 'hcl': 'javascript'
+      'tf': 'terraform', 'hcl': 'terraform', 'tfvars': 'terraform',
+      'ps1': 'powershell', 'psm1': 'powershell', 'psd1': 'powershell'
     };
     return modeMap[ext] || 'text/plain';
   }
@@ -289,7 +290,9 @@ class PreviewManager {
     const langMap = {
       'js': 'javascript', 'ts': 'typescript', 'py': 'python',
       'rb': 'ruby', 'go': 'go', 'rs': 'rust', 'java': 'java',
-      'tf': 'hcl', 'hcl': 'hcl', 'yml': 'yaml', 'yaml': 'yaml',
+      'tf': 'terraform', 'hcl': 'terraform', 'tfvars': 'terraform',
+      'ps1': 'powershell', 'psm1': 'powershell', 'psd1': 'powershell',
+      'yml': 'yaml', 'yaml': 'yaml',
       'json': 'json', 'sh': 'bash', 'bash': 'bash', 'zsh': 'bash',
       'sql': 'sql', 'cs': 'csharp', 'lua': 'lua', 'dockerfile': 'dockerfile',
       'html': 'html', 'css': 'css', 'xml': 'xml', 'toml': 'toml'

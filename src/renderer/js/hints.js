@@ -196,7 +196,7 @@
     '# ', '## ', '### ', '#### ', '##### ', '###### ',
     // Formatting
     '**bold**', '*italic*', '~~strikethrough~~', '`code`', '```', '```python', '```bash',
-    '```javascript', '```yaml', '```json', '```typescript', '```terraform', '```hcl',
+    '```javascript', '```yaml', '```json', '```typescript', '```terraform', '```hcl', '```tfvars', '```powershell',
     // Links and images
     '[text](url)', '![alt](image)', '[reference][id]',
     // Lists
@@ -224,8 +224,9 @@
       case 'markdown':
       case 'gfm':
         return markdownKeywords;
+      case 'terraform':
+        return terraformKeywords;
       default:
-        // For terraform (.tf files), use terraform keywords
         return [];
     }
   }

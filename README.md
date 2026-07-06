@@ -32,7 +32,7 @@ Keyboard shortcuts shown as **Cmd** on macOS use **Ctrl** on Windows/Linux. **Op
 
 ## Features
 
-- **Markdown Editor** - Live preview, syntax highlighting, outline sidebar
+- **Markdown Editor** - Live preview, syntax highlighting (including Terraform/HCL and PowerShell in code fences like ` ```terraform `, ` ```tfvars `, ` ```powershell `, and in `.tf`/`.tfvars`/`.ps1` files), outline sidebar
 - **Right Outline Bar** - Always-visible document outline on the right (Cmd+Alt+O)
 - **Multi-Cursor Editing** - PyCharm-style multi-cursor: double-tap Option, then use Option+Up/Down
 - **Drag & Drop** - Drag files and folders to reorganize your file tree
