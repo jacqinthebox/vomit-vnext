@@ -1,3 +1,10 @@
+## [1.16.7](https://github.com/jacqinthebox/vomit-vnext/compare/v1.16.6...v1.16.7) (2026-07-06)
+
+
+### Bug Fixes
+
+* **editor:** apply language mode on tab switch, Save As, and fence aliases ([b70ea6d](https://github.com/jacqinthebox/vomit-vnext/commit/b70ea6d927b5f25dc379d0b5500992b11cae3de0))
+
 ## [1.16.6](https://github.com/jacqinthebox/vomit-vnext/compare/v1.16.5...v1.16.6) (2026-07-06)
 
 
