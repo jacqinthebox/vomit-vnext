@@ -23,8 +23,10 @@ class FormattingManager {
     const selection = cm.getSelection();
 
     if (selection) {
+      const from = cm.getCursor('from');
       const trimmed = selection.replace(/^\n+/, '').replace(/\n+$/, '');
       cm.replaceSelection('```\n' + trimmed + '\n```');
+      cm.setCursor({ line: from.line, ch: from.ch + 3 });
     } else {
       const cursor = cm.getCursor();
       cm.replaceSelection('```\n\n```');
