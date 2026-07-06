@@ -112,6 +112,10 @@ class TabManager {
       this.editor.previewManager.exitViewerMode();
     }
 
+    // Re-apply language mode for this tab's file type
+    cm.setOption('filename', tab.filePath); // For hints file-type detection
+    this.editor.previewManager.updateEditorMode();
+
     // Update preview and status
     this.editor.previewManager.updatePreview();
     this.editor.previewManager.updateStatus();

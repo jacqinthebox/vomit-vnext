@@ -661,6 +661,9 @@ class Editor {
       const filePath = e.detail;
       this.state.currentFilePath = filePath;
       this.state.basePath = filePath ? window.PathUtils.dirname(filePath) : null;
+      this.cm.setOption('filename', filePath); // For hints file-type detection
+      this.previewManager.updateEditorMode();
+      this.previewManager.updatePreview();
       if (this.tabManager) {
         this.tabManager.updateCurrentTabPath(filePath);
       }

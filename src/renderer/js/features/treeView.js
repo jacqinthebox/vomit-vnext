@@ -400,6 +400,10 @@ class TreeView {
       bash: ' filetype-code',
       zsh: ' filetype-code',
       ps1: ' filetype-code',
+      psm1: ' filetype-code',
+      psd1: ' filetype-code',
+      tf: ' filetype-code',
+      tfvars: ' filetype-code',
       // Web
       html: ' filetype-web',
       htm: ' filetype-web',
