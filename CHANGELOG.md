@@ -1,3 +1,11 @@
+## [1.16.5](https://github.com/jacqinthebox/vomit-vnext/compare/v1.16.4...v1.16.5) (2026-07-06)
+
+
+### Bug Fixes
+
+* **editor:** add Terraform/HCL and PowerShell highlighting ([771f0e2](https://github.com/jacqinthebox/vomit-vnext/commit/771f0e227084e410bc0890acda3861c9b07c9d38))
+* place cursor after opening fence when wrapping selection in code block ([ae3c598](https://github.com/jacqinthebox/vomit-vnext/commit/ae3c598eaa26dcfc271ebd1321983e9aa508dfa2))
+
 ## [1.16.4](https://github.com/jacqinthebox/vomit-vnext/compare/v1.16.3...v1.16.4) (2026-07-05)
 
 
