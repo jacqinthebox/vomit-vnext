@@ -305,12 +305,13 @@ class FormattingManager {
     const content = cm.getValue();
     const cursor = cm.getCursor();
 
-    if (cursor.line === 0 && cursor.ch === 0 && content.startsWith('---')) {
-      const endIndex = content.indexOf('---', 3);
-      if (endIndex !== -1) {
-        const frontmatterEnd = content.substring(0, endIndex + 3);
-        const lines = frontmatterEnd.split('\n').length - 1;
-        cm.setCursor({ line: lines, ch: 0 });
+    if (cursor.line === 0 && cursor.ch === 0) {
+      const block = window.Frontmatter.extract(content);
+      if (block) {
+        // Move to the end of the closing fence line so the slide template
+        // lands after the front matter instead of inside it.
+        const fenceLine = block.yaml === '' ? 1 : block.yaml.split('\n').length + 1;
+        cm.setCursor({ line: fenceLine, ch: cm.getLine(fenceLine).length });
       }
     }
 

@@ -213,24 +213,7 @@ class PreviewManager {
   }
 
   parseFrontmatter(content) {
-    if (!content.startsWith('---')) return {};
-
-    const endIndex = content.indexOf('---', 3);
-    if (endIndex === -1) return {};
-
-    const frontmatter = content.substring(3, endIndex).trim();
-    const settings = {};
-
-    frontmatter.split('\n').forEach(line => {
-      const colonIndex = line.indexOf(':');
-      if (colonIndex !== -1) {
-        const key = line.substring(0, colonIndex).trim();
-        const value = line.substring(colonIndex + 1).trim();
-        settings[key] = value;
-      }
-    });
-
-    return settings;
+    return window.Frontmatter.parseSettings(content);
   }
 
   applyFrontmatterSettings(content) {
@@ -743,13 +726,7 @@ class PreviewManager {
   }
 
   renderMarkdownWithSlides(content) {
-    let markdown = content;
-    if (markdown.startsWith('---')) {
-      const endIndex = markdown.indexOf('---', 3);
-      if (endIndex !== -1) {
-        markdown = markdown.substring(endIndex + 3).trim();
-      }
-    }
+    const markdown = window.Frontmatter.strip(content).trim();
 
     const slides = markdown.split(/\n---\n/);
 
@@ -855,13 +832,7 @@ class PreviewManager {
       this.dom.statusFile.title = '';
     }
 
-    let markdown = content;
-    if (markdown.startsWith('---')) {
-      const endIndex = markdown.indexOf('---', 3);
-      if (endIndex !== -1) {
-        markdown = markdown.substring(endIndex + 3);
-      }
-    }
+    const markdown = window.Frontmatter.strip(content);
     const slides = markdown.split(/\n---\n/).filter(s => s.trim());
     this.dom.statusSlides.textContent = `${slides.length} slide${slides.length !== 1 ? 's' : ''}`;
 
