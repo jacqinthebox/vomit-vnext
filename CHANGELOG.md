@@ -1,3 +1,10 @@
+## [1.16.8](https://github.com/jacqinthebox/vomit-vnext/compare/v1.16.7...v1.16.8) (2026-07-07)
+
+
+### Bug Fixes
+
+* **preview:** line-anchored YAML front matter parsing ([a9ba0c6](https://github.com/jacqinthebox/vomit-vnext/commit/a9ba0c69f709a5078393e04519a409b52d813fc0))
+
 ## [1.16.7](https://github.com/jacqinthebox/vomit-vnext/compare/v1.16.6...v1.16.7) (2026-07-06)
 
 
