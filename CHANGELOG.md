@@ -1,3 +1,10 @@
+## [1.16.9](https://github.com/jacqinthebox/vomit-vnext/compare/v1.16.8...v1.16.9) (2026-07-09)
+
+
+### Bug Fixes
+
+* add Linux (Ubuntu 24.04) build target and CI packaging ([e9626e9](https://github.com/jacqinthebox/vomit-vnext/commit/e9626e91c0f819795d70cdbb3b9e64cfd5ee044c))
+
 ## [1.16.8](https://github.com/jacqinthebox/vomit-vnext/compare/v1.16.7...v1.16.8) (2026-07-07)
 
 
