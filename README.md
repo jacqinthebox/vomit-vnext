@@ -26,7 +26,7 @@ An opinionated, keyboard-centric markdown editor for presentations and notes wit
 
 ## Platform Support
 
-**macOS** (Intel and Apple Silicon) and **Windows**. Linux remains Electron-compatible but is not currently packaged by CI.
+**macOS** (Intel and Apple Silicon), **Windows**, and **Linux** (Ubuntu 24.04+). All three are packaged by CI.
 
 Keyboard shortcuts shown as **Cmd** on macOS use **Ctrl** on Windows/Linux. **Option** maps to **Alt**.
 
@@ -87,7 +87,7 @@ Todos are markdown-native. Your notes remain the source of truth; Vomit scans th
 
 ### Option 1: Download a Release
 
-Download the latest macOS `.dmg` or Windows `.exe` from [Releases](https://github.com/jacqinthebox/vomit-vnext/releases).
+Download the latest macOS `.dmg`, Windows `.exe`, or Linux `.AppImage`/`.deb` from [Releases](https://github.com/jacqinthebox/vomit-vnext/releases).
 
 **Important:** The app is not code-signed with an Apple Developer certificate. macOS will block it by default. After installing, run this command in Terminal to remove the quarantine flag:
 
@@ -113,6 +113,7 @@ npm start
 # Or build a platform package
 npm run build:mac   # macOS
 npm run build:win   # Windows
+npm run build:linux # Linux (AppImage + deb)
 ```
 
 ## Usage
