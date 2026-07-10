@@ -244,6 +244,30 @@ const COMMAND_REGISTRY = [
     }
   },
   {
+    name: '/okf',
+    description: 'Export bucket as an OKF bundle (tar.gz)',
+    args: 'optional',
+    argsHint: '[export]',
+    requiresCwd: true,
+    async handler(args, ctx, cwd) {
+      const sub = (args || '').trim().toLowerCase() || 'export';
+      ctx.appendTerminalOutput(`❯ /okf ${sub}`, 'input');
+      if (sub !== 'export') {
+        ctx.appendTerminalOutput(`Unknown /okf subcommand: ${sub}. Try: /okf export`, 'error');
+        return;
+      }
+      ctx.appendTerminalOutput('Exporting bucket as an OKF bundle (type: stamped, wikilinks rewritten)...', 'system');
+      const result = await window.vomit.okfExport(cwd);
+      if (result.success) {
+        const brokenNote = result.brokenLinks ? `, ${result.brokenLinks} broken wikilink(s) left as-is` : '';
+        ctx.appendTerminalOutput(`✓ ${result.notes} note(s) exported — ${result.stamped} stamped with type:, ${result.linksRewritten} wikilink(s) rewritten${brokenNote}`, 'system');
+        ctx.appendTerminalOutput(`Bundle: ${result.output}`, 'system');
+      } else {
+        ctx.appendTerminalOutput(`✗ Export failed: ${result.error}`, 'error');
+      }
+    }
+  },
+  {
     name: '/agent',
     description: 'Run in agent mode with tools',
     args: 'required',

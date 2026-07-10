@@ -15,7 +15,13 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const os = require('os');
-const Database = require('better-sqlite3');
+// Lazy so the pure parsers stay importable under plain node (npm test) —
+// better-sqlite3 is compiled against Electron's ABI.
+let Database = null;
+function getSqlite() {
+  if (!Database) Database = require('better-sqlite3');
+  return Database;
+}
 
 const SKIPPED_DIRS = new Set(['node_modules', 'pseudonymized', '.git', '.obsidian']);
 const CONTEXT_RADIUS = 40; // chars on each side of the wikilink
@@ -37,7 +43,7 @@ function getWikiDatabase(bucketRoot) {
     fs.mkdirSync(configDir, { recursive: true });
   }
   const dbPath = getWikiDatabasePath(bucketRoot);
-  const db = new Database(dbPath);
+  const db = new (getSqlite())(dbPath);
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS wikilinks (
@@ -62,6 +68,14 @@ function getWikiDatabase(bucketRoot) {
     );
     CREATE INDEX IF NOT EXISTS idx_notes_basename ON notes(basename);
   `);
+
+  // Migration: standard markdown links (OKF-style) share the table with
+  // wikilinks but resolve by path instead of basename, so rows carry a type.
+  try {
+    db.exec("ALTER TABLE wikilinks ADD COLUMN link_type TEXT NOT NULL DEFAULT 'wiki'");
+  } catch {
+    // column already exists
+  }
 
   return db;
 }
@@ -144,6 +158,94 @@ function parseWikilinks(content) {
   }
 
   return links;
+}
+
+// [text](target.md) — standard markdown links between notes, as used by OKF
+// bundles. Images (![...]) are excluded via the leading capture; targets with
+// spaces or parentheses don't participate (nor do titled links).
+const MDLINK_RE = /(!?)\[([^\]\n]*)\]\(([^()\s]+)\)/g;
+
+/**
+ * Parse standard markdown links to `.md` files (OKF-style concept links).
+ * External URLs, images, and non-markdown targets are ignored. Returns the
+ * same record shape as parseWikilinks; `target` is the decoded path without
+ * any `#heading` suffix.
+ *
+ * @param {string} content
+ * @returns {Array<{target: string, alias: string|null, heading: string|null,
+ *   line: number, col: number, context: string, rawTarget: string}>}
+ */
+function parseMarkdownLinks(content) {
+  const links = [];
+  if (!content) return links;
+
+  const lineOffsets = [0];
+  for (let i = 0; i < content.length; i++) {
+    if (content[i] === '\n') lineOffsets.push(i + 1);
+  }
+
+  MDLINK_RE.lastIndex = 0;
+  let match;
+  while ((match = MDLINK_RE.exec(content)) !== null) {
+    if (match[1] === '!') continue; // image embed
+    const text = match[2].trim();
+    let target = match[3];
+
+    let heading = null;
+    const hashIdx = target.indexOf('#');
+    if (hashIdx !== -1) {
+      heading = target.substring(hashIdx + 1).trim() || null;
+      target = target.substring(0, hashIdx);
+    }
+    if (!target) continue; // same-file anchor
+    if (/^[a-z][a-z0-9+.-]*:/i.test(target)) continue; // http:, mailto:, …
+    try { target = decodeURIComponent(target); } catch {}
+    if (!/\.md$/i.test(target)) continue;
+
+    const idx = match.index;
+    let lo = 0, hi = lineOffsets.length - 1, line = 0;
+    while (lo <= hi) {
+      const mid = (lo + hi) >>> 1;
+      if (lineOffsets[mid] <= idx) {
+        line = mid;
+        lo = mid + 1;
+      } else {
+        hi = mid - 1;
+      }
+    }
+    const col = idx - lineOffsets[line];
+
+    const ctxStart = Math.max(0, idx - CONTEXT_RADIUS);
+    const ctxEnd = Math.min(content.length, idx + match[0].length + CONTEXT_RADIUS);
+    const context = content.substring(ctxStart, ctxEnd).replace(/\s+/g, ' ').trim();
+
+    links.push({
+      target,
+      rawTarget: target,
+      alias: text || null,
+      heading,
+      line: line + 1,
+      col: col + 1,
+      context
+    });
+  }
+
+  return links;
+}
+
+/**
+ * Resolve a standard markdown link path to a note in the bucket. Targets
+ * starting with `/` are bucket-root-relative (the OKF convention); all others
+ * resolve against the source file's folder. Returns null when the target is
+ * not an indexed note (broken link).
+ */
+function resolveMdTarget(db, bucketRoot, target, sourcePath) {
+  if (!target) return sourcePath || null;
+  const abs = (target.startsWith('/') || target.startsWith('\\'))
+    ? path.join(bucketRoot, target)
+    : path.resolve(sourcePath ? path.dirname(sourcePath) : bucketRoot, target);
+  const row = db.prepare('SELECT path FROM notes WHERE path = ?').get(path.normalize(abs));
+  return row ? row.path : null;
 }
 
 /**
@@ -249,26 +351,30 @@ function indexFileRaw(db, bucketRoot, filePath) {
 
   db.prepare('DELETE FROM wikilinks WHERE source_path = ?').run(filePath);
 
-  const links = parseWikilinks(content);
   const insert = db.prepare(
-    `INSERT INTO wikilinks (source_path, target_text, target_path, alias, heading, line, col, context)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO wikilinks (source_path, target_text, target_path, alias, heading, line, col, context, link_type)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
   );
-  for (const link of links) {
-    insert.run(filePath, link.rawTarget, null, link.alias, link.heading, link.line, link.col, link.context);
+  for (const link of parseWikilinks(content)) {
+    insert.run(filePath, link.rawTarget, null, link.alias, link.heading, link.line, link.col, link.context, 'wiki');
+  }
+  for (const link of parseMarkdownLinks(content)) {
+    insert.run(filePath, link.rawTarget, null, link.alias, link.heading, link.line, link.col, link.context, 'md');
   }
 
   return true;
 }
 
 function resolveAllLinks(db, bucketRoot) {
-  const rows = db.prepare('SELECT rowid, source_path, target_text FROM wikilinks').all();
+  const rows = db.prepare('SELECT rowid, source_path, target_text, link_type FROM wikilinks').all();
   const update = db.prepare('UPDATE wikilinks SET target_path = ? WHERE rowid = ?');
   for (const row of rows) {
     // Strip any heading suffix from target_text before resolving.
     const hashIdx = row.target_text.indexOf('#');
     const targetName = hashIdx === -1 ? row.target_text : row.target_text.substring(0, hashIdx).trim();
-    const resolved = resolveTarget(db, bucketRoot, targetName, row.source_path);
+    const resolved = row.link_type === 'md'
+      ? resolveMdTarget(db, bucketRoot, targetName, row.source_path)
+      : resolveTarget(db, bucketRoot, targetName, row.source_path);
     update.run(resolved, row.rowid);
   }
 }
@@ -279,15 +385,21 @@ function resolveAllLinks(db, bucketRoot) {
  * whole bucket.
  */
 function resolveLinksForName(db, bucketRoot, basename) {
+  const name = basename.toLowerCase();
+  // Wikilinks reference the bare name; markdown links reference a path ending
+  // in <name>.md — cover both so a new file repairs its inbound links.
   const rows = db.prepare(
-    `SELECT rowid, source_path, target_text FROM wikilinks
-     WHERE LOWER(target_text) = ? OR LOWER(target_text) LIKE ?`
-  ).all(basename.toLowerCase(), `${basename.toLowerCase()}#%`);
+    `SELECT rowid, source_path, target_text, link_type FROM wikilinks
+     WHERE (link_type = 'wiki' AND (LOWER(target_text) = ? OR LOWER(target_text) LIKE ?))
+        OR (link_type = 'md' AND (LOWER(target_text) = ? OR LOWER(target_text) LIKE ?))`
+  ).all(name, `${name}#%`, `${name}.md`, `%/${name}.md`);
   const update = db.prepare('UPDATE wikilinks SET target_path = ? WHERE rowid = ?');
   for (const row of rows) {
     const hashIdx = row.target_text.indexOf('#');
     const targetName = hashIdx === -1 ? row.target_text : row.target_text.substring(0, hashIdx).trim();
-    const resolved = resolveTarget(db, bucketRoot, targetName, row.source_path);
+    const resolved = row.link_type === 'md'
+      ? resolveMdTarget(db, bucketRoot, targetName, row.source_path)
+      : resolveTarget(db, bucketRoot, targetName, row.source_path);
     update.run(resolved, row.rowid);
   }
 }
@@ -362,13 +474,15 @@ function indexSingleFile(bucketRoot, filePath) {
 
     // Resolve outbound: re-resolve every link from this file.
     const outbound = db.prepare(
-      'SELECT rowid, target_text FROM wikilinks WHERE source_path = ?'
+      'SELECT rowid, target_text, link_type FROM wikilinks WHERE source_path = ?'
     ).all(filePath);
     const update = db.prepare('UPDATE wikilinks SET target_path = ? WHERE rowid = ?');
     for (const row of outbound) {
       const hashIdx = row.target_text.indexOf('#');
       const targetName = hashIdx === -1 ? row.target_text : row.target_text.substring(0, hashIdx).trim();
-      const resolved = resolveTarget(db, bucketRoot, targetName, filePath);
+      const resolved = row.link_type === 'md'
+        ? resolveMdTarget(db, bucketRoot, targetName, filePath)
+        : resolveTarget(db, bucketRoot, targetName, filePath);
       update.run(resolved, row.rowid);
     }
 
@@ -472,6 +586,16 @@ function registerHandlers(ipcMain, { state, bus }) {
     bus.sendToTerminal('wiki-progress', progress);
   };
 
+  ipcMain.handle('okf-export', async (event, bucketRoot) => {
+    try {
+      const { exportBucket } = require('./services/okfExport');
+      const result = await exportBucket(bucketRoot);
+      return { success: true, ...result };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  });
+
   ipcMain.handle('wiki-index', async (event, bucketRoot) => {
     try {
       const result = await indexBucket(bucketRoot, progressCallback);
@@ -537,6 +661,7 @@ function registerHandlers(ipcMain, { state, bus }) {
 
 module.exports = {
   parseWikilinks,
+  parseMarkdownLinks,
   resolveTarget,
   resolveWikilink,
   indexBucket,

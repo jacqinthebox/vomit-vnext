@@ -389,6 +389,7 @@ contextBridge.exposeInMainWorld('vomit', {
   ragSearch: (query, folderPath) => ipcRenderer.invoke('rag-search', query, folderPath),
   // Wiki methods
   wikiIndex: (bucketRoot) => ipcRenderer.invoke('wiki-index', bucketRoot),
+  okfExport: (bucketRoot) => ipcRenderer.invoke('okf-export', bucketRoot),
   wikiClear: (bucketRoot) => ipcRenderer.invoke('wiki-clear', bucketRoot),
   wikiIndexFile: (bucketRoot, filePath) => ipcRenderer.send('wiki-index-file', bucketRoot, filePath),
   wikiBacklinks: (bucketRoot, targetPath) => ipcRenderer.invoke('wiki-backlinks', bucketRoot, targetPath),

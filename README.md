@@ -303,6 +303,8 @@ RAG allows the AI to answer questions using documents from the current bucket as
 
 Indexing covers markdown, text, code files, and **PDFs** — PDF text is extracted page by page (scanned PDFs without a text layer are skipped, as there is no OCR).
 
+RAG answers pull in one hop of linked-note context: both `[[wikilinks]]` and standard markdown links (`[customers](/tables/customers.md)`, relative or bucket-root-relative) count as connections. This makes buckets interoperable with [OKF (Open Knowledge Format)](https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf) bundles — untar a bundle into a folder, open it as a bucket, `/index`, and query it; concept links are followed and citations are clickable. A bucket is itself a valid OKF bundle once notes carry a `type:` field in their YAML front matter.
+
 Embeddings come from Ollama's `nomic-embed-text` when available, or otherwise
 from the active OpenAI-compatible endpoint (e.g. LM Studio) — see the note in
 the OpenAI-compatible section above.
