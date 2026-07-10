@@ -1,3 +1,10 @@
+## [1.16.10](https://github.com/jacqinthebox/vomit-vnext/compare/v1.16.9...v1.16.10) (2026-07-10)
+
+
+### Bug Fixes
+
+* clickable RAG source links, PDF indexing, arm64 Linux/Windows builds ([813d278](https://github.com/jacqinthebox/vomit-vnext/commit/813d2789011fecb7bf774c8af3a2e9d21b5b3672))
+
 ## [1.16.9](https://github.com/jacqinthebox/vomit-vnext/compare/v1.16.8...v1.16.9) (2026-07-09)
 
 
