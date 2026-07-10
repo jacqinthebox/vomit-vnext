@@ -1,6 +1,6 @@
 {
   "name": "vomit-vnext",
-  "version": "1.16.10",
+  "version": "1.16.11",
   "description": "A keyboard-centric markdown editor and presentation app with IntelliSense, live preview, and presenter view",
   "main": "src/main/main.js",
   "scripts": {
@@ -59,6 +59,12 @@
         "nsis",
         "portable"
       ]
+    },
+    "nsis": {
+      "artifactName": "${productName}-Setup-${version}-${arch}.${ext}"
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-${arch}-portable.${ext}"
     },
     "linux": {
       "target": [
