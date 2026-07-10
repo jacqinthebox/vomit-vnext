@@ -1,3 +1,10 @@
+## [1.16.11](https://github.com/jacqinthebox/vomit-vnext/compare/v1.16.10...v1.16.11) (2026-07-10)
+
+
+### Bug Fixes
+
+* arch-suffixed Windows artifact names so x64 and arm64 builds coexist ([94578c4](https://github.com/jacqinthebox/vomit-vnext/commit/94578c44627cc5e0548450e3ee959c52e4445395))
+
 ## [1.16.10](https://github.com/jacqinthebox/vomit-vnext/compare/v1.16.9...v1.16.10) (2026-07-10)
 
 
