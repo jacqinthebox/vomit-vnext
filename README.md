@@ -26,7 +26,7 @@ An opinionated, keyboard-centric markdown editor for presentations and notes wit
 
 ## Platform Support
 
-**macOS** (Intel and Apple Silicon), **Windows**, and **Linux** (Ubuntu 24.04+). All three are packaged by CI.
+**macOS** (Intel and Apple Silicon), **Windows** (x64 and arm64), and **Linux** (Ubuntu 24.04+, x64 and arm64). All three are packaged by CI.
 
 Keyboard shortcuts shown as **Cmd** on macOS use **Ctrl** on Windows/Linux. **Option** maps to **Alt**.
 
@@ -299,7 +299,9 @@ For OpenAI-compatible endpoints you can also raise the response length cap via *
 
 **RAG (Retrieval Augmented Generation):**
 
-RAG allows the AI to answer questions using documents from the current bucket as context. First index the bucket with `/index`, then use `/rag <question>` to query that bucket with relevant context automatically retrieved.
+RAG allows the AI to answer questions using documents from the current bucket as context. First index the bucket with `/index`, then use `/rag <question>` to query that bucket with relevant context automatically retrieved. The source documents in the results list and the answer's citations are clickable links that open the document in the editor.
+
+Indexing covers markdown, text, code files, and **PDFs** — PDF text is extracted page by page (scanned PDFs without a text layer are skipped, as there is no OCR).
 
 Embeddings come from Ollama's `nomic-embed-text` when available, or otherwise
 from the active OpenAI-compatible endpoint (e.g. LM Studio) — see the note in

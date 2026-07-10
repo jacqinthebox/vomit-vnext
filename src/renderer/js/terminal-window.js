@@ -38,6 +38,10 @@
   // Agent permission prompt shown in this window: the next Enter answers it.
   let pendingPermissionId = null;
 
+  // RAG source documents of the in-flight /rag query, so the answer's
+  // citations can be turned into clickable links when the stream completes.
+  let ragLinkTargets = null;
+
   // --- Terminal tab switching ---
 
   function switchTerminalTab(tabName) {
@@ -407,7 +411,13 @@
     if (outputStream) {
       outputStream.classList.add('complete');
       renderMarkdownInto(outputStream);
+
+      // If this was a /rag answer, make its source citations clickable
+      if (ragLinkTargets) {
+        linkifyRagSources(outputStream);
+      }
     }
+    ragLinkTargets = null;
   }
 
   function clearTerminal() {
@@ -615,6 +625,83 @@
     }
   }
 
+  // Show a RAG source path relative to the bucket root when possible, else
+  // just the file name — keeps the sources list and citations readable.
+  function ragDisplayPath(file, root) {
+    if (!file) return '';
+    if (root && window.PathUtils.isSubPath(file, root)) {
+      const rel = window.PathUtils.relativeParts(file, root).join('/');
+      if (rel) return rel;
+    }
+    return window.PathUtils.basename(file);
+  }
+
+  // Append a terminal line whose document name is a clickable link that
+  // opens the file in the main editor window.
+  function appendTerminalDocLink(file, label, suffix = '') {
+    const line = document.createElement('div');
+    line.className = 'terminal-line output';
+    line.appendChild(document.createTextNode('  • '));
+    const link = document.createElement('a');
+    link.className = 'terminal-doc-link';
+    link.href = '#';
+    link.dataset.file = file;
+    link.textContent = label;
+    line.appendChild(link);
+    if (suffix) line.appendChild(document.createTextNode(suffix));
+    terminalOutput.appendChild(line);
+    if (pickerState.active && pickerState.blockEl) {
+      terminalOutput.appendChild(pickerState.blockEl);
+    }
+    terminalOutput.scrollTop = terminalOutput.scrollHeight;
+  }
+
+  // Wrap mentions of RAG source documents in the rendered answer (e.g.
+  // "(source: notes.md)") with links that open the document in the editor.
+  // Skips code blocks and existing links; longest labels match first so
+  // "notes/foo.md" wins over "foo.md".
+  function linkifyRagSources(root) {
+    const targets = [];
+    for (const t of ragLinkTargets || []) {
+      for (const label of t.labels) targets.push({ label, file: t.file });
+    }
+    if (!targets.length) return;
+    targets.sort((a, b) => b.label.length - a.label.length);
+
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const textNodes = [];
+    let node;
+    while ((node = walker.nextNode())) {
+      if (node.parentElement && node.parentElement.closest('pre, code, a')) continue;
+      textNodes.push(node);
+    }
+
+    for (const textNode of textNodes) {
+      const text = textNode.nodeValue;
+      let cursor = 0;
+      const frag = document.createDocumentFragment();
+      while (cursor < text.length) {
+        let best = null;
+        for (const t of targets) {
+          const idx = text.indexOf(t.label, cursor);
+          if (idx !== -1 && (best === null || idx < best.idx)) best = { idx, target: t };
+        }
+        if (!best) break;
+        frag.appendChild(document.createTextNode(text.slice(cursor, best.idx)));
+        const link = document.createElement('a');
+        link.className = 'terminal-doc-link';
+        link.href = '#';
+        link.dataset.file = best.target.file;
+        link.textContent = best.target.label;
+        frag.appendChild(link);
+        cursor = best.idx + best.target.label.length;
+      }
+      if (!frag.childNodes.length) continue;
+      frag.appendChild(document.createTextNode(text.slice(cursor)));
+      textNode.replaceWith(frag);
+    }
+  }
+
   async function searchWithRAG(query, cwd) {
     appendTerminalOutput(`❯ /rag ${query}`, 'input');
 
@@ -635,11 +722,44 @@
         return;
       }
 
-      appendTerminalOutput(`Found ${results.chunks.length} relevant chunks. Querying AI...`, 'system');
+      // Summarize which documents the answer draws on (best similarity per
+      // file), so the user can see, open, and verify the sources. RAG results
+      // carry bucket-relative paths — resolve them against the bucket root so
+      // the links point at real files.
+      const fileStats = new Map();
+      for (const chunk of results.chunks) {
+        const file = window.PathUtils.join(cwd, chunk.file);
+        const stat = fileStats.get(file) || { file, best: 0, count: 0, source: chunk.source };
+        stat.best = Math.max(stat.best, chunk.similarity || 0);
+        stat.count += 1;
+        if (chunk.source === 'wikilink') stat.source = 'wikilink';
+        fileStats.set(file, stat);
+      }
+      const sources = [...fileStats.values()].sort((a, b) => b.best - a.best);
+
+      appendTerminalOutput(`Found ${results.chunks.length} relevant chunks across ${sources.length} document(s):`, 'system');
+      for (const s of sources) {
+        const rel = ragDisplayPath(s.file, cwd);
+        const pct = Math.round((s.best || 0) * 100);
+        const chunkNote = s.count > 1 ? `, ${s.count} chunks` : '';
+        const via = s.source === 'wikilink' ? ' (via wikilink)' : '';
+        appendTerminalDocLink(s.file, rel, ` (${pct}% match${chunkNote})${via}`);
+      }
+      appendTerminalOutput('Querying AI...', 'system');
+
+      // Remember the source documents so markOutputComplete can turn the
+      // answer's "(source: notes.md)" citations into clickable links.
+      ragLinkTargets = sources.map((s) => ({
+        file: s.file,
+        labels: [...new Set([
+          ragDisplayPath(s.file, cwd),
+          window.PathUtils.basename(s.file),
+        ])].filter(Boolean),
+      }));
 
       const contextParts = results.chunks.map((chunk) => {
         const tag = chunk.source === 'wikilink' ? ' (via wikilink)' : '';
-        return `[Source: ${chunk.file}${tag}]\n${chunk.content}`;
+        return `[Source: ${ragDisplayPath(window.PathUtils.join(cwd, chunk.file), cwd)}${tag}]\n${chunk.content}`;
       });
       const context = contextParts.join('\n\n---\n\n');
 
@@ -652,13 +772,14 @@ ${context}
 
 User question: ${query}
 
-Provide a helpful, accurate answer based on the context above. If the context doesn't contain relevant information, say so.`;
+Provide a helpful, accurate answer based on the context above. Cite the source documents you used by their file name (e.g. "(source: notes.md)") next to the relevant points, and end with a short "Sources:" list of the documents you drew from. If the context doesn't contain relevant information, say so.`;
 
       terminalState.isClaudeRunning = true;
       terminalStop.classList.remove('hidden');
 
       await window.vomit.agentExecute(ragPrompt, cwd);
     } catch (err) {
+      ragLinkTargets = null;
       appendTerminalOutput(`Error: ${err.message}`, 'error');
     }
   }
@@ -1032,6 +1153,14 @@ Provide a helpful, accurate answer based on the context above. If the context do
     // Reattach button
     terminalReattach.addEventListener('click', () => {
       window.vomit.reattachTerminal();
+    });
+
+    // Open RAG source documents in the main editor window when clicked
+    terminalOutput.addEventListener('click', (e) => {
+      const link = e.target.closest('.terminal-doc-link');
+      if (!link) return;
+      e.preventDefault();
+      if (link.dataset.file) window.vomit.openFile(link.dataset.file);
     });
   }
 

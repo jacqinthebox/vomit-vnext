@@ -1,6 +1,6 @@
 {
   "name": "vomit-vnext",
-  "version": "1.16.9",
+  "version": "1.16.10",
   "description": "A keyboard-centric markdown editor and presentation app with IntelliSense, live preview, and presenter view",
   "main": "src/main/main.js",
   "scripts": {
@@ -91,17 +91,47 @@
         "role": "Viewer"
       },
       {
-        "ext": [
-          "png",
-          "jpg",
-          "jpeg",
-          "gif",
-          "webp",
-          "svg",
-          "bmp",
-          "ico",
-          "avif"
-        ],
+        "ext": "png",
+        "name": "Image File",
+        "role": "Viewer"
+      },
+      {
+        "ext": "jpg",
+        "name": "Image File",
+        "role": "Viewer"
+      },
+      {
+        "ext": "jpeg",
+        "name": "Image File",
+        "role": "Viewer"
+      },
+      {
+        "ext": "gif",
+        "name": "Image File",
+        "role": "Viewer"
+      },
+      {
+        "ext": "webp",
+        "name": "Image File",
+        "role": "Viewer"
+      },
+      {
+        "ext": "svg",
+        "name": "Image File",
+        "role": "Viewer"
+      },
+      {
+        "ext": "bmp",
+        "name": "Image File",
+        "role": "Viewer"
+      },
+      {
+        "ext": "ico",
+        "name": "Image File",
+        "role": "Viewer"
+      },
+      {
+        "ext": "avif",
         "name": "Image File",
         "role": "Viewer"
       }

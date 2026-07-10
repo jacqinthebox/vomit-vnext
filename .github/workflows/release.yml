@@ -91,7 +91,17 @@ jobs:
   build-windows:
     needs: release
     if: needs.release.outputs.published == 'true'
-    runs-on: windows-latest
+    # Native runner per architecture, matching the Linux jobs. The arm64 leg
+    # builds with --publish never so the two legs don't race on uploading the
+    # same-named latest.yml; softprops below uploads the installers.
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            arch: x64
+          - os: windows-11-arm
+            arch: arm64
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout released tag
         uses: actions/checkout@v4
@@ -108,7 +118,7 @@ jobs:
         run: npm ci
 
       - name: Build Windows installer
-        run: npm run build:win
+        run: npm run build:win -- --${{ matrix.arch }} ${{ matrix.arch == 'arm64' && '--publish never' || '' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -125,7 +135,12 @@ jobs:
   build-linux:
     needs: release
     if: needs.release.outputs.published == 'true'
-    runs-on: ubuntu-latest
+    # node-pty has no Linux prebuilds and node-gyp cannot cross-compile,
+    # so each architecture must build on a native runner.
+    strategy:
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout released tag
         uses: actions/checkout@v4

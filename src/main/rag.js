@@ -6,6 +6,7 @@ const fs = require('fs');
 const crypto = require('crypto');
 const os = require('os');
 const Database = require('better-sqlite3');
+const { extractPdfText } = require('./services/pdfText');
 
 // Split text into chunks with overlap
 function chunkText(text, chunkSize = 500, overlap = 50) {
@@ -150,7 +151,7 @@ function clearRAGDatabase(folderPath) {
 
 // Index all documents in a bucket, or refresh one folder/file within the bucket.
 async function indexFolder(projectRoot, targetPath, progressCallback, backend) {
-  const extensions = ['.md', '.txt', '.js', '.ts', '.py', '.json', '.yaml', '.yml', '.xml', '.html', '.css', '.tf', '.sh', '.tpl'];
+  const extensions = ['.md', '.txt', '.js', '.ts', '.py', '.json', '.yaml', '.yml', '.xml', '.html', '.css', '.tf', '.sh', '.tpl', '.pdf'];
   // Always store database at bucket scope
   const db = getRAGDatabase(projectRoot);
 
@@ -171,11 +172,15 @@ async function indexFolder(projectRoot, targetPath, progressCallback, backend) {
     const relativePath = path.relative(projectRoot, targetPath);
     db.prepare('DELETE FROM chunks WHERE file_path = ?').run(relativePath);
   } else {
-    // If refreshing a folder, only clear chunks from that folder.
+    // If refreshing a folder, only clear chunks from that folder. Match on
+    // the prefix up to and including the separator (via substr, not LIKE, to
+    // avoid wildcard semantics) so refreshing "notes" leaves a sibling
+    // "notes-archive" untouched.
     const isFolderRefresh = targetPath !== projectRoot;
     if (isFolderRefresh) {
-      const folderPrefix = path.relative(projectRoot, targetPath);
-      db.prepare('DELETE FROM chunks WHERE file_path LIKE ?').run(`${folderPrefix}%`);
+      const folderPrefix = path.relative(projectRoot, targetPath) + path.sep;
+      db.prepare('DELETE FROM chunks WHERE substr(file_path, 1, ?) = ?')
+        .run(folderPrefix.length, folderPrefix);
     } else {
       // Clear entire index when indexing full project
       db.exec('DELETE FROM chunks');
@@ -221,8 +226,20 @@ async function indexFolder(projectRoot, targetPath, progressCallback, backend) {
 
   for (const file of files) {
     try {
-      const content = fs.readFileSync(file, 'utf-8');
+      // PDFs go through pdf.js text extraction; everything else is read as
+      // plain text.
+      const isPdf = path.extname(file).toLowerCase() === '.pdf';
+      const content = isPdf ? await extractPdfText(file) : fs.readFileSync(file, 'utf-8');
       const relativePath = path.relative(projectRoot, file);
+      // Scanned PDFs without a text layer return a placeholder — don't embed
+      // it, or it would match unrelated queries.
+      if (isPdf && content === '(PDF contains no extractable text)') {
+        processed++;
+        if (progressCallback) {
+          progressCallback({ status: 'indexing', current: processed, total: files.length, file: relativePath });
+        }
+        continue;
+      }
       const chunks = chunkText(content);
 
       for (let i = 0; i < chunks.length; i++) {

@@ -2435,6 +2435,17 @@ li.CodeMirror-hint-active {
   margin-left: 6px;
 }
 
+/* Clickable RAG source-document links (sources list + answer citations) */
+.terminal-doc-link {
+  color: var(--accent-color);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.terminal-doc-link:hover {
+  text-decoration: underline;
+}
+
 /* Agent write-diff preview (diff-before-write approval gate) */
 .terminal-line.diff-add,
 .terminal-line.diff-del,

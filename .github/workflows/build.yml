@@ -46,7 +46,15 @@ jobs:
           retention-days: 30
 
   build-windows:
-    runs-on: windows-latest
+    # Native runner per architecture, matching the Linux jobs.
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            arch: x64
+          - os: windows-11-arm
+            arch: arm64
+    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout code
@@ -62,21 +70,30 @@ jobs:
         run: npm ci
 
       - name: Build Windows installer
-        run: npm run build:win
+        run: npm run build:win -- --${{ matrix.arch }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: vomit-windows
+          name: vomit-windows-${{ matrix.arch }}
           path: |
             dist/*.exe
             dist/*.blockmap
           retention-days: 30
 
   build-linux:
-    runs-on: ubuntu-latest
+    # node-pty has no Linux prebuilds and node-gyp cannot cross-compile,
+    # so each architecture must build on a native runner.
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            arch: x64
+          - os: ubuntu-24.04-arm
+            arch: arm64
+    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout code
@@ -99,7 +116,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: vomit-linux
+          name: vomit-linux-${{ matrix.arch }}
           path: |
             dist/*.AppImage
             dist/*.deb

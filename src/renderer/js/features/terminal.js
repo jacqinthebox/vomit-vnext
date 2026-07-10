@@ -399,6 +399,14 @@ class TerminalManager {
       });
     });
 
+    // Open RAG source documents in the editor when their links are clicked
+    this.terminalOutput.addEventListener('click', (e) => {
+      const link = e.target.closest('.terminal-doc-link');
+      if (!link) return;
+      e.preventDefault();
+      if (link.dataset.file) window.vomit.openFile(link.dataset.file);
+    });
+
     // Global Ctrl+C handler for terminal
     this.terminalPanel.addEventListener('keydown', (e) => {
       if (e.key === 'c' && e.ctrlKey && this.state.isClaudeRunning) {
@@ -2934,14 +2942,17 @@ ${chunks[chunkIndex]}
       }
 
       // Summarize which documents the answer draws on (best similarity per
-      // file), so the user can see and verify the sources.
+      // file), so the user can see and verify the sources. RAG results carry
+      // bucket-relative paths — resolve them against the bucket root so the
+      // links point at real files.
       const fileStats = new Map();
       for (const chunk of results.chunks) {
-        const stat = fileStats.get(chunk.file) || { file: chunk.file, best: 0, count: 0, source: chunk.source };
+        const file = window.PathUtils.join(cwd, chunk.file);
+        const stat = fileStats.get(file) || { file, best: 0, count: 0, source: chunk.source };
         stat.best = Math.max(stat.best, chunk.similarity || 0);
         stat.count += 1;
         if (chunk.source === 'wikilink') stat.source = 'wikilink';
-        fileStats.set(chunk.file, stat);
+        fileStats.set(file, stat);
       }
       const sources = [...fileStats.values()].sort((a, b) => b.best - a.best);
 
@@ -2951,13 +2962,23 @@ ${chunks[chunkIndex]}
         const pct = Math.round((s.best || 0) * 100);
         const chunkNote = s.count > 1 ? `, ${s.count} chunks` : '';
         const via = s.source === 'wikilink' ? ' (via wikilink)' : '';
-        this.appendTerminalOutput(`  • ${rel} (${pct}% match${chunkNote})${via}`, 'output');
+        this._appendTerminalDocLink(s.file, rel, ` (${pct}% match${chunkNote})${via}`);
       }
       this.appendTerminalOutput('Querying AI...', 'system');
 
+      // Remember the source documents so markOutputComplete can turn the
+      // answer's "(source: notes.md)" citations into clickable links.
+      this._ragLinkTargets = sources.map((s) => ({
+        file: s.file,
+        labels: [...new Set([
+          this._ragDisplayPath(s.file, cwd),
+          window.PathUtils.basename(s.file),
+        ])].filter(Boolean),
+      }));
+
       const contextParts = results.chunks.map((chunk) => {
         const tag = chunk.source === 'wikilink' ? ' (via wikilink)' : '';
-        return `[Source: ${this._ragDisplayPath(chunk.file, cwd)}${tag}]\n${chunk.content}`;
+        return `[Source: ${this._ragDisplayPath(window.PathUtils.join(cwd, chunk.file), cwd)}${tag}]\n${chunk.content}`;
       });
       const context = contextParts.join('\n\n---\n\n');
 
@@ -2978,8 +2999,75 @@ Provide a helpful, accurate answer based on the context above. Cite the source d
 
       await window.vomit.agentExecute(ragPrompt, cwd);
     } catch (err) {
+      this._ragLinkTargets = null;
       this.hideThinkingIndicator();
       this.appendTerminalOutput(`Error: ${err.message}`, 'error');
+    }
+  }
+
+  // Append a terminal line whose document name is a clickable link that
+  // opens the file in the editor.
+  _appendTerminalDocLink(file, label, suffix = '') {
+    const line = document.createElement('div');
+    line.className = 'terminal-line output';
+    line.appendChild(document.createTextNode('  • '));
+    const link = document.createElement('a');
+    link.className = 'terminal-doc-link';
+    link.href = '#';
+    link.dataset.file = file;
+    link.textContent = label;
+    line.appendChild(link);
+    if (suffix) line.appendChild(document.createTextNode(suffix));
+    this.terminalOutput.appendChild(line);
+    if (this.pickerState.active && this.pickerState.blockEl) {
+      this.terminalOutput.appendChild(this.pickerState.blockEl);
+    }
+    this.terminalOutput.scrollTop = this.terminalOutput.scrollHeight;
+  }
+
+  // Wrap mentions of RAG source documents in the rendered answer (e.g.
+  // "(source: notes.md)") with links that open the document in the editor.
+  // Skips code blocks and existing links; longest labels match first so
+  // "notes/foo.md" wins over "foo.md".
+  _linkifyRagSources(root) {
+    const targets = [];
+    for (const t of this._ragLinkTargets || []) {
+      for (const label of t.labels) targets.push({ label, file: t.file });
+    }
+    if (!targets.length) return;
+    targets.sort((a, b) => b.label.length - a.label.length);
+
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const textNodes = [];
+    let node;
+    while ((node = walker.nextNode())) {
+      if (node.parentElement && node.parentElement.closest('pre, code, a')) continue;
+      textNodes.push(node);
+    }
+
+    for (const textNode of textNodes) {
+      const text = textNode.nodeValue;
+      let cursor = 0;
+      const frag = document.createDocumentFragment();
+      while (cursor < text.length) {
+        let best = null;
+        for (const t of targets) {
+          const idx = text.indexOf(t.label, cursor);
+          if (idx !== -1 && (best === null || idx < best.idx)) best = { idx, target: t };
+        }
+        if (!best) break;
+        frag.appendChild(document.createTextNode(text.slice(cursor, best.idx)));
+        const link = document.createElement('a');
+        link.className = 'terminal-doc-link';
+        link.href = '#';
+        link.dataset.file = best.target.file;
+        link.textContent = best.target.label;
+        frag.appendChild(link);
+        cursor = best.idx + best.target.label.length;
+      }
+      if (!frag.childNodes.length) continue;
+      frag.appendChild(document.createTextNode(text.slice(cursor)));
+      textNode.replaceWith(frag);
     }
   }
 
@@ -3156,7 +3244,13 @@ Provide a helpful, accurate answer based on the context above. Cite the source d
 
       // Render as markdown
       this.renderMarkdown(outputStream);
+
+      // If this was a /rag answer, make its source citations clickable
+      if (this._ragLinkTargets) {
+        this._linkifyRagSources(outputStream);
+      }
     }
+    this._ragLinkTargets = null;
   }
 
   // Normalize LaTeX delimiters from LLM output.
