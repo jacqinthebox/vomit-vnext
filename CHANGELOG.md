@@ -1,3 +1,10 @@
+# [1.17.0](https://github.com/jacqinthebox/vomit-vnext/compare/v1.16.11...v1.17.0) (2026-07-10)
+
+
+### Features
+
+* OKF (Open Knowledge Format) interoperability ([8486d7a](https://github.com/jacqinthebox/vomit-vnext/commit/8486d7ac1e81839e42ef749935d27413c5a59625))
+
 ## [1.16.11](https://github.com/jacqinthebox/vomit-vnext/compare/v1.16.10...v1.16.11) (2026-07-10)
 
 
