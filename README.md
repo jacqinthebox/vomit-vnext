@@ -255,6 +255,7 @@ Type `/` in the AI terminal to open an inline command picker. Navigate with `↑
 - `/index <folder>` - Refresh only a specific folder inside the current bucket
 - `/reindex` - Clear and rebuild the current bucket's RAG index
 - `/rag <query>` - Search the current bucket index and ask AI with context
+- `/okf export` - Export the current bucket as an OKF bundle tar.gz (see OKF interoperability below)
 - `/agent <prompt>` - Agentic mode with tools (bash, file read/write/edit, project search, PDF text extraction, URL fetch, web search)
 - `/chat <prompt>` - Ask the AI directly, without tools. The request skips the tool schemas, so the model starts answering much sooner — ideal for plain questions on slow local backends. Shares conversation history with agent mode, so you can mix `/chat` and `/agent` turns freely.
 - `/new` - Start a new conversation (clear history)
@@ -303,7 +304,7 @@ RAG allows the AI to answer questions using documents from the current bucket as
 
 Indexing covers markdown, text, code files, and **PDFs** — PDF text is extracted page by page (scanned PDFs without a text layer are skipped, as there is no OCR).
 
-RAG answers pull in one hop of linked-note context: both `[[wikilinks]]` and standard markdown links (`[customers](/tables/customers.md)`, relative or bucket-root-relative) count as connections. This makes buckets interoperable with [OKF (Open Knowledge Format)](https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf) bundles — untar a bundle into a folder, open it as a bucket, `/index`, and query it; concept links are followed and citations are clickable. A bucket is itself a valid OKF bundle once notes carry a `type:` field in their YAML front matter.
+RAG answers pull in one hop of linked-note context: both `[[wikilinks]]` and standard markdown links (`[customers](/tables/customers.md)`, relative or bucket-root-relative) count as connections, so linked notes are followed and citations stay clickable. This is also what makes buckets OKF-interoperable — see below.
 
 Embeddings come from Ollama's `nomic-embed-text` when available, or otherwise
 from the active OpenAI-compatible endpoint (e.g. LM Studio) — see the note in
@@ -321,6 +322,14 @@ ollama pull nomic-embed-text
 ```
 
 The index is stored in `~/.config/vomit/rag/` to keep your bucket clean. Each bucket has its own RAG database. Use `/index <folder>` for a faster partial refresh after changing one folder, or `/reindex` after deleting, moving, or heavily reorganizing notes.
+
+**OKF (Open Knowledge Format) interoperability:**
+
+Buckets speak [OKF](https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf) — plain markdown notes with YAML front matter, linked by standard markdown links. OKF requires a single front matter field, `type:`; new notes created in Vomit (file tree or `/write-new`) include `type: Note` by default.
+
+- **Consume a bundle** — untar an OKF bundle into a folder, open it as a bucket, `/index`, then `/rag <question>`. Concept links between notes are followed for context, backlinks and the wiki graph work, and citations open the note in the editor. No conversion step.
+- **Publish a bundle** — `/okf export` packs the current bucket as `~/Downloads/<bucket>-okf.tar.gz`: it stamps `type:` where missing and rewrites `[[wikilinks]]` to bucket-root-relative markdown links, so any OKF consumer can ingest it. Source notes are never modified.
+- **Round-trip** — a bucket whose notes carry `type:` is itself a valid OKF bundle; consumers that read folders directly need no export at all.
 
 **Command history:**
 
