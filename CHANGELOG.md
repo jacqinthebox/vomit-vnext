@@ -1,3 +1,10 @@
+## [1.17.1](https://github.com/jacqinthebox/vomit-vnext/compare/v1.17.0...v1.17.1) (2026-07-11)
+
+
+### Bug Fixes
+
+* stamp OKF-mandatory type field on new-note frontmatter ([75a092d](https://github.com/jacqinthebox/vomit-vnext/commit/75a092d7e43037a9c47269ac8fd28aa6df68bf9d))
+
 # [1.17.0](https://github.com/jacqinthebox/vomit-vnext/compare/v1.16.11...v1.17.0) (2026-07-10)
 
 
