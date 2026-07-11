@@ -1101,7 +1101,7 @@ Now create the presentation about: ${topic}`;
       .replace(/\.(md|markdown)$/i, '')
       .replace(/[-_]/g, ' ');
     const folder = window.PathUtils.basename(baseDir);
-    return `---\ntitle: ${title}\nfolder: ${folder}\ncreated: ${today}\nmodified: ${today}\ndraft: true\ntags: []\n---\n\n`;
+    return `---\ntype: Note\ntitle: ${title}\nfolder: ${folder}\ncreated: ${today}\nmodified: ${today}\ndraft: true\ntags: []\n---\n\n`;
   }
 
   async executeWriteCommand(prompt, mode, cwd) {

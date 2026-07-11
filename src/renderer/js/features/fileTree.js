@@ -817,7 +817,7 @@ class FileTreeManager {
             const today = `${y}-${m}-${day}`;
             const title = name.replace(/\.(md|markdown)$/i, '').replace(/[-_]/g, ' ');
             const folder = window.PathUtils.basename(targetDir);
-            initialContent = `---\ntitle: ${title}\nfolder: ${folder}\ncreated: ${today}\nmodified: ${today}\ndraft: true\ntags: []\n---\n\n`;
+            initialContent = `---\ntype: Note\ntitle: ${title}\nfolder: ${folder}\ncreated: ${today}\nmodified: ${today}\ndraft: true\ntags: []\n---\n\n`;
           }
           await window.vomit.writeFile(newPath, initialContent);
           await this.refreshFolder(targetDir);
