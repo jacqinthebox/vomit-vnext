@@ -1307,6 +1307,40 @@ html, body {
   opacity: 0.45;
 }
 
+/* Copy button on the opening fence line of code blocks in the editor */
+#editor .CodeMirror .cm-code-copy-btn {
+  position: absolute;
+  top: 1px;
+  right: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  color: var(--text-secondary);
+  background: var(--code-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 0.4;
+  transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+#editor .CodeMirror .cm-code-copy-btn:hover,
+#editor .CodeMirror .cm-code-copy-btn.copied {
+  opacity: 1;
+}
+
+#editor .CodeMirror .cm-code-copy-btn:hover {
+  color: var(--text-primary);
+  background: var(--border-color);
+}
+
+#editor .CodeMirror .cm-code-copy-btn.copied {
+  color: var(--accent-color);
+  border-color: var(--accent-color);
+}
+
 #preview-pane {
   flex: 1;
   overflow-y: auto;
@@ -1393,6 +1427,45 @@ html, body {
   background: none;
   font-size: 0.85em;
   line-height: 1.6;
+}
+
+#preview pre.has-copy-btn {
+  position: relative;
+}
+
+#preview pre .code-copy-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  color: var(--text-secondary, #999);
+  background: var(--code-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+#preview pre.has-copy-btn:hover .code-copy-btn,
+#preview pre .code-copy-btn:focus {
+  opacity: 1;
+}
+
+#preview pre .code-copy-btn:hover {
+  color: var(--text-primary, #fff);
+  background: var(--border-color);
+}
+
+#preview pre .code-copy-btn.copied {
+  opacity: 1;
+  color: var(--accent-color);
+  border-color: var(--accent-color);
 }
 
 #preview img {

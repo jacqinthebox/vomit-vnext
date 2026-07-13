@@ -276,6 +276,12 @@ class CodemirrorHost {
     let inFrontmatter = false;
     let frontmatterDone = false;
 
+    // Clear copy buttons from the previous pass; they're rebuilt below.
+    if (this._codeCopyMarks) {
+      this._codeCopyMarks.forEach((mark) => mark.clear());
+    }
+    this._codeCopyMarks = [];
+
     for (let i = 0; i < lineCount; i++) {
       const line = this.cm.getLine(i);
       const isFence = /^(`{3,}|~{3,})/.test(line);
@@ -310,6 +316,10 @@ class CodemirrorHost {
       if (isFence) {
         // Fence line itself gets the style
         this.cm.addLineClass(i, 'background', 'code-block-line');
+        // The opening fence (transition into a block) gets a copy button.
+        if (!inCodeBlock) {
+          this._addCodeCopyButton(i);
+        }
         inCodeBlock = !inCodeBlock;
       } else if (inCodeBlock) {
         this.cm.addLineClass(i, 'background', 'code-block-line');
@@ -317,6 +327,71 @@ class CodemirrorHost {
         this.cm.removeLineClass(i, 'background', 'code-block-line');
       }
     }
+  }
+
+  // Attach a copy-to-clipboard button to the opening fence line of a code
+  // block. The button is a bookmark widget, right-aligned via CSS relative to
+  // the CodeMirror line. Content is read lazily at click time so it stays in
+  // sync as the block is edited.
+  _addCodeCopyButton(fenceLine) {
+    const btn = document.createElement('span');
+    btn.className = 'cm-code-copy-btn';
+    btn.title = 'Copy code';
+    btn.setAttribute('role', 'button');
+    btn.setAttribute('aria-label', 'Copy code');
+    btn.contentEditable = 'false';
+    btn.innerHTML = this._copyIconSvg();
+
+    btn.addEventListener('mousedown', (e) => {
+      // Prevent the editor from stealing focus / moving the cursor.
+      e.preventDefault();
+      e.stopPropagation();
+    });
+
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const code = this._getCodeBlockContent(fenceLine);
+      try {
+        await navigator.clipboard.writeText(code);
+        btn.classList.add('copied');
+        btn.innerHTML = this._checkIconSvg();
+        setTimeout(() => {
+          btn.classList.remove('copied');
+          btn.innerHTML = this._copyIconSvg();
+        }, 1500);
+      } catch (err) {
+        // Clipboard may be unavailable; leave the button state unchanged.
+      }
+    });
+
+    const line = this.cm.getLine(fenceLine) || '';
+    const mark = this.cm.setBookmark(
+      { line: fenceLine, ch: line.length },
+      { widget: btn, insertLeft: true }
+    );
+    this._codeCopyMarks.push(mark);
+  }
+
+  // Return the text between the given opening fence line and its matching
+  // closing fence (or end of document if unterminated).
+  _getCodeBlockContent(fenceLine) {
+    const lineCount = this.cm.lineCount();
+    const lines = [];
+    for (let i = fenceLine + 1; i < lineCount; i++) {
+      const line = this.cm.getLine(i);
+      if (/^(`{3,}|~{3,})/.test(line)) break;
+      lines.push(line);
+    }
+    return lines.join('\n');
+  }
+
+  _copyIconSvg() {
+    return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
+  }
+
+  _checkIconSvg() {
+    return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
   }
 
   // --- Direct access (escape hatch for complex operations) ---
