@@ -1,3 +1,10 @@
+## [1.17.2](https://github.com/jacqinthebox/vomit-vnext/compare/v1.17.1...v1.17.2) (2026-07-13)
+
+
+### Bug Fixes
+
+* add copy-to-clipboard buttons to code blocks in editor and preview ([e59b7a9](https://github.com/jacqinthebox/vomit-vnext/commit/e59b7a96a15725c1e24e62b27e7cc792d2397fed))
+
 ## [1.17.1](https://github.com/jacqinthebox/vomit-vnext/compare/v1.17.0...v1.17.1) (2026-07-11)
 
 
