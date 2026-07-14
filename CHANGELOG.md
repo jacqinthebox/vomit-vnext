@@ -1,3 +1,10 @@
+## [1.17.3](https://github.com/jacqinthebox/vomit-vnext/compare/v1.17.2...v1.17.3) (2026-07-14)
+
+
+### Bug Fixes
+
+* force customer names in pseudonymization with override and case-insensitive matching ([d844450](https://github.com/jacqinthebox/vomit-vnext/commit/d844450a8403745ba476fcfc78eaa49811933ae7))
+
 ## [1.17.2](https://github.com/jacqinthebox/vomit-vnext/compare/v1.17.1...v1.17.2) (2026-07-13)
 
 
