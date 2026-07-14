@@ -530,6 +530,23 @@ function toOpenAIMessage(msg) {
       content: contentToText(msg.content)
     };
   }
+  // Vision: turn attached images into OpenAI multimodal content parts. Ollama
+  // uses a top-level `images` array; the OpenAI Chat Completions spec instead
+  // expects `content` to be an array of {type:'text'} / {type:'image_url'}
+  // parts, each image a base64 data URI.
+  if (Array.isArray(msg.images) && msg.images.length) {
+    const mimes = Array.isArray(msg.imageMimes) ? msg.imageMimes : [];
+    const parts = [];
+    const text = contentToText(msg.content);
+    if (text) parts.push({ type: 'text', text });
+    msg.images.forEach((b64, i) => {
+      parts.push({
+        type: 'image_url',
+        image_url: { url: `data:${mimes[i] || 'image/png'};base64,${b64}` }
+      });
+    });
+    return { role: msg.role, content: parts };
+  }
   return { role: msg.role, content: contentToText(msg.content) };
 }
 
@@ -631,5 +648,6 @@ module.exports = {
   streamChat,
   formatToolResultMessage,
   formatOllamaApiError,
+  toOpenAIMessage,
   testConnection
 };

@@ -73,3 +73,32 @@ test('collectPromptImages takes base64 from data URIs directly', () => {
   assert.deepStrictEqual(images, ['aGVsbG8=']);
   assert.strictEqual(names[0], '(inline image)');
 });
+
+test('collectPromptImages reports mime types from extension and data URIs', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'vomit-img-'));
+  try {
+    fs.writeFileSync(path.join(dir, 'a.png'), Buffer.from([0x89]));
+    fs.writeFileSync(path.join(dir, 'b.jpg'), Buffer.from([0xff]));
+    const { mimes } = collectPromptImages('![](a.png) and ![](b.jpg)', [dir]);
+    assert.deepStrictEqual(mimes, ['image/png', 'image/jpeg']);
+
+    const inline = collectPromptImages('![](data:image/webp;base64,aGk=)', []);
+    assert.strictEqual(inline.mimes[0], 'image/webp');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('collectPromptImages honors an encoder returning {data, mime}', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'vomit-img-'));
+  try {
+    fs.writeFileSync(path.join(dir, 'c.png'), Buffer.from([0x89]));
+    const { images, mimes } = collectPromptImages('![](c.png)', [dir], {
+      encoder: () => ({ data: 'ZmFrZQ==', mime: 'image/jpeg' })
+    });
+    assert.deepStrictEqual(images, ['ZmFrZQ==']);
+    assert.strictEqual(mimes[0], 'image/jpeg');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});

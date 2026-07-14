@@ -193,13 +193,14 @@ All processing happens locally — your data never leaves your machine.
 | `/write-new <prompt>` | Create a new file with AI response |
 | `/rewrite <prompt>` | Replace selection with AI response |
 | `/append <prompt>` | Add AI response at end of document |
-| `/pseudo` | Pseudonymize current document (names, emails, IPs) |
-| `/pseudo all` | Pseudonymize all files in current folder |
-| `/pseudo deterministic [folder]` | Fast local repo/folder pseudonymization for IaC/code/config and common secrets |
-| `/pseudo ai [folder]` | Hybrid deterministic + AI repo/folder pseudonymization for prose docs, architecture designs, HLDs, legal docs, and advisory text |
-| `/pseudo run [folder]` | Alias for `/pseudo deterministic [folder]` |
+| `/pseudo` `[--ai]` `[--customer "Name"]` | Pseudonymize the current document (fast/offline by default; `--ai` for the AI-assisted scan) |
+| `/pseudo-selection` `[--ai]` | Pseudonymize selected editor text; result printed in terminal (nothing written to disk) |
+| `/pseudo-repo` `[folder]` `[--all]` `[--ai]` `[--customer "Name"]` | Pseudonymize repos/folders in the bucket. No folder = auto-detect git repos; `--all` = every top-level folder; name a folder to target one |
+| `/pseudo-map` | Show the current entity mapping |
+| `/pseudo-restore` `[repo-name]` | Restore original data (a pseudo repo folder if named, otherwise the current document) |
+| `--customer "Name"` (flag) | Force a customer/company/person name into the mapping so it is always replaced, even in the deterministic scan. Repeatable; alias `--name`; case-insensitive with word boundaries. Use `--customer "Name=Replacement"` to choose the replacement (e.g. `Lidl=GroceryShop`). Works with `/pseudo` and `/pseudo-repo`. Example: `/pseudo-repo my-repo --customer "Lidl=GroceryShop"` |
 | Supported pseudo files | Text-based files such as `.md`, `.markdown`, `.txt`, `.adoc`, `.rst`, YAML/JSON, IaC, config, and source files; binary documents such as `.docx`, `.pdf`, `.xlsx`, and `.pptx` are skipped |
-| `/depseudo` | Restore original data from pseudonymized file |
+| Legacy aliases | `/pseudo-deterministic`, `/pseudo-ai`, `/pseudo-run`, `/pseudo-text`, `/pseudo-text-ai`, `/pseudo-depseudo`, `/pseudo-depseudo-text` still work but are hidden from the picker |
 | `/index` | Index the current bucket for RAG search |
 | `/index <folder>` | Refresh a specific folder inside the current bucket index |
 | `/reindex` | Clear and rebuild the current bucket's RAG index |

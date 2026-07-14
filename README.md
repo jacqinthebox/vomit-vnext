@@ -41,7 +41,7 @@ Keyboard shortcuts shown as **Cmd** on macOS use **Ctrl** on Windows/Linux. **Op
 - **Local AI (Privacy First)** - Built-in AI terminal powered by Ollama - your data stays on your machine
 - **RAG Search** - Index a bucket and ask AI questions with context from that bucket
 - **Markdown Todos** - Track `- [ ]` tasks in notes with a bucket-wide Todo Explorer
-- **Pseudonymization** - Anonymize sensitive data (names, emails, IPs) with AI, reversible with `/pseudo-depseudo`
+- **Pseudonymization** - Anonymize sensitive data (names, emails, IPs) with a fast offline scan or AI, reversible with `/pseudo-restore`
 - **LaTeX Math** - Render formulas with KaTeX (`$inline$` and `$$display$$`)
 - **PlantUML & Mermaid** - Render sequence diagrams, flowcharts, and more
 - **Emoji Shortcodes** - Use `:smile:` syntax like GitHub/Slack
@@ -240,17 +240,15 @@ Type `/` in the AI terminal to open an inline command picker. Navigate with `↑
 - `/format-to-md [instruction]` - Convert selected text, or the whole document, from pasted Word-style formatting to clean Markdown
 - `/write-append <prompt>` - **Researches the web** and adds new, document-aware content at the end of the current doc (saving it if it's on disk). Like `/write-new`, it needs a tool-capable model and a Tavily API key.
 - `/presentation <topic>` - Generate a presentation with slides and speaker notes
-- `/pseudo` - Pseudonymize the current document with AI (names, emails, IPs, secrets)
-- `/pseudo deterministic` - Pseudonymize the current document with the fast offline scan, no AI server required (aliases: `det`, `fast`)
-- `/pseudo-text` - Pseudonymize the selected editor text (or whole document if nothing is selected) with the fast offline scan and print the result inline in the terminal to copy — nothing is written to disk
-- `/pseudo-text-ai` - Same as `/pseudo-text` but uses the AI to build the mapping (needs a bucket open and the AI server running)
-- `/pseudo-depseudo-text` - Reverse selected text back to the originals using the mapping built by `/pseudo-text`/`/pseudo-text-ai` this session (in-memory, cleared on restart)
-- `/pseudo-deterministic [folder]` - Fast local repo/folder pseudonymization for Terraform/IaC, Azure DevOps, Python/.NET config, Kubernetes, Docker, and common secrets while preserving structural API fields and Helm template syntax
-- `/pseudo-ai [folder]` - Hybrid deterministic + AI repo/folder pseudonymization for prose documents, architecture designs, HLDs, legal docs, and advisory text
-- `/pseudo-run [folder]` - Alias for `/pseudo-deterministic [folder]`
-- `/pseudo-map` - Show the current entity mapping
+- **Pseudonymization** — commands are named by *scope*, and the engine defaults to a fast offline scan (add `--ai` for the smarter AI-assisted pass):
+- `/pseudo` `[--ai]` `[--customer "Name"]` - Pseudonymize the **current document**. Fast/offline by default; `--ai` uses the AI to also catch prose entities like names and companies.
+- `/pseudo-selection` `[--ai]` - Pseudonymize the **selected editor text** (or whole document if nothing is selected) and print the result inline in the terminal to copy — nothing is written to disk.
+- `/pseudo-repo` `[folder]` `[--all]` `[--ai]` `[--customer "Name"]` - Pseudonymize **repos/folders in the bucket** into `pseudo/<name>/` with a git baseline. With no folder it auto-detects top-level git repos; add `--all` to process **every** top-level folder (git or not); name a `folder` to target just one. Handles Terraform/IaC, Azure DevOps, Python/.NET config, Kubernetes, Docker, and common secrets while preserving structural API fields and Helm template syntax. `--ai` adds a hybrid AI pass for prose docs, HLDs, and legal/advisory text.
+- `/pseudo-map` - Show the current entity mapping.
+- `/pseudo-restore` `[repo-name]` - Restore original data. Name a pseudo repo folder to reverse it, or omit the argument to restore the current document/selection using the session mapping.
+- **Forcing customer names** - The deterministic scanner only detects *structured* data (emails, IPs, GUIDs, resource fields, domains…), so a bare customer/company/person name in free text isn't caught automatically. Pass one or more `--customer "Name"` (alias `--name`) flags to force those names into the mapping so they are **always** replaced, even offline. To choose the replacement yourself, use `--customer "Name=Replacement"` (e.g. `--customer "Lidl=GroceryShop"`); without `=` an auto `Customer-NNN` token is used. Works on `/pseudo`, `/pseudo-repo` (and legacy aliases). Example: `/pseudo-repo my-repo --customer "Acme Corp=Globex" --customer Contoso`. Customer names are matched **case-insensitively** with word boundaries (e.g. `lidl`, `LIDL` and `Lidl.` all match; `Lidlish` is left intact).
 - Pseudonymization processes text-based files such as `.md`, `.markdown`, `.txt`, `.adoc`, `.rst`, YAML/JSON, IaC, config, and source files; binary documents such as `.docx`, `.pdf`, `.xlsx`, and `.pptx` are skipped.
-- `/pseudo-depseudo` - Restore original data from pseudonymized file using the mapping
+- *Legacy aliases* (`/pseudo-deterministic`, `/pseudo-ai`, `/pseudo-run`, `/pseudo-text`, `/pseudo-text-ai`, `/pseudo-depseudo`, `/pseudo-depseudo-text`) still work but are hidden from the command picker.
 - `/index` - Index the current bucket for RAG search
 - `/index <folder>` - Refresh only a specific folder inside the current bucket
 - `/reindex` - Clear and rebuild the current bucket's RAG index
@@ -267,7 +265,7 @@ The `/agent`, `/write-new`, and `/write-append` commands support real-time web s
 
 The agent can also read PDF documents directly. Ask `/agent summarize ./path/to/document.pdf` and Vomit extracts the PDF text internally, without requiring `pdftotext` or another system PDF utility.
 
-**Vision (Ollama multimodal models):** with a vision-capable model selected (llava, gemma, qwen-vl, …), the agent can see images you reference. Mention an image path in your prompt (`what's in ./shot.png?`) or use `/doc` on a document containing image links — referenced images (up to 4) are downscaled to 1024px and attached to the request automatically; you'll see `(attached 1 image: shot.png)` in the terminal. Remote URLs are not fetched. Text-only models will return an Ollama error if you attach images to them.
+**Vision (multimodal models):** with a vision-capable model selected — via Ollama (llava, gemma, qwen-vl, …) or an OpenAI-compatible endpoint such as MLX-VLM/oMLX (gemma-4, …) — the agent can see images you reference. This makes OCR possible: ask `/agent transcribe the text in ./shot.png`. Mention an image path in your prompt (`what's in ./shot.png?`) or use `/doc` on a document containing image links — referenced images (up to 4) are downscaled to 1024px and attached to the request automatically; you'll see `(attached 1 image: shot.png)` in the terminal. Ollama receives raw base64 in the message's `images` array, while OpenAI-compatible providers receive `image_url` data-URI content parts. Remote URLs are not fetched. Text-only models will return an error if you attach images to them.
 
 **Ollama context window:** Ollama serves every model with a 4096-token window by default, no matter what the model supports. Vomit requests a larger window (default 16384, capped by the model's own maximum) so long documents and images fit. Adjust via **AI menu → Set Ollama Context Size…** — larger values use more RAM. The context bar reflects the effective window.
 

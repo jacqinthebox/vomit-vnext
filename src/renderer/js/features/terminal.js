@@ -32,8 +32,8 @@ class TerminalManager {
     // pseudonymization output path
     this.pseudoOutputPath = null;
 
-    // Session-scoped real→fake mapping accumulated by /pseudo-text and
-    // /pseudo-text-ai, so /pseudo-depseudo-text can reverse pasted text. In memory
+    // Session-scoped real→fake mapping accumulated by /pseudo-selection,
+    // so /pseudo-restore can reverse pasted text. In memory
     // only — cleared on restart.
     this.pseudoTextMap = {};
 
@@ -427,7 +427,7 @@ class TerminalManager {
   showAvailableCommands() {
     const { COMMAND_REGISTRY } = window.TerminalCommands;
     this.appendTerminalOutput('Available commands:', 'system');
-    COMMAND_REGISTRY.forEach(c => {
+    COMMAND_REGISTRY.filter(c => !c.hidden).forEach(c => {
       const args = c.argsHint ? ` ${c.argsHint}` : '';
       this.appendTerminalOutput(`  ${c.name}${args}  —  ${c.description}`, 'system');
     });
@@ -469,7 +469,7 @@ class TerminalManager {
       }
     } else {
       filtered = [...COMMAND_REGISTRY]
-        .filter(c => c.name.toLowerCase().startsWith(lower))
+        .filter(c => !c.hidden && c.name.toLowerCase().startsWith(lower))
         .sort((a, b) => a.name.localeCompare(b.name));
     }
 
@@ -1665,9 +1665,10 @@ ${originalText}
     }
   }
 
-  async pseudonymizeCurrentDoc(cwd, mode = 'ai') {
+  async pseudonymizeCurrentDoc(cwd, mode = 'ai', customers = []) {
     const normalizedMode = mode === 'deterministic' ? 'deterministic' : 'ai';
-    this.appendTerminalOutput(`❯ /pseudo${normalizedMode === 'deterministic' ? ' deterministic' : ''}`, 'input');
+    const forcedCustomers = Array.isArray(customers) ? customers : [];
+    this.appendTerminalOutput(`❯ /pseudo${normalizedMode === 'deterministic' ? ' deterministic' : ''}${forcedCustomers.map(c => ` --customer "${this.formatPseudoCustomer(c)}"`).join('')}`, 'input');
     this.appendTerminalOutput(
       normalizedMode === 'deterministic'
         ? 'Pseudonymizing current document (deterministic)...'
@@ -1710,13 +1711,15 @@ ${originalText}
       const sanitized = this.sanitizePseudoMapping(mapping);
       mapping = sanitized.mapping;
 
+      const customerKeys = this.seedPseudoCustomers(mapping, counters, forcedCustomers);
+
       if (Object.keys(mapping).length === 0) {
         this.appendTerminalOutput('No sensitive data found to anonymize.', 'system');
         return;
       }
 
       const sortedKeys = Object.keys(mapping).sort((a, b) => b.length - a.length);
-      const applied = this.applyPseudoMappingToContent(docContent, sortedKeys, mapping);
+      const applied = this.applyPseudoMappingToContent(docContent, sortedKeys, mapping, customerKeys);
 
       await window.vomit.writeFile(outputPath, applied.content);
       this.appendTerminalOutput(`✓ Saved: ${window.PathUtils.basename(outputPath)}`, 'output');
@@ -1794,10 +1797,14 @@ ${docContent}
           mapping = sanitized.mapping;
         }
 
+        if (!mapping || typeof mapping !== 'object') mapping = {};
+        const aiCounters = this.createPseudoCounters(mapping);
+        const customerKeys = this.seedPseudoCustomers(mapping, aiCounters, forcedCustomers);
+
         if (mapping && Object.keys(mapping).length > 0) {
           // Apply mapping to original content programmatically
           const sortedKeys = Object.keys(mapping).sort((a, b) => b.length - a.length);
-          const applied = this.applyPseudoMappingToContent(docContent, sortedKeys, mapping);
+          const applied = this.applyPseudoMappingToContent(docContent, sortedKeys, mapping, customerKeys);
           const content = applied.content;
 
           // Save the pseudonymized content
@@ -1830,7 +1837,7 @@ ${docContent}
   async pseudonymizeSelection(cwd, mode = 'deterministic') {
     const normalizedMode = mode === 'ai' ? 'ai' : 'deterministic';
     this.appendTerminalOutput(
-      `❯ ${normalizedMode === 'ai' ? '/pseudo-text-ai' : '/pseudo-text'}`,
+      `❯ /pseudo-selection${normalizedMode === 'ai' ? ' --ai' : ''}`,
       'input'
     );
 
@@ -1847,12 +1854,12 @@ ${docContent}
     }
 
     const printResult = (mapping, content) => {
-      // Accumulate into the session map so /pseudo-depseudo-text can reverse it.
+      // Accumulate into the session map so /pseudo-restore can reverse it.
       Object.assign(this.pseudoTextMap, mapping);
       const count = Object.keys(mapping).length;
       this.appendTerminalOutput(`✓ Pseudonymized (${count} ${count === 1 ? 'entity' : 'entities'}):`, 'output');
       this.appendTerminalOutput(content, 'output');
-      this.appendTerminalOutput('Reverse with /pseudo-depseudo-text (select the pseudonymized text first).', 'system');
+      this.appendTerminalOutput('Reverse with /pseudo-restore (select the pseudonymized text first).', 'system');
     };
 
     // Deterministic: build the mapping locally with the same engine the repo
@@ -1949,13 +1956,13 @@ ${sourceText}
   }
 
   // Reverse the current editor selection using the session mapping built by
-  // /pseudo-text and /pseudo-text-ai. Prints the restored text in the terminal.
+  // /pseudo-selection. Prints the restored text in the terminal.
   async depseudonymizeSelection() {
-    this.appendTerminalOutput('❯ /pseudo-depseudo-text', 'input');
+    this.appendTerminalOutput('❯ /pseudo-restore', 'input');
 
     const entries = Object.entries(this.pseudoTextMap || {});
     if (entries.length === 0) {
-      this.appendTerminalOutput('Error: No mapping this session. Run /pseudo-text or /pseudo-text-ai first.', 'error');
+      this.appendTerminalOutput('Error: No mapping this session. Run /pseudo-selection first.', 'error');
       return;
     }
 
@@ -1990,7 +1997,7 @@ ${sourceText}
   }
 
   async depseudonymizeCurrentDoc() {
-    this.appendTerminalOutput('❯ /pseudo-depseudo', 'input');
+    this.appendTerminalOutput('❯ /pseudo-restore', 'input');
 
     const currentFile = this.state.currentFilePath;
     if (!currentFile) {
@@ -2014,7 +2021,7 @@ ${sourceText}
       originalPath = `${dir}/${originalBasename}${ext}`;
     } else {
       this.appendTerminalOutput('Error: This doesn\'t appear to be a pseudonymized file.', 'error');
-      this.appendTerminalOutput('Open a *-pseudo.md file to run /pseudo-depseudo.', 'system');
+      this.appendTerminalOutput('Open a *-pseudo.md file to run /pseudo-restore.', 'system');
       return;
     }
 
@@ -2123,6 +2130,91 @@ ${sourceText}
     return { name: normalized, path: currentPath };
   }
 
+  // Parse pseudonymization command arguments into a folder/mode token plus any
+  // forced customer names and boolean flags. Supported flags:
+  //   --customer / --name / -c "Name"   (repeatable; forces a name into the map)
+  //   --ai / --smart                    (use the AI engine instead of the fast scan)
+  //   --all / --everything              (process every top-level folder, not just git repos)
+  // Example: my-repo --ai --customer "Acme Corp" --customer Contoso
+  parsePseudoArgs(rawArgs) {
+    let raw = String(rawArgs || '');
+
+    const customerRegex = /(?:--customer|--name|-c)\s+(?:"([^"]*)"|'([^']*)'|(\S+))/gi;
+    const customers = [];
+    let match;
+    while ((match = customerRegex.exec(raw)) !== null) {
+      const value = (match[1] ?? match[2] ?? match[3] ?? '').trim();
+      if (!value) continue;
+      // Optional "Name=Replacement" — split on the first '=' only.
+      const eq = value.indexOf('=');
+      if (eq > 0) {
+        const name = value.slice(0, eq).trim();
+        const replacement = value.slice(eq + 1).trim();
+        if (name) customers.push({ name, replacement: replacement || null });
+      } else {
+        customers.push({ name: value, replacement: null });
+      }
+    }
+    raw = raw.replace(customerRegex, ' ');
+
+    const ai = /(?:^|\s)(?:--ai|--smart)(?=\s|$)/i.test(raw);
+    const all = /(?:^|\s)(?:--all|--everything)(?=\s|$)/i.test(raw);
+    raw = raw.replace(/(?:^|\s)(?:--ai|--smart|--all|--everything)(?=\s|$)/gi, ' ');
+
+    const folder = raw.replace(/\s+/g, ' ').trim() || null;
+
+    const seen = new Set();
+    const uniqueCustomers = [];
+    for (const c of customers) {
+      if (!seen.has(c.name)) {
+        seen.add(c.name);
+        uniqueCustomers.push(c);
+      }
+    }
+
+    return { folder, customers: uniqueCustomers, ai, all };
+  }
+
+  // Force user-supplied customer names into the mapping. These bypass the
+  // structural/length skip rules so they are ALWAYS replaced, even in
+  // deterministic mode where the scanner cannot recognise arbitrary names.
+  // Each customer is { name, replacement }; when replacement is null a
+  // Customer-NNN token is generated. Call this AFTER sanitizePseudoMapping so
+  // the forced entries survive. Returns a Set of the seeded real names so the
+  // apply engine can match them case-insensitively. An explicit replacement
+  // (--customer "Name=Replacement") always OVERRIDES any pre-existing mapping
+  // for that name (e.g. one the scanner already produced or that was loaded
+  // from a previous run); a bare --customer "Name" only fills in a value if the
+  // name isn't already mapped.
+  seedPseudoCustomers(mapping, counters, customers) {
+    const keys = new Set();
+    if (!Array.isArray(customers) || customers.length === 0) return keys;
+    for (const entry of customers) {
+      const real = typeof entry === 'string'
+        ? entry.trim()
+        : (entry && typeof entry.name === 'string' ? entry.name.trim() : '');
+      if (!real) continue;
+      const replacement = (entry && typeof entry.replacement === 'string' && entry.replacement.trim())
+        ? entry.replacement.trim()
+        : null;
+      keys.add(real);
+      if (replacement) {
+        mapping[real] = replacement;
+      } else if (!mapping[real]) {
+        mapping[real] = this.createPseudoReplacement('customer', counters);
+      }
+    }
+    return keys;
+  }
+
+  // Format a customer entry ({name, replacement} or a bare string) for echoing
+  // the command back to the terminal.
+  formatPseudoCustomer(entry) {
+    if (typeof entry === 'string') return entry;
+    if (!entry || typeof entry.name !== 'string') return '';
+    return entry.replacement ? `${entry.name}=${entry.replacement}` : entry.name;
+  }
+
   createPseudoCounters(mapping) {
     const counters = {};
     for (const value of Object.values(mapping)) {
@@ -2197,6 +2289,8 @@ ${sourceText}
         return `Example.App${String(this.nextPseudoNumber(counters, 'Example.App')).padStart(3, '0')}`;
       case 'k8sNamespace':
         return `namespace-${String(this.nextPseudoNumber(counters, 'namespace-')).padStart(3, '0')}`;
+      case 'customer':
+        return `Customer-${String(this.nextPseudoNumber(counters, 'Customer-')).padStart(3, '0')}`;
       case 'dockerImage':
         return `registry.example.invalid/app/image-${String(this.nextPseudoNumber(counters, 'image-')).padStart(3, '0')}:latest`;
       case 'registry':
@@ -2222,6 +2316,7 @@ ${sourceText}
     if (/^(true|false|null|none|default|latest|main|master|dev|test|prod|stage|staging)$/i.test(trimmed)) return true;
     if (/^(example|fake|placeholder|changeme|redacted|dummy)/i.test(trimmed)) return true;
     if (/^(ado-org|ado-project|ado-repo|ado-pipeline|service-connection|variable-group|resource|namespace)-\d+/i.test(trimmed)) return true;
+    if (/^Customer-\d+$/i.test(trimmed)) return true;
     if (/^(FAKE_SECRET|FAKE_CONNECTION_STRING)_\d+/i.test(trimmed)) return true;
     if (/^(Example\.App|example\.package)\d+/i.test(trimmed)) return true;
     if (/^registry\.example\.invalid|^registry\d+\.example\.invalid|^kv-example-\d+|^stexample\d+/i.test(trimmed)) return true;
@@ -2297,7 +2392,18 @@ ${sourceText}
     return content.replace(new RegExp(escaped, 'g'), fake);
   }
 
-  applyPseudoMappingToContent(content, sortedKeys, mapping) {
+  // Replace a forced customer name: case-insensitive, with alphanumeric-only
+  // word boundaries so end-of-sentence punctuation ("Contoso.") still matches
+  // while partial words ("Contosoish", "Acme Corporation") are left intact.
+  replaceCustomerName(content, real, fake) {
+    const escaped = this.escapeRegex(real);
+    return content.replace(
+      new RegExp(`(?<![A-Za-z0-9])${escaped}(?![A-Za-z0-9])`, 'gi'),
+      fake
+    );
+  }
+
+  applyPseudoMappingToContent(content, sortedKeys, mapping, customerKeys = new Set()) {
     let nextContent = content;
     let changed = false;
 
@@ -2305,6 +2411,17 @@ ${sourceText}
       const fake = mapping[real];
       if (typeof fake !== 'string') continue;
       const before = nextContent;
+
+      // Forced customer names are matched case-insensitively (with word
+      // boundaries); all other entities stay case-sensitive. A customer is
+      // either explicitly flagged via customerKeys, or recognised by the
+      // generated Customer-NNN replacement (so re-runs from a saved mapping
+      // still work for auto-generated customer tokens).
+      if (customerKeys.has(real) || /^Customer-\d+$/.test(fake)) {
+        nextContent = this.replaceCustomerName(nextContent, real, fake);
+        if (nextContent !== before) changed = true;
+        continue;
+      }
 
       if (this.isPseudoTokenValue(real)) {
         const escaped = this.escapeRegex(real);
@@ -2483,9 +2600,11 @@ ${sourceText}
     return added;
   }
 
-  async runPseudoRepo(cwd, targetFolder = null, mode = 'deterministic', commandName = '/pseudo-deterministic') {
+  async runPseudoRepo(cwd, targetFolder = null, mode = 'deterministic', commandName = '/pseudo-deterministic', customers = [], options = {}) {
     const normalizedMode = mode === 'ai' ? 'ai' : 'deterministic';
-    this.appendTerminalOutput(`❯ ${commandName}${targetFolder ? ' ' + targetFolder : ''}`, 'input');
+    const forcedCustomers = Array.isArray(customers) ? customers : [];
+    const processAll = !!options.all;
+    this.appendTerminalOutput(`❯ ${commandName}${targetFolder ? ' ' + targetFolder : ''}${processAll ? ' --all' : ''}${normalizedMode === 'ai' ? ' --ai' : ''}${forcedCustomers.map(c => ` --customer "${this.formatPseudoCustomer(c)}"`).join('')}`, 'input');
 
     try {
       // 1. Resolve the target. An explicit folder can be a repo or a plain docs folder.
@@ -2518,12 +2637,24 @@ ${sourceText}
 
         repos = [target];
         this.appendTerminalOutput(`Targeting: ${target.name}/`, 'system');
+      } else if (processAll) {
+        this.appendTerminalOutput('Processing ALL top-level folders in bucket (git and non-git)...', 'system');
+        const items = await window.vomit.getDirectoryContents(cwd);
+        repos = items
+          .filter(i => i.isDirectory && !i.name.startsWith('.') && i.name !== 'pseudo' && i.name !== 'node_modules')
+          .map(i => ({ name: i.name, path: i.path }));
+        if (repos.length === 0) {
+          this.appendTerminalOutput(`No top-level folders found in: ${cwd}`, 'error');
+          return;
+        }
+        this.appendTerminalOutput(`Found ${repos.length} folder(s): ${repos.map(r => r.name).join(', ')}`, 'system');
       } else {
         this.appendTerminalOutput('Detecting repos in bucket...', 'system');
         repos = await window.vomit.pseudoDetectRepos(cwd);
         if (repos.length === 0) {
           this.appendTerminalOutput(`No git sub-repos found in: ${cwd}`, 'error');
           this.appendTerminalOutput('Expected: top-level subdirectories with .git/', 'system');
+          this.appendTerminalOutput('Tip: add --all to process every top-level folder (not just git repos), or name a folder explicitly.', 'system');
           this.appendTerminalOutput('Listing top-level dirs...', 'system');
           const items = await window.vomit.getDirectoryContents(cwd);
           const dirs = items.filter(i => i.isDirectory && !i.name.startsWith('.'));
@@ -2663,6 +2794,14 @@ ${chunks[chunkIndex]}
       const sanitizedFinal = this.sanitizePseudoMapping(mapping);
       mapping = sanitizedFinal.mapping;
 
+      const customerKeys = this.seedPseudoCustomers(mapping, counters, forcedCustomers);
+      if (customerKeys.size > 0) {
+        this.appendTerminalOutput(`Forced ${customerKeys.size} customer name(s) into the mapping:`, 'output');
+        for (const key of customerKeys) {
+          this.appendTerminalOutput(`    ${key} → ${mapping[key]}`, 'output');
+        }
+      }
+
       // Save final mapping
       await window.vomit.pseudoSaveMapping(cwd, mapping);
       this.appendTerminalOutput(`\n✓ Mapping complete: ${Object.keys(mapping).length} entities total (${totalAdded} new from ${totalFiles} files).`, 'output');
@@ -2699,7 +2838,7 @@ ${chunks[chunkIndex]}
           let content = await window.vomit.readFile(file.path);
           let changed = false;
 
-          const applied = this.applyPseudoMappingToContent(content, sortedKeys, mapping);
+          const applied = this.applyPseudoMappingToContent(content, sortedKeys, mapping, customerKeys);
           content = applied.content;
           changed = applied.changed;
 
@@ -2742,7 +2881,7 @@ ${chunks[chunkIndex]}
         this.appendTerminalOutput(`  Repo: pseudo/${repo.name}/`, 'system');
       }
       this.appendTerminalOutput('\nPoint your cloud agent at: pseudo/', 'system');
-      this.appendTerminalOutput('When done: /pseudo-depseudo <repo-name> to merge back.', 'system');
+      this.appendTerminalOutput('When done: /pseudo-restore <repo-name> to merge back.', 'system');
       this.appendTerminalOutput('══════════════════════════════════════', 'system');
 
       this.fileTreeManager.loadFileTree();
@@ -2753,14 +2892,14 @@ ${chunks[chunkIndex]}
   }
 
   async depseudoRepo(repoName, cwd) {
-    this.appendTerminalOutput(`❯ /pseudo-depseudo ${repoName}`, 'input');
+    this.appendTerminalOutput(`❯ /pseudo-restore ${repoName}`, 'input');
 
     try {
       // Load project metadata
       const project = await window.vomit.pseudoReadProject(cwd);
       if (!project) {
         this.appendTerminalOutput('Error: No pseudo project found in this bucket.', 'error');
-        this.appendTerminalOutput('Run /pseudo-run first.', 'system');
+        this.appendTerminalOutput('Run /pseudo-repo first.', 'system');
         return;
       }
 
@@ -2844,7 +2983,7 @@ ${chunks[chunkIndex]}
 
     const mapping = await window.vomit.pseudoReadMapping(cwd);
     if (!mapping) {
-      this.appendTerminalOutput('No mapping found. Run /pseudo-run first.', 'system');
+      this.appendTerminalOutput('No mapping found. Run /pseudo-repo first.', 'system');
       return;
     }
 

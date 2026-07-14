@@ -498,6 +498,12 @@
     '/write-append',
     '/presentation',
     '/pseudo',
+    '/pseudo-selection',
+    '/pseudo-restore',
+    // Legacy aliases that also need live editor/selection state.
+    '/pseudo-text',
+    '/pseudo-text-ai',
+    '/pseudo-depseudo-text',
     '/pseudo-depseudo'
   ]);
 

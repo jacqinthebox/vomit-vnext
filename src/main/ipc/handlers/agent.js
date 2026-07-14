@@ -36,8 +36,9 @@ const EDIT_REJECTED_RESULT = 'User rejected this edit';
 // can cost thousands of tokens). Downscale to this bound before attaching.
 const IMAGE_MAX_DIMENSION = 1024;
 
-// Downscale + JPEG-encode an image via Electron's nativeImage. Returns null
-// on any failure so the caller falls back to the raw file bytes.
+// Downscale + JPEG-encode an image via Electron's nativeImage. Returns
+// { data, mime } (JPEG) so OpenAI-compatible providers can build a correct
+// data URI, or null on any failure so the caller falls back to raw bytes.
 function encodePromptImage(filePath) {
   try {
     const { nativeImage } = require('electron');
@@ -49,7 +50,7 @@ function encodePromptImage(filePath) {
         ? img.resize({ width: IMAGE_MAX_DIMENSION })
         : img.resize({ height: IMAGE_MAX_DIMENSION });
     }
-    return img.toJPEG(80).toString('base64');
+    return { data: img.toJPEG(80).toString('base64'), mime: 'image/jpeg' };
   } catch (_) {
     return null;
   }
@@ -339,21 +340,25 @@ After using tools, provide a summary of what you did. You have access to convers
     }
     state.agentConversationHistory = trimHistoryToTokenBudget(state.agentConversationHistory, historyBudget);
 
-    // Vision: if the prompt (or embedded document) references images and the
-    // provider is Ollama, attach them base64-encoded to the outgoing user
-    // message so multimodal models (llava, gemma, qwen-vl, …) can see them.
-    // Only the request copy carries the pixels — history stays text-only.
-    // Images are collected from the ORIGINAL prompt so truncation can't cut
-    // away the references; the message text sent is the capped version.
+    // Vision: if the prompt (or embedded document) references images, attach
+    // them to the outgoing user message so multimodal models can see them.
+    // Ollama takes raw base64 in a top-level `images` array; OpenAI-compatible
+    // providers take `image_url` content parts built from `images`+`imageMimes`
+    // (see toOpenAIMessage). Only the request copy carries the pixels — history
+    // stays text-only. Images are collected from the ORIGINAL prompt so
+    // truncation can't cut away the references; the message text is the capped
+    // version.
     let userMessage = { role: 'user', content: promptForModel };
-    if (cfg.provider === aiProviders.PROVIDER_OLLAMA) {
+    if (cfg.provider === aiProviders.PROVIDER_OLLAMA || cfg.provider === aiProviders.PROVIDER_OPENAI) {
       const baseDirs = [
         state.currentFilePath ? path.dirname(state.currentFilePath) : null,
         workingDir
       ];
-      const { images, names } = collectPromptImages(prompt, baseDirs, { encoder: encodePromptImage });
+      const { images, names, mimes } = collectPromptImages(prompt, baseDirs, { encoder: encodePromptImage });
       if (images.length > 0) {
-        userMessage = { role: 'user', content: promptForModel, images };
+        userMessage = cfg.provider === aiProviders.PROVIDER_OLLAMA
+          ? { role: 'user', content: promptForModel, images }
+          : { role: 'user', content: promptForModel, images, imageMimes: mimes };
         sendOutput('claude-status', `(attached ${images.length} image${images.length === 1 ? '' : 's'}: ${names.join(', ')})`);
       }
     }

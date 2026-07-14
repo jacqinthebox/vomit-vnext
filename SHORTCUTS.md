@@ -218,16 +218,12 @@ When the picker is closed, `↑`/`↓` navigate command history (persisted acros
 | `/write-replace <prompt>` | Replace selection with AI response |
 | `/write-append <prompt>` | Research the web and append to the current document |
 | `/summarize-folder [subfolder]` | Summarize the current folder and all subfolders into a new doc |
-| `/pseudo` | Pseudonymize current document with AI (names, emails, IPs) |
-| `/pseudo deterministic` | Pseudonymize current document with the fast offline scan (no AI) |
-| `/pseudo-text` | Pseudonymize selected editor text (offline scan), result printed in terminal |
-| `/pseudo-text-ai` | Pseudonymize selected editor text with AI, result printed in terminal |
-| `/pseudo-depseudo-text` | Restore selected text using this session's `/pseudo-text` mapping |
-| `/pseudo-deterministic [folder]` | Fast deterministic repo/folder pseudonymization |
-| `/pseudo-ai [folder]` | Hybrid deterministic + AI repo/folder pseudonymization |
-| `/pseudo-run [folder]` | Alias for `/pseudo-deterministic` |
+| `/pseudo` `[--ai]` `[--customer "Name"]` | Pseudonymize current document (fast/offline by default; `--ai` for smart scan) |
+| `/pseudo-selection` `[--ai]` | Pseudonymize selected editor text, result printed in terminal |
+| `/pseudo-repo` `[folder]` `[--all]` `[--ai]` `[--customer "Name"]` | Pseudonymize repos/folders in the bucket (`--all` = every folder, not just git repos) |
 | `/pseudo-map` | Show current entity mapping |
-| `/pseudo-depseudo` | Restore original data from mapping |
+| `/pseudo-restore` `[repo-name]` | Restore original data (a pseudo repo if named, else the current document) |
+| `--customer "Name"` (flag) | Force a customer/company/person name into the mapping; repeatable, case-insensitive, works offline. Use `--customer "Name=Replacement"` to choose the replacement (e.g. `Lidl=GroceryShop`) |
 | `/index` | Index the current bucket for RAG |
 | `/index <folder>` | Refresh a specific folder in the bucket index |
 | `/reindex` | Clear and rebuild current bucket's RAG index |

@@ -91,42 +91,60 @@ const COMMAND_REGISTRY = [
       await ctx.executeWriteCommand(args, 'append', cwd);
     }
   },
+  // ---- Pseudonymization -------------------------------------------------
+  // Commands are named by SCOPE: /pseudo (current document), /pseudo-selection
+  // (selected text), /pseudo-repo (repos/folders in the bucket). The engine is
+  // chosen with the --ai flag (default is the fast, offline deterministic scan).
+  // Reverse anything with /pseudo-restore. Legacy names are kept as hidden
+  // aliases further down so existing muscle memory and scripts keep working.
   {
-    // Must be registered before /pseudo so the longer name matches first
-    name: '/pseudo-deterministic',
-    description: 'Fast deterministic repo/folder pseudonymization',
+    name: '/pseudo-selection',
+    description: 'Pseudonymize selected editor text; prints result in terminal (add --ai for smart scan)',
     args: 'optional',
-    argsHint: '[folder-name]',
+    argsHint: '[--ai]',
     requiresCwd: true,
     async handler(args, ctx, cwd) {
-      await ctx.runPseudoRepo(cwd, args.trim() || null, 'deterministic', '/pseudo-deterministic');
+      const { ai } = ctx.parsePseudoArgs(args);
+      await ctx.pseudonymizeSelection(cwd, ai ? 'ai' : 'deterministic');
     }
   },
   {
-    // Must be registered before /pseudo so the longer name matches first
-    name: '/pseudo-ai',
-    description: 'Hybrid deterministic + AI repo/folder pseudonymization',
+    name: '/pseudo-restore',
+    description: 'Restore original data (a pseudo repo folder if named, otherwise the current document/selection)',
     args: 'optional',
-    argsHint: '[folder-name]',
+    argsHint: '[repo-name]',
     requiresCwd: true,
     async handler(args, ctx, cwd) {
-      await ctx.runPseudoRepo(cwd, args.trim() || null, 'ai', '/pseudo-ai');
+      const { folder } = ctx.parsePseudoArgs(args);
+      if (folder) {
+        await ctx.depseudoRepo(folder, cwd);
+        return;
+      }
+      // No folder: restore the open *-pseudo file if that's what's open,
+      // otherwise fall back to the session/selection text restore.
+      const cf = ctx.state.currentFilePath;
+      const base = cf ? window.PathUtils.basename(cf).replace(/\.[^.]*$/, '') : '';
+      if (base.endsWith('-pseudo')) {
+        await ctx.depseudonymizeCurrentDoc();
+      } else {
+        await ctx.depseudonymizeSelection();
+      }
     }
   },
   {
-    // Must be registered before /pseudo so the longer name matches first
-    name: '/pseudo-run',
-    description: 'Pseudonymize repos in bucket (alias for deterministic)',
+    name: '/pseudo-repo',
+    description: 'Pseudonymize repos/folders in the bucket (--all = every folder, --ai = smart scan, --customer "X")',
     args: 'optional',
-    argsHint: '[folder-name]',
+    argsHint: '[folder] [--all] [--ai] [--customer "Name"]',
     requiresCwd: true,
     async handler(args, ctx, cwd) {
-      await ctx.runPseudoRepo(cwd, args.trim() || null, 'deterministic', '/pseudo-run');
+      const { folder, customers, ai, all } = ctx.parsePseudoArgs(args);
+      await ctx.runPseudoRepo(cwd, folder, ai ? 'ai' : 'deterministic', '/pseudo-repo', customers, { all });
     }
   },
   {
     name: '/pseudo-map',
-    description: 'Show current entity mapping',
+    description: 'Show the current entity mapping',
     args: 'none',
     argsHint: '',
     requiresCwd: true,
@@ -136,22 +154,62 @@ const COMMAND_REGISTRY = [
   },
   {
     name: '/pseudo',
-    description: 'Pseudonymize current document (add "deterministic" for offline scan)',
+    description: 'Pseudonymize the current document (fast by default; add --ai for smart, --customer "Name")',
     args: 'optional',
-    argsHint: '[deterministic]',
+    argsHint: '[--ai] [--customer "Name"]',
     requiresCwd: true,
     async handler(args, ctx, cwd) {
-      const arg = args.trim().toLowerCase();
-      const mode = (arg === 'deterministic' || arg === 'det' || arg === 'fast')
-        ? 'deterministic'
-        : 'ai';
-      await ctx.pseudonymizeCurrentDoc(cwd, mode);
+      const { folder, customers, ai } = ctx.parsePseudoArgs(args);
+      const token = (folder || '').toLowerCase();
+      // Default is the fast deterministic scan. --ai (or the legacy positional
+      // "ai") selects the AI engine; "deterministic"/"det"/"fast" are accepted
+      // as legacy no-ops since deterministic is now the default.
+      const mode = (ai || token === 'ai') ? 'ai' : 'deterministic';
+      await ctx.pseudonymizeCurrentDoc(cwd, mode, customers);
+    }
+  },
+
+  // ---- Legacy aliases (hidden from picker/help; kept for compatibility) ----
+  {
+    name: '/pseudo-deterministic',
+    hidden: true,
+    description: 'Alias for /pseudo-repo (deterministic scan)',
+    args: 'optional',
+    argsHint: '[folder] [--all] [--customer "Name"]',
+    requiresCwd: true,
+    async handler(args, ctx, cwd) {
+      const { folder, customers, all } = ctx.parsePseudoArgs(args);
+      await ctx.runPseudoRepo(cwd, folder, 'deterministic', '/pseudo-deterministic', customers, { all });
     }
   },
   {
-    // Longer names sort first, so this wins the prefix match over /pseudo.
+    name: '/pseudo-ai',
+    hidden: true,
+    description: 'Alias for /pseudo-repo --ai',
+    args: 'optional',
+    argsHint: '[folder] [--all] [--customer "Name"]',
+    requiresCwd: true,
+    async handler(args, ctx, cwd) {
+      const { folder, customers, all } = ctx.parsePseudoArgs(args);
+      await ctx.runPseudoRepo(cwd, folder, 'ai', '/pseudo-ai', customers, { all });
+    }
+  },
+  {
+    name: '/pseudo-run',
+    hidden: true,
+    description: 'Alias for /pseudo-repo',
+    args: 'optional',
+    argsHint: '[folder] [--all] [--customer "Name"]',
+    requiresCwd: true,
+    async handler(args, ctx, cwd) {
+      const { folder, customers, all } = ctx.parsePseudoArgs(args);
+      await ctx.runPseudoRepo(cwd, folder, 'deterministic', '/pseudo-run', customers, { all });
+    }
+  },
+  {
     name: '/pseudo-text',
-    description: 'Pseudonymize selected editor text (deterministic), print result in terminal',
+    hidden: true,
+    description: 'Alias for /pseudo-selection',
     args: 'none',
     argsHint: '',
     requiresCwd: false,
@@ -161,7 +219,8 @@ const COMMAND_REGISTRY = [
   },
   {
     name: '/pseudo-text-ai',
-    description: 'Pseudonymize selected editor text (AI), print result in terminal',
+    hidden: true,
+    description: 'Alias for /pseudo-selection --ai',
     args: 'none',
     argsHint: '',
     requiresCwd: true,
@@ -171,7 +230,8 @@ const COMMAND_REGISTRY = [
   },
   {
     name: '/pseudo-depseudo-text',
-    description: 'Restore selected text using this session\'s /pseudo-text mapping',
+    hidden: true,
+    description: 'Alias for /pseudo-restore (selected text)',
     args: 'none',
     argsHint: '',
     requiresCwd: false,
@@ -181,13 +241,15 @@ const COMMAND_REGISTRY = [
   },
   {
     name: '/pseudo-depseudo',
-    description: 'Reverse-map pseudo repo changes to real repo',
+    hidden: true,
+    description: 'Alias for /pseudo-restore',
     args: 'optional',
     argsHint: '[repo-name]',
     requiresCwd: true,
     async handler(args, ctx, cwd) {
-      if (args.trim()) {
-        await ctx.depseudoRepo(args.trim(), cwd);
+      const { folder } = ctx.parsePseudoArgs(args);
+      if (folder) {
+        await ctx.depseudoRepo(folder, cwd);
       } else {
         await ctx.depseudonymizeCurrentDoc();
       }

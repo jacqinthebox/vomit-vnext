@@ -929,21 +929,45 @@ function resolveExistingFile(ref, baseDirs) {
   return null;
 }
 
+// Best-effort MIME type from a file extension, for building OpenAI-style
+// `image_url` data URIs. Defaults to image/png when unknown.
+const IMAGE_MIME_BY_EXT = {
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+  '.bmp': 'image/bmp'
+};
+
+function mimeFromPath(filePath) {
+  return IMAGE_MIME_BY_EXT[path.extname(String(filePath || '')).toLowerCase()] || 'image/png';
+}
+
+// Extract the MIME type from a data: URI (e.g. data:image/png;base64,…).
+function mimeFromDataUri(uri) {
+  const m = /^data:([^;,]+)[;,]/i.exec(String(uri || ''));
+  return m ? m[1] : 'image/png';
+}
+
 /**
- * Collect base64-encoded images referenced by a prompt, for vision models
- * (Ollama expects raw base64 strings in the message's `images` array).
- * Local paths resolve against baseDirs in order; remote URLs are skipped.
- * An optional opts.encoder (filePath → base64 | null) lets callers downscale
- * or re-encode; when it returns null the raw file bytes are used instead.
+ * Collect base64-encoded images referenced by a prompt, for vision models.
+ * Ollama uses the raw base64 strings in the message's `images` array;
+ * OpenAI-compatible providers use `images` + `mimes` to build `image_url`
+ * data URIs. Local paths resolve against baseDirs in order; remote URLs are
+ * skipped. An optional opts.encoder (filePath → base64 string, or
+ * {data, mime}, or null) lets callers downscale or re-encode; when it returns
+ * null the raw file bytes are used instead.
  * @param {string} text
  * @param {Array<string|null>} baseDirs e.g. [dirname(currentFile), cwd]
- * @param {{maxImages?: number, encoder?: (filePath: string) => string|null}} [opts]
- * @returns {{images: string[], names: string[]}}
+ * @param {{maxImages?: number, encoder?: (filePath: string) => (string|{data: string, mime?: string}|null)}} [opts]
+ * @returns {{images: string[], names: string[], mimes: string[]}}
  */
 function collectPromptImages(text, baseDirs, opts = {}) {
   const maxImages = opts.maxImages || MAX_PROMPT_IMAGES;
   const images = [];
   const names = [];
+  const mimes = [];
 
   for (const ref of extractImageRefs(text)) {
     if (images.length >= maxImages) break;
@@ -953,6 +977,7 @@ function collectPromptImages(text, baseDirs, opts = {}) {
       if (b64.length * 0.75 <= MAX_IMAGE_BYTES) {
         images.push(b64);
         names.push('(inline image)');
+        mimes.push(mimeFromDataUri(ref));
       }
       continue;
     }
@@ -969,14 +994,23 @@ function collectPromptImages(text, baseDirs, opts = {}) {
     try {
       if (fs.statSync(full).size > MAX_IMAGE_BYTES) continue;
       const encoded = opts.encoder ? opts.encoder(full) : null;
-      images.push(encoded || fs.readFileSync(full).toString('base64'));
+      if (encoded && typeof encoded === 'object') {
+        images.push(encoded.data);
+        mimes.push(encoded.mime || mimeFromPath(full));
+      } else if (typeof encoded === 'string') {
+        images.push(encoded);
+        mimes.push(mimeFromPath(full));
+      } else {
+        images.push(fs.readFileSync(full).toString('base64'));
+        mimes.push(mimeFromPath(full));
+      }
       names.push(path.basename(full));
     } catch (_) {
       // Unreadable — skip.
     }
   }
 
-  return { images, names };
+  return { images, names, mimes };
 }
 
 // ---- Tool executor ----
