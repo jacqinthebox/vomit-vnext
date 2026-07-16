@@ -1,3 +1,10 @@
+## [1.17.4](https://github.com/jacqinthebox/vomit-vnext/compare/v1.17.3...v1.17.4) (2026-07-16)
+
+
+### Bug Fixes
+
+* allow removing buckets whose folder no longer exists ([3236862](https://github.com/jacqinthebox/vomit-vnext/commit/323686224e13e916af387260340a3580a4b75cf7))
+
 ## [1.17.3](https://github.com/jacqinthebox/vomit-vnext/compare/v1.17.2...v1.17.3) (2026-07-14)
 
 
