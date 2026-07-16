@@ -26,6 +26,7 @@ function createBucketService({ state, bus, configStore, menuModule }) {
 
     const bucket = buckets[index];
     if (!fs.existsSync(bucket.path) || !fs.statSync(bucket.path).isDirectory()) {
+      offerRemoveMissingBucket(bucket).catch(() => {});
       return { success: false, error: 'Bucket directory no longer exists' };
     }
 
@@ -103,6 +104,53 @@ function createBucketService({ state, bus, configStore, menuModule }) {
   }
 
   /**
+   * Remove a bucket and fix up active-bucket state. No confirmation dialog.
+   * @param {number} index
+   */
+  function doRemoveBucket(index) {
+    const wasActive = configStore.getActiveBucketIndex() === index;
+    configStore.removeBucket(index);
+    menuModule.createMenu();
+
+    // If removed the active bucket, switch to first remaining bucket
+    if (wasActive) {
+      const remainingBuckets = configStore.getBuckets();
+      if (remainingBuckets.length > 0) {
+        switchBucket(0);
+      } else {
+        // No buckets left - clear state (app will show setup on next launch)
+        state.currentProjectRoot = null;
+        state.currentFilePath = null;
+        bus.send('bucket-switched', null);
+      }
+    }
+  }
+
+  /**
+   * Offer to remove a bucket whose directory no longer exists. The bucket is
+   * looked up by path at confirmation time, since indices may have shifted.
+   * @param {import('../../services/configStore').Bucket} bucket
+   */
+  async function offerRemoveMissingBucket(bucket) {
+    const result = await dialog.showMessageBox(bus.getMainWindow(), {
+      type: 'warning',
+      buttons: ['Remove', 'Keep'],
+      defaultId: 1,
+      cancelId: 1,
+      title: 'Bucket Folder Missing',
+      message: `The folder for "${bucket.name}" no longer exists.`,
+      detail: `${bucket.path}\n\nRemove this bucket from Vomit? Only the bucket entry is removed.`
+    });
+
+    if (result.response === 0) {
+      const index = configStore.getBuckets().findIndex(b => b.path === bucket.path);
+      if (index !== -1) {
+        doRemoveBucket(index);
+      }
+    }
+  }
+
+  /**
    * Remove a bucket at the given index
    * @param {number} index
    * @returns {Promise<{ success: boolean, cancelled?: boolean, error?: string }>}
@@ -130,22 +178,7 @@ function createBucketService({ state, bus, configStore, menuModule }) {
       return { success: false, cancelled: true };
     }
 
-    const wasActive = configStore.getActiveBucketIndex() === index;
-    configStore.removeBucket(index);
-    menuModule.createMenu();
-
-    // If removed the active bucket, switch to first remaining bucket
-    if (wasActive) {
-      const remainingBuckets = configStore.getBuckets();
-      if (remainingBuckets.length > 0) {
-        switchBucket(0);
-      } else {
-        // No buckets left - clear state (app will show setup on next launch)
-        state.currentProjectRoot = null;
-        state.currentFilePath = null;
-        bus.send('bucket-switched', null);
-      }
-    }
+    doRemoveBucket(index);
 
     return { success: true };
   }

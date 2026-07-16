@@ -498,10 +498,12 @@ function buildBucketsSubmenu() {
 
   if (buckets.length > 0) {
     submenu.push({ type: 'separator' });
-    const activeBucket = buckets[activeIndex];
     submenu.push({
-      label: `Remove "${activeBucket?.name}"...`,
-      click: () => removeBucket(activeIndex)
+      label: 'Remove Bucket',
+      submenu: buckets.map((bucket, index) => ({
+        label: `${bucket.name}...`,
+        click: () => removeBucket(index)
+      }))
     });
   }
 

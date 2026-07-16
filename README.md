@@ -65,7 +65,7 @@ Vomit uses "buckets" - dedicated folders to store your notes and presentations. 
 - Images are saved to `bucket/images/`
 - No need to manually open folders - just select a bucket and write
 
-Manage buckets from the **Buckets** menu: add new buckets, switch between them, or remove ones you no longer need.
+Manage buckets from the **Buckets** menu: add new buckets, switch between them, or remove any bucket via the **Remove Bucket** submenu. Removing a bucket never deletes your files — it only removes the entry from Vomit. If a bucket's folder has been moved or deleted, selecting it offers to remove the stale entry.
 
 ## Todos
 
