@@ -1,3 +1,10 @@
+## [1.17.5](https://github.com/jacqinthebox/vomit-vnext/compare/v1.17.4...v1.17.5) (2026-07-19)
+
+
+### Bug Fixes
+
+* keep reasoning-model thinking out of documents and use hyphen in AI menu labels ([84e6f1b](https://github.com/jacqinthebox/vomit-vnext/commit/84e6f1b07b4bbc9c4c569ab6909b66e0dc6e982e))
+
 ## [1.17.4](https://github.com/jacqinthebox/vomit-vnext/compare/v1.17.3...v1.17.4) (2026-07-16)
 
 
