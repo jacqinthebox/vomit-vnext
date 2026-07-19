@@ -83,6 +83,12 @@ class TerminalManager {
       }
     });
 
+    // Chain-of-thought from reasoning models: show in the terminal, but keep
+    // it out of write-mode documents and pseudo-collection buffers.
+    window.addEventListener('vomit:claude-thinking', (e) => {
+      this.appendTerminalOutput(this.normalizeTerminalText(e.detail), 'output');
+    });
+
     window.addEventListener('vomit:claude-error', (e) => {
       this.appendTerminalOutput(this.normalizeTerminalText(e.detail), 'error');
     });

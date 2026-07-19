@@ -135,9 +135,9 @@ function registerHandlers(ipcMain, { state, bus, configStore, terminalService, p
       numCtx: cfg.numCtx,
       messages,
       tools,
-      onContent: (chunk) => {
+      onContent: (chunk, isReasoning) => {
         contentStarted = true;
-        contentOutput('claude-output', chunk);
+        contentOutput(isReasoning ? 'claude-thinking' : 'claude-output', chunk);
       },
       isAborted: () => state.agentAborted,
       onRequest: (req) => { state.agentActiveRequest = req; }

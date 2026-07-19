@@ -72,7 +72,7 @@ function buildAISubmenu() {
       submenu.push({ label: 'Use "Add OpenAI-Compatible Endpoint…" below', enabled: false });
     } else {
       endpoints.forEach((ep, idx) => {
-        const label = ep.model ? `${ep.name} — ${ep.model}` : ep.name;
+        const label = ep.model ? `${ep.name} - ${ep.model}` : ep.name;
         submenu.push({
           label,
           type: 'radio',

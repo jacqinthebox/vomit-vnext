@@ -924,6 +924,10 @@ Provide a helpful, accurate answer based on the context above. Cite the source d
       appendTerminalOutput(e.detail, 'output');
     });
 
+    window.addEventListener('vomit:claude-thinking', (e) => {
+      appendTerminalOutput(e.detail, 'output');
+    });
+
     window.addEventListener('vomit:claude-status', (e) => {
       appendTerminalOutput(e.detail, 'system');
     });

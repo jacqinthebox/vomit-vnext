@@ -184,6 +184,12 @@ ipcRenderer.on('claude-output', (event, data) => {
   window.dispatchEvent(new CustomEvent('vomit:claude-output', { detail: data }));
 });
 
+// Streamed chain-of-thought from reasoning models — terminal display only,
+// never written into documents.
+ipcRenderer.on('claude-thinking', (event, data) => {
+  window.dispatchEvent(new CustomEvent('vomit:claude-thinking', { detail: data }));
+});
+
 ipcRenderer.on('claude-error', (event, data) => {
   window.dispatchEvent(new CustomEvent('vomit:claude-error', { detail: data }));
 });

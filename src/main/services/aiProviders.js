@@ -165,7 +165,7 @@ function formatOllamaApiError(statusCode, body) {
  * @param {string} opts.model                 model id
  * @param {Array<object>} opts.messages
  * @param {Array<object>} [opts.tools]
- * @param {(chunk: string) => void} [opts.onContent]   Called for each streamed content chunk
+ * @param {(chunk: string, isReasoning?: boolean) => void} [opts.onContent]   Called for each streamed chunk; isReasoning marks chain-of-thought that must not be treated as answer content
  * @param {() => boolean} [opts.isAborted]    If returns true, request is dropped
  * @param {(req: import('http').ClientRequest) => void} [opts.onRequest] Receives the underlying request for abort handling
  * @returns {Promise<{role: 'assistant', content: string, tool_calls?: Array<{id?: string, function: {name: string, arguments: any}}>}>}
@@ -390,8 +390,9 @@ function streamOpenAIChat({ baseUrl, apiKey, model, messages, tools, onContent, 
       const toolBuilder = new Map();
       // Reasoning-mode tracking: models like Gemma 4 / DeepSeek-R1 stream
       // their chain-of-thought via delta.reasoning before emitting any
-      // delta.content. We surface it to the user so they see progress, but
-      // we never include it in the assistant message that goes back into
+      // delta.content. We surface it to the user (flagged via onContent's
+      // isReasoning arg so callers can keep it out of documents), but we
+      // never include it in the assistant message that goes back into
       // conversation history — otherwise every subsequent turn would carry
       // the previous turn's reasoning forward and blow up context.
       let inReasoning = false;
@@ -408,20 +409,24 @@ function streamOpenAIChat({ baseUrl, apiKey, model, messages, tools, onContent, 
           const choice = json.choices && json.choices[0];
           if (!choice) return;
           const delta = choice.delta || {};
-          if (typeof delta.reasoning === 'string' && delta.reasoning.length) {
+          // vLLM emits delta.reasoning; DeepSeek-style servers emit
+          // delta.reasoning_content — accept both.
+          const reasoningDelta = typeof delta.reasoning === 'string' ? delta.reasoning
+            : (typeof delta.reasoning_content === 'string' ? delta.reasoning_content : '');
+          if (reasoningDelta.length) {
             if (firstTokenAt === null) firstTokenAt = Date.now();
             if (!inReasoning) {
               inReasoning = true;
-              if (onContent) onContent('💭 ');
+              if (onContent) onContent('💭 ', true);
             }
-            if (onContent) onContent(delta.reasoning);
+            if (onContent) onContent(reasoningDelta, true);
           }
           const deltaContent = contentToText(delta.content);
           if (deltaContent.length) {
             if (firstTokenAt === null) firstTokenAt = Date.now();
             if (inReasoning) {
               inReasoning = false;
-              if (onContent) onContent('\n\n');
+              if (onContent) onContent('\n\n', true);
             }
             content += deltaContent;
             if (onContent) onContent(deltaContent);

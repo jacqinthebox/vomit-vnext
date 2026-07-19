@@ -138,8 +138,10 @@ function registerHandlers(ipcMain, { state, bus, configStore, terminalService, p
         maxTokens: cfg.maxTokens,
         numCtx,
         messages: state.chatHistory,
-        onContent: (chunk) => {
-          if (!aborted) terminalService.syncTerminalOutput('claude-output', chunk);
+        onContent: (chunk, isReasoning) => {
+          // Reasoning goes out on its own channel so write modes never
+          // stream chain-of-thought into the document.
+          if (!aborted) terminalService.syncTerminalOutput(isReasoning ? 'claude-thinking' : 'claude-output', chunk);
         },
         isAborted: () => aborted,
         onRequest: (req) => { activeReq = req; }
