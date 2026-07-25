@@ -264,6 +264,15 @@ ipcRenderer.on('shell-exit', (event, code) => {
   window.dispatchEvent(new CustomEvent('vomit:shell-exit', { detail: code }));
 });
 
+// Pi terminal events
+ipcRenderer.on('pi-output', (event, data) => {
+  window.dispatchEvent(new CustomEvent('vomit:pi-output', { detail: data }));
+});
+
+ipcRenderer.on('pi-exit', (event, code) => {
+  window.dispatchEvent(new CustomEvent('vomit:pi-exit', { detail: code }));
+});
+
 // Terminal window events
 ipcRenderer.on('load-terminal', (event, state) => {
   window.dispatchEvent(new CustomEvent('vomit:load-terminal', { detail: state }));
@@ -407,6 +416,13 @@ contextBridge.exposeInMainWorld('vomit', {
   shellWrite: (data) => ipcRenderer.send('shell-write', data),
   shellResize: (cols, rows) => ipcRenderer.send('shell-resize', cols, rows),
   shellStop: () => ipcRenderer.send('shell-stop'),
+
+  // Pi terminal methods
+  piCheck: () => ipcRenderer.invoke('pi-check'),
+  piSpawn: (cwd) => ipcRenderer.invoke('pi-spawn', cwd),
+  piWrite: (data) => ipcRenderer.send('pi-write', data),
+  piResize: (cols, rows) => ipcRenderer.send('pi-resize', cols, rows),
+  piStop: () => ipcRenderer.send('pi-stop'),
   // Bucket management methods
   getBuckets: () => ipcRenderer.invoke('get-buckets'),
   getActiveBucket: () => ipcRenderer.invoke('get-active-bucket'),

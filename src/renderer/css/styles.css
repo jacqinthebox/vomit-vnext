@@ -2808,24 +2808,28 @@ body:has(#terminal-panel:not(.hidden)) #main-container {
 }
 
 /* Shell terminal container (xterm.js) */
-#shell-terminal-container {
+#shell-terminal-container,
+#pi-terminal-container {
   flex: 1;
   overflow: hidden;
   background: var(--bg-primary);
 }
 
 /* xterm.js customizations */
-#shell-terminal-container .xterm {
+#shell-terminal-container .xterm,
+#pi-terminal-container .xterm {
   padding: 4px 8px;
   height: 100%;
 }
 
-#shell-terminal-container .xterm-viewport {
+#shell-terminal-container .xterm-viewport,
+#pi-terminal-container .xterm-viewport {
   overflow-y: auto !important;
   background: transparent !important;
 }
 
-#shell-terminal-container .xterm-screen {
+#shell-terminal-container .xterm-screen,
+#pi-terminal-container .xterm-screen {
   height: 100%;
 }
 

@@ -26,6 +26,8 @@ class SessionState extends EventEmitter {
     this._ollamaAbortController = null;
     /** @type {object|null} */
     this._shellProcess = null;
+    /** @type {object|null} */
+    this._piProcess = null;
     /** @type {{ ollama: string|null, ollamaModels: string[] }} */
     this._availableAITools = { ollama: null, ollamaModels: [] };
     /** @type {boolean} */
@@ -95,6 +97,9 @@ class SessionState extends EventEmitter {
 
   get shellProcess() { return this._shellProcess; }
   set shellProcess(v) { this._shellProcess = v; }
+
+  get piProcess() { return this._piProcess; }
+  set piProcess(v) { this._piProcess = v; }
 
   // --- AI state ---
 

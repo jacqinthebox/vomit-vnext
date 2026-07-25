@@ -19,15 +19,24 @@ class TerminalManager {
     this.terminalContextBar = dom.terminalContextBar;
     this.shellTerminalContent = dom.shellTerminalContent;
     this.shellTerminalContainer = dom.shellTerminalContainer;
+    this.piTerminalContent = dom.piTerminalContent;
+    this.piTerminalContainer = dom.piTerminalContainer;
 
     // Lazy getters for cross-module deps
     this._getTabManager = getTabManager;
     this._getPreviewManager = getPreviewManager;
     this._getFileTreeManager = getFileTreeManager;
 
-    // xterm state
+    // xterm state (shell)
     this.xterm = null;
     this.xtermFitAddon = null;
+
+    // xterm state (pi) — a second, concurrent PTY so a Pi agent session stays
+    // alive independently of the plain shell.
+    this.piXterm = null;
+    this.piFitAddon = null;
+    this.isPiRunning = false;
+    this.piStarting = false;
 
     // pseudonymization output path
     this.pseudoOutputPath = null;
@@ -143,6 +152,17 @@ class TerminalManager {
       this.state.isShellRunning = false;
       if (e.detail === -1) {
         this.appendShellOutput('\r\n[Shell terminated]\r\n');
+      }
+    });
+
+    window.addEventListener('vomit:pi-output', (e) => {
+      this.appendPiOutput(e.detail);
+    });
+
+    window.addEventListener('vomit:pi-exit', (e) => {
+      this.isPiRunning = false;
+      if (this.piXterm) {
+        this.piXterm.write('\r\n\x1b[90m[Pi session ended — switch away and back to restart]\x1b[0m\r\n');
       }
     });
 
@@ -362,6 +382,8 @@ class TerminalManager {
         await window.vomit.agentClearHistory();
         this.appendTerminalOutput('Conversation cleared.', 'system');
         this.updateContextBar();
+      } else if (this.state.activeTerminalTab === 'pi') {
+        if (this.piXterm) this.piXterm.clear();
       } else {
         this.clearShellTerminal();
       }
@@ -547,6 +569,9 @@ class TerminalManager {
     // Update content visibility
     this.aiTerminalContent.classList.toggle('active', tabName === 'ai');
     this.shellTerminalContent.classList.toggle('active', tabName === 'shell');
+    if (this.piTerminalContent) {
+      this.piTerminalContent.classList.toggle('active', tabName === 'pi');
+    }
 
     // Focus appropriate element and initialize shell if needed
     if (tabName === 'ai') {
@@ -564,6 +589,19 @@ class TerminalManager {
           this.xterm.focus();
         }
       }, 0);
+    } else if (tabName === 'pi') {
+      this.initPiXterm();
+      if (!this.isPiRunning) {
+        this.startPi();
+      }
+      setTimeout(() => {
+        if (this.piFitAddon) {
+          this.piFitAddon.fit();
+        }
+        if (this.piXterm) {
+          this.piXterm.focus();
+        }
+      }, 0);
     }
   }
 
@@ -576,6 +614,45 @@ class TerminalManager {
         window.vomit.shellResize(this.xterm.cols, this.xterm.rows);
       }
     }, 100);
+  }
+
+  // Start a Pi session in the current bucket. Detection runs first so a missing
+  // `pi` binary shows an install hint in the tab instead of a failed spawn.
+  async startPi() {
+    if (this.piStarting || this.isPiRunning) return;
+    this.piStarting = true;
+    try {
+      const check = await window.vomit.piCheck();
+      if (!check || !check.available) {
+        if (this.piXterm) {
+          this.piXterm.write(
+            '\x1b[33mPi is not installed.\x1b[0m\r\n\r\n' +
+            'Install it with:\r\n\r\n' +
+            '  \x1b[36mnpm i -g @earendil-works/pi-coding-agent\x1b[0m\r\n\r\n' +
+            'then reopen this tab. Configure models in ~/.pi/agent/models.json\r\n' +
+            '(point it at your local Ollama or vLLM endpoint).\r\n'
+          );
+        }
+        return;
+      }
+
+      const cwd = this.state.projectRoot || this.state.currentDirectory;
+      const result = await window.vomit.piSpawn(cwd);
+      if (!result || !result.ok) {
+        if (this.piXterm) {
+          this.piXterm.write('\r\n\x1b[31mFailed to start Pi.\x1b[0m\r\n');
+        }
+        return;
+      }
+      this.isPiRunning = true;
+      setTimeout(() => {
+        if (this.piXterm) {
+          window.vomit.piResize(this.piXterm.cols, this.piXterm.rows);
+        }
+      }, 100);
+    } finally {
+      this.piStarting = false;
+    }
   }
 
   setupTerminalResize() {
@@ -607,6 +684,8 @@ class TerminalManager {
       // Fit xterm when resizing
       if (this.state.activeTerminalTab === 'shell' && this.xtermFitAddon) {
         this.xtermFitAddon.fit();
+      } else if (this.state.activeTerminalTab === 'pi' && this.piFitAddon) {
+        this.piFitAddon.fit();
       }
     });
 
@@ -620,6 +699,11 @@ class TerminalManager {
           this.xtermFitAddon.fit();
           if (this.state.isShellRunning && this.xterm) {
             window.vomit.shellResize(this.xterm.cols, this.xterm.rows);
+          }
+        } else if (this.state.activeTerminalTab === 'pi' && this.piFitAddon) {
+          this.piFitAddon.fit();
+          if (this.isPiRunning && this.piXterm) {
+            window.vomit.piResize(this.piXterm.cols, this.piXterm.rows);
           }
         }
       }
@@ -749,8 +833,12 @@ class TerminalManager {
   }
 
   updateXtermTheme() {
+    const theme = this.getXtermTheme();
     if (this.xterm) {
-      this.xterm.options.theme = this.getXtermTheme();
+      this.xterm.options.theme = theme;
+    }
+    if (this.piXterm) {
+      this.piXterm.options.theme = theme;
     }
   }
 
@@ -802,6 +890,49 @@ class TerminalManager {
     });
   }
 
+  initPiXterm() {
+    if (this.piXterm) return; // Already initialized
+    if (!this.piTerminalContainer) return;
+
+    this.piXterm = new Terminal({
+      cursorBlink: true,
+      cursorStyle: 'bar',
+      fontSize: 13,
+      fontFamily: "'MesloLGS NF', 'Hack Nerd Font', 'FiraCode Nerd Font', 'JetBrainsMono Nerd Font', 'SF Mono', 'Monaco', 'Menlo', 'Consolas', monospace",
+      theme: this.getXtermTheme(),
+      allowProposedApi: true,
+      scrollback: 10000
+    });
+
+    this.piFitAddon = new FitAddon.FitAddon();
+    this.piXterm.loadAddon(this.piFitAddon);
+    this.piXterm.open(this.piTerminalContainer);
+
+    setTimeout(() => {
+      this.piFitAddon.fit();
+      if (this.isPiRunning) {
+        window.vomit.piResize(this.piXterm.cols, this.piXterm.rows);
+      }
+    }, 0);
+
+    // Handle user input - send to Pi PTY
+    this.piXterm.onData((data) => {
+      if (this.isPiRunning) {
+        window.vomit.piWrite(data);
+      }
+    });
+
+    // Handle window resize
+    window.addEventListener('resize', () => {
+      if (this.state.isTerminalPanelVisible && this.state.activeTerminalTab === 'pi' && this.piFitAddon) {
+        this.piFitAddon.fit();
+        if (this.isPiRunning) {
+          window.vomit.piResize(this.piXterm.cols, this.piXterm.rows);
+        }
+      }
+    });
+  }
+
   toggleShellTerminal() {
     const mainContainer = document.getElementById('main-container');
     if (this.state.isTerminalPanelVisible && this.state.activeTerminalTab === 'shell') {
@@ -826,6 +957,12 @@ class TerminalManager {
   appendShellOutput(data) {
     if (this.xterm) {
       this.xterm.write(data);
+    }
+  }
+
+  appendPiOutput(data) {
+    if (this.piXterm) {
+      this.piXterm.write(data);
     }
   }
 

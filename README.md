@@ -335,6 +335,16 @@ The AI terminal remembers your last 100 commands across restarts. Use `↑`/`↓
 
 The AI menu shows all your installed Ollama models - just click one to switch.
 
+### Pi terminal (external agent harness)
+
+The terminal panel has a third tab, **Pi**, alongside **AI** and **Shell**. It runs [Pi](https://pi.dev) — a minimal, provider-agnostic coding-agent harness — in its own PTY, started automatically in the current bucket. Pi is a stronger fit than the built-in AI terminal for multi-step *code* work, while the AI tab stays best for document-native tasks (`/write*`, `/doc`, `/rag`, pseudonymization) that reach into the open editor.
+
+- **Install:** `npm i -g @earendil-works/pi-coding-agent`. If `pi` isn't found, the tab shows the install command instead of failing.
+- **Models:** Pi reads `~/.pi/agent/models.json` — point it at your local Ollama or an OpenAI-compatible endpoint (vLLM, LM Studio, MLX) to keep everything offline.
+- The Pi session is independent of the Shell tab; both stay alive concurrently and are cleaned up when Vomit quits.
+
+> Pi edits files **on disk**. Save the current tab before asking Pi to change it — otherwise Vomit's file-watch reload can clobber unsaved edits.
+
 ## Keyboard Shortcuts
 
 Press **Cmd+/** to view all shortcuts in the app. See [SHORTCUTS.md](SHORTCUTS.md) for the complete reference.

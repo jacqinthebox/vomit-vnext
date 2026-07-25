@@ -87,7 +87,9 @@ class Editor {
         terminalInput: document.getElementById('terminal-input'),
         terminalContextBar: document.getElementById('terminal-context-bar'),
         shellTerminalContent: document.getElementById('shell-terminal-content'),
-        shellTerminalContainer: document.getElementById('shell-terminal-container')
+        shellTerminalContainer: document.getElementById('shell-terminal-container'),
+        piTerminalContent: document.getElementById('pi-terminal-content'),
+        piTerminalContainer: document.getElementById('pi-terminal-container')
       },
       getTabManager: () => this.tabManager,
       getPreviewManager: () => this.previewManager,

@@ -16,6 +16,7 @@ const { createGitService } = require('./ipc/handlers/git');
 const aiHandlers = require('./ipc/handlers/ai');
 const agentHandlers = require('./ipc/handlers/agent');
 const shellHandlers = require('./ipc/handlers/shell');
+const piHandlers = require('./ipc/handlers/pi');
 const pseudoHandlers = require('./ipc/handlers/pseudo');
 const rag = require('./rag');
 const wiki = require('./wiki');
@@ -125,7 +126,13 @@ const permissionBroker = createPermissionBroker({
 // gutter, .git watching for external changes. Silently inert without git.
 const gitService = createGitService({ state, bus, configStore });
 app.on('browser-window-focus', () => gitService.onWindowFocus());
-app.on('will-quit', () => gitService.dispose());
+app.on('will-quit', () => {
+  gitService.dispose();
+  // Terminal PTYs are children of the app — kill them so a Pi agent session or
+  // shell doesn't linger after the window closes.
+  try { if (state.shellProcess) { state.shellProcess.kill(); state.shellProcess = null; } } catch { /* ignore */ }
+  try { if (state.piProcess) { state.piProcess.kill(); state.piProcess = null; } } catch { /* ignore */ }
+});
 
 // Register menu module with all action references
 menuModule.register({
@@ -162,6 +169,7 @@ aiHandlers.registerHandlers(ipcMain, { state, bus, configStore, terminalService,
 agentHandlers.registerHandlers(ipcMain, { state, bus, configStore, terminalService, permissionBroker, gitService });
 gitService.registerHandlers(ipcMain);
 shellHandlers.registerHandlers(ipcMain, { state, bus, terminalService });
+piHandlers.registerHandlers(ipcMain, { state, bus, terminalService });
 pseudoHandlers.registerHandlers(ipcMain, { state, configStore });
 rag.registerHandlers(ipcMain, { state, bus, configStore });
 wiki.registerHandlers(ipcMain, { state, bus });
