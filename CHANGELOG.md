@@ -1,3 +1,10 @@
+## [1.18.1](https://github.com/jacqinthebox/vomit-vnext/compare/v1.18.0...v1.18.1) (2026-07-25)
+
+
+### Bug Fixes
+
+* resolve node on PATH for Pi terminal and rename menu item ([5458d05](https://github.com/jacqinthebox/vomit-vnext/commit/5458d0567ed35c4631f3773790f1486b877ca763))
+
 # [1.18.0](https://github.com/jacqinthebox/vomit-vnext/compare/v1.17.5...v1.18.0) (2026-07-25)
 
 
