@@ -1,3 +1,10 @@
+## [1.18.2](https://github.com/jacqinthebox/vomit-vnext/compare/v1.18.1...v1.18.2) (2026-07-25)
+
+
+### Bug Fixes
+
+* order terminal tabs Pi-first and default Cmd+J to Pi when installed ([35d8b23](https://github.com/jacqinthebox/vomit-vnext/commit/35d8b234d80082d3681112cd677d297c35daeea3))
+
 ## [1.18.1](https://github.com/jacqinthebox/vomit-vnext/compare/v1.18.0...v1.18.1) (2026-07-25)
 
 
