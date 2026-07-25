@@ -101,12 +101,23 @@ function registerHandlers(ipcMain, { state, bus, terminalService }) {
       spawnArgs = ['/c', piPath];
     }
 
+    // GUI-launched apps on macOS get a stripped PATH without the homebrew/nvm
+    // bin dir, so pi's `#!/usr/bin/env node` shebang fails with
+    // "env: node: No such file or directory". node lives in the SAME bin dir as
+    // the pi shim (true for homebrew, nvm, system, and npm-prefix installs), so
+    // prepend that dir — plus the usual local bins — to the PATH we hand the PTY.
+    const sep = process.platform === 'win32' ? ';' : ':';
+    const extraPaths = process.platform === 'win32'
+      ? [path.dirname(piPath)]
+      : [path.dirname(piPath), '/opt/homebrew/bin', '/usr/local/bin', '/usr/bin'];
+    const mergedPath = [...extraPaths, process.env.PATH || ''].filter(Boolean).join(sep);
+
     state.piProcess = pty.spawn(file, spawnArgs, {
       name: 'xterm-256color',
       cols: 120,
       rows: 30,
       cwd: workingDir,
-      env: { ...process.env, TERM: 'xterm-256color' }
+      env: { ...process.env, TERM: 'xterm-256color', PATH: mergedPath }
     });
 
     state.piProcess.onData((data) => {
