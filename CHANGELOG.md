@@ -1,3 +1,10 @@
+# [1.18.0](https://github.com/jacqinthebox/vomit-vnext/compare/v1.17.5...v1.18.0) (2026-07-25)
+
+
+### Features
+
+* add Pi agent-harness terminal tab ([23cd586](https://github.com/jacqinthebox/vomit-vnext/commit/23cd586842e6cc1e7f25df284ecf5a3a374947a4))
+
 ## [1.17.5](https://github.com/jacqinthebox/vomit-vnext/compare/v1.17.4...v1.17.5) (2026-07-19)
 
 
