@@ -337,7 +337,9 @@ The AI menu shows all your installed Ollama models - just click one to switch.
 
 ### Pi terminal (external agent harness)
 
-The terminal panel has a third tab, **Pi**, alongside **AI** and **Shell**. It runs [Pi](https://pi.dev) — a minimal, provider-agnostic coding-agent harness — in its own PTY, started automatically in the current bucket. Pi is a stronger fit than the built-in AI terminal for multi-step *code* work, while the AI tab stays best for document-native tasks (`/write*`, `/doc`, `/rag`, pseudonymization) that reach into the open editor.
+The terminal panel has three tabs — **Pi**, **Vomit AI**, and **Shell**. Pi runs [Pi](https://pi.dev), a minimal, provider-agnostic coding-agent harness, in its own PTY started automatically in the current bucket. Pi is a stronger fit than the built-in Vomit AI terminal for multi-step *code* work, while the Vomit AI tab stays best for document-native tasks (`/write*`, `/doc`, `/rag`, pseudonymization) that reach into the open editor.
+
+`Cmd+J` (**Toggle Terminal**) opens the **Pi** tab when Pi is installed, and falls back to the **Vomit AI** tab when it isn't — so you're never dropped onto an install-hint screen. Either way all three tabs are one click apart.
 
 - **Install:** `npm i -g @earendil-works/pi-coding-agent`. If `pi` isn't found, the tab shows the install command instead of failing.
 - The Pi session is independent of the Shell tab; both stay alive concurrently and are cleaned up when Vomit quits.
@@ -426,7 +428,7 @@ Press **Cmd+/** to view all shortcuts in the app. See [SHORTCUTS.md](SHORTCUTS.m
 | **Present** | Cmd+Shift+P | Start presentation |
 | | Cmd+Alt+P | With presenter view |
 | | L | Laser pointer |
-| **AI** | Cmd+J | Toggle AI terminal |
+| **AI** | Cmd+J | Toggle terminal (Pi / Vomit AI / Shell) |
 
 ## Tech Stack
 

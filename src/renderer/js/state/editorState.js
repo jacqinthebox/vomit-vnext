@@ -32,7 +32,7 @@ class EditorState extends EventTarget {
 
     // Terminal state
     this._isTerminalPanelVisible = false;
-    this._activeTerminalTab = 'ai'; // 'ai' | 'shell'
+    this._activeTerminalTab = 'pi'; // 'pi' | 'ai' | 'shell'
     this._isClaudeRunning = false;
     this._isShellRunning = false;
     this._isTerminalDetached = false;

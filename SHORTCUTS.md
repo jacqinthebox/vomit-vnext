@@ -130,7 +130,7 @@ The Tag Explorer scans saved markdown files in the current bucket and groups doc
 | Shortcut | Action |
 |----------|--------|
 | Ctrl+Space | Trigger autocomplete |
-| Ctrl+J | Trigger autocomplete (macOS only — on Windows/Linux Ctrl+J toggles the AI terminal) |
+| Ctrl+J | Trigger autocomplete (macOS only — on Windows/Linux Ctrl+J toggles the terminal panel) |
 | Enter | Accept suggestion |
 | Escape | Dismiss suggestions |
 
@@ -189,7 +189,7 @@ Double-tap **Option**, then press **Option+Up** or **Option+Down** to add cursor
 
 | Shortcut | Action |
 |----------|--------|
-| Cmd+J | Toggle AI terminal |
+| Cmd+J | Toggle terminal (Pi / Vomit AI / Shell) |
 | Cmd+K | Clear terminal, conversation history, and command history |
 
 ### Command Picker

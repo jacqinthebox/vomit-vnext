@@ -37,6 +37,9 @@ class TerminalManager {
     this.piFitAddon = null;
     this.isPiRunning = false;
     this.piStarting = false;
+    // Whether the `pi` binary was found. Cached at startup so Cmd+J can pick
+    // the default tab (Pi if installed, else Vomit AI) without an async hop.
+    this.piAvailable = false;
 
     // pseudonymization output path
     this.pseudoOutputPath = null;
@@ -232,6 +235,12 @@ class TerminalManager {
     if (!this.terminalInput) return;
 
     this.showWelcomeBanner();
+
+    // Cache whether Pi is installed so Cmd+J can default to the Pi tab only
+    // when it will actually work — otherwise it falls back to Vomit AI.
+    window.vomit.piCheck().then(r => {
+      this.piAvailable = !!(r && r.available);
+    }).catch(() => { this.piAvailable = false; });
 
     // Load persisted command history
     window.vomit.getTerminalHistory().then(history => {
@@ -717,23 +726,26 @@ class TerminalManager {
       return;
     }
 
+    // Default to Pi when it's installed, else the Vomit AI terminal — so
+    // Cmd+J never dumps a Pi-less user onto the install-hint tab.
+    const defaultTab = this.piAvailable ? 'pi' : 'ai';
     const mainContainer = document.getElementById('main-container');
-    if (this.state.isTerminalPanelVisible && this.state.activeTerminalTab === 'ai') {
-      // Already showing AI terminal, close the panel
+    if (this.state.isTerminalPanelVisible && this.state.activeTerminalTab === defaultTab) {
+      // Already showing the default terminal, close the panel
       this.state.isTerminalPanelVisible = false;
       this.terminalPanel.classList.add('hidden');
       // Clear inline padding style (CSS will handle the rest)
       if (mainContainer) mainContainer.style.paddingBottom = '';
       this.host.focus();
     } else {
-      // Show panel and switch to AI tab
+      // Show panel and switch to the default tab
       this.state.isTerminalPanelVisible = true;
       this.terminalPanel.classList.remove('hidden');
       // Set padding to match current terminal height
       if (mainContainer) {
         mainContainer.style.paddingBottom = `${this.terminalPanel.offsetHeight}px`;
       }
-      this.switchTerminalTab('ai');
+      this.switchTerminalTab(defaultTab);
     }
   }
 
