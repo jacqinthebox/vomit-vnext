@@ -340,8 +340,58 @@ The AI menu shows all your installed Ollama models - just click one to switch.
 The terminal panel has a third tab, **Pi**, alongside **AI** and **Shell**. It runs [Pi](https://pi.dev) — a minimal, provider-agnostic coding-agent harness — in its own PTY, started automatically in the current bucket. Pi is a stronger fit than the built-in AI terminal for multi-step *code* work, while the AI tab stays best for document-native tasks (`/write*`, `/doc`, `/rag`, pseudonymization) that reach into the open editor.
 
 - **Install:** `npm i -g @earendil-works/pi-coding-agent`. If `pi` isn't found, the tab shows the install command instead of failing.
-- **Models:** Pi reads `~/.pi/agent/models.json` — point it at your local Ollama or an OpenAI-compatible endpoint (vLLM, LM Studio, MLX) to keep everything offline.
 - The Pi session is independent of the Shell tab; both stay alive concurrently and are cleaned up when Vomit quits.
+
+**Point Pi at your local models.** Pi reads its providers from a `models.json` file — create it if it doesn't exist. The file location is the same relative path on every OS:
+
+| OS | Path |
+|----|------|
+| macOS / Linux | `~/.pi/agent/models.json` |
+| Windows | `%USERPROFILE%\.pi\agent\models.json` (e.g. `C:\Users\you\.pi\agent\models.json`) |
+
+The config itself is identical across platforms — it just points at a local HTTP endpoint. A minimal Ollama example (only `id` is required per model):
+
+```json
+{
+  "providers": {
+    "ollama": {
+      "baseUrl": "http://localhost:11434/v1",
+      "api": "openai-completions",
+      "apiKey": "ollama",
+      "compat": {
+        "supportsDeveloperRole": false,
+        "supportsReasoningEffort": false
+      },
+      "models": [
+        { "id": "qwen2.5-coder:7b", "name": "Qwen2.5 Coder 7B" },
+        { "id": "llama3.1:8b", "name": "Llama 3.1 8B" }
+      ]
+    }
+  }
+}
+```
+
+For an OpenAI-compatible server (vLLM, LM Studio, MLX's `mlx_lm.server`, llama.cpp) just change the `baseUrl` and `apiKey` — the same `models.json` shape works for a remote box too:
+
+```json
+{
+  "providers": {
+    "local": {
+      "baseUrl": "http://127.0.0.1:8000/v1",
+      "api": "openai-completions",
+      "apiKey": "dummy",
+      "models": [
+        { "id": "mlx-community/Qwen3-Coder-Next-4bit", "name": "Qwen3 Coder (MLX)" }
+      ]
+    }
+  }
+}
+```
+
+Notes:
+- `apiKey` is a required placeholder for keyless local servers — Ollama/vLLM ignore the value but Pi expects the field.
+- `compat.supportsDeveloperRole: false` (and `supportsReasoningEffort: false`) makes Pi send a plain `system` message instead of the `developer` role that many OpenAI-compatible servers reject. Set it at the provider level (all models) or per model.
+- Pi reloads `models.json` every time you open its `/model` picker — no restart needed. Supported `api` values: `openai-completions`, `openai-responses`, `anthropic-messages`, `google-generative-ai`.
 
 > Pi edits files **on disk**. Save the current tab before asking Pi to change it — otherwise Vomit's file-watch reload can clobber unsaved edits.
 
