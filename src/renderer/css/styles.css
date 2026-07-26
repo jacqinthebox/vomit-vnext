@@ -1412,6 +1412,20 @@ html, body {
   border-radius: 3px;
 }
 
+#preview kbd {
+  display: inline-block;
+  padding: 2px 6px;
+  font-family: 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
+  font-size: 0.8em;
+  line-height: 1.4;
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  vertical-align: baseline;
+}
+
 #preview pre {
   margin: 1em 0;
   padding: 16px;
@@ -1427,6 +1441,14 @@ html, body {
   background: none;
   font-size: 0.85em;
   line-height: 1.6;
+}
+
+/* Fenced blocks without a language tag skip highlight.js (auto-detection
+   guesses among the few registered languages and colors plain text wrongly)
+   and render as calm plain text instead. */
+#preview pre code.code-plain {
+  color: var(--text-primary);
+  opacity: 0.92;
 }
 
 #preview pre.has-copy-btn {

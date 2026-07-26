@@ -305,8 +305,14 @@ class PreviewManager {
     const html = this.renderMarkdownWithSlides(content);
     this.dom.preview.innerHTML = html;
 
-    // Highlight code blocks
+    // Highlight code blocks. Blocks without a language tag get a plain style
+    // instead of hljs auto-detection, which guesses among the registered
+    // languages and colors plain text wrongly.
     this.dom.preview.querySelectorAll('pre code').forEach((block) => {
+      if (!/\blanguage-/.test(block.className)) {
+        block.classList.add('code-plain');
+        return;
+      }
       if (window.hljs) {
         window.hljs.highlightElement(block);
       }
