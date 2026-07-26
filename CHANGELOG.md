@@ -1,3 +1,10 @@
+## [1.18.3](https://github.com/jacqinthebox/vomit-vnext/compare/v1.18.2...v1.18.3) (2026-07-26)
+
+
+### Bug Fixes
+
+* render kbd tags in preview and plain-style code blocks without a language ([a231148](https://github.com/jacqinthebox/vomit-vnext/commit/a2311486f83fe9abb7a45e0c3142d0b5e8d1fa9c))
+
 ## [1.18.2](https://github.com/jacqinthebox/vomit-vnext/compare/v1.18.1...v1.18.2) (2026-07-25)
 
 
