@@ -1,3 +1,10 @@
+## [1.18.4](https://github.com/jacqinthebox/vomit-vnext/compare/v1.18.3...v1.18.4) (2026-07-27)
+
+
+### Bug Fixes
+
+* make preview TOC anchor links jump to their headings ([480079b](https://github.com/jacqinthebox/vomit-vnext/commit/480079be35482f184593611753b5cb424281e72e)), closes [#hash](https://github.com/jacqinthebox/vomit-vnext/issues/hash)
+
 ## [1.18.3](https://github.com/jacqinthebox/vomit-vnext/compare/v1.18.2...v1.18.3) (2026-07-26)
 
 
