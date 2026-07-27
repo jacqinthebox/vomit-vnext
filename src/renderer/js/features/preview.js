@@ -53,6 +53,27 @@ class PreviewManager {
       const link = e.target.closest('a');
       if (!link) return;
 
+      // In-document anchor (#heading) → scroll the preview to that heading.
+      // Default navigation would change the window location instead of
+      // scrolling the preview pane.
+      const rawHref = link.getAttribute('href') || '';
+      if (rawHref.startsWith('#')) {
+        e.preventDefault();
+        let id = rawHref.slice(1);
+        try { id = decodeURIComponent(id); } catch (_) { /* keep raw */ }
+        let target = this.dom.preview.querySelector(`[id="${CSS.escape(id)}"]`);
+        if (!target) {
+          // GitHub-style slugs keep one hyphen per removed character
+          // ("building--releasing"); ours collapse runs. Accept both.
+          const collapsed = id.replace(/-+/g, '-');
+          target = this.dom.preview.querySelector(`[id="${CSS.escape(collapsed)}"]`);
+        }
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        return;
+      }
+
       // Internal [[wikilink]] → open the target document in the editor.
       if (link.classList.contains('wikilink')) {
         e.preventDefault();
@@ -304,6 +325,20 @@ class PreviewManager {
 
     const html = this.renderMarkdownWithSlides(content);
     this.dom.preview.innerHTML = html;
+
+    // Give headings GitHub-style ids so TOC links like [Chapter](#chapter)
+    // resolve. marked v5+ no longer generates heading ids itself.
+    const slugCounts = new Map();
+    this.dom.preview.querySelectorAll('h1, h2, h3, h4, h5, h6').forEach((h) => {
+      if (h.id) return;
+      let slug = h.textContent.trim().toLowerCase()
+        .replace(/[^\wÀ-￿\- ]/g, '')
+        .replace(/\s+/g, '-');
+      const seen = slugCounts.get(slug) || 0;
+      slugCounts.set(slug, seen + 1);
+      if (seen > 0) slug = `${slug}-${seen}`;
+      h.id = slug;
+    });
 
     // Highlight code blocks. Blocks without a language tag get a plain style
     // instead of hljs auto-detection, which guesses among the registered
