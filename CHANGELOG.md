@@ -1,3 +1,10 @@
+## [1.18.5](https://github.com/jacqinthebox/vomit-vnext/compare/v1.18.4...v1.18.5) (2026-08-01)
+
+
+### Bug Fixes
+
+* make Pi doc/folder-aware and slim the AI terminal to document-native commands ([d988845](https://github.com/jacqinthebox/vomit-vnext/commit/d988845f648b1db7e9415876f58723fcbfe66aee))
+
 ## [1.18.4](https://github.com/jacqinthebox/vomit-vnext/compare/v1.18.3...v1.18.4) (2026-07-27)
 
 
