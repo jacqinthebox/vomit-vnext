@@ -35,7 +35,7 @@ async function showBucketSetupDialog(parentWindow) {
     cancelId: 2,
     title: 'Welcome to Vomit',
     message: 'Choose where to store your notes',
-    detail: `Vomit uses a single folder ("bucket") to store all your notes.\n\nDefault location:\n${DEFAULT_BUCKET_PATH}`
+    detail: `Vomit uses a single folder ("bucket") to store all your notes.\n\nDefault location:\n${DEFAULT_BUCKET_PATH}`,
   });
 
   if (welcomeResult.response === 2) {
@@ -48,7 +48,7 @@ async function showBucketSetupDialog(parentWindow) {
     const folderResult = await dialog.showOpenDialog(parentWindow, {
       title: 'Choose Bucket Location',
       properties: ['openDirectory', 'createDirectory'],
-      defaultPath: path.join(os.homedir(), 'Documents')
+      defaultPath: path.join(os.homedir(), 'Documents'),
     });
 
     if (folderResult.canceled || folderResult.filePaths.length === 0) {
@@ -75,5 +75,5 @@ async function showBucketSetupDialog(parentWindow) {
 module.exports = {
   DEFAULT_BUCKET_PATH,
   isBucketValid,
-  showBucketSetupDialog
+  showBucketSetupDialog,
 };

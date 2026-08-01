@@ -20,7 +20,7 @@
       if (marker === '---' || marker === '...') {
         return {
           yaml: lines.slice(1, i).join('\n'),
-          body: lines.slice(i + 1).join('\n')
+          body: lines.slice(i + 1).join('\n'),
         };
       }
     }
@@ -39,7 +39,7 @@
     const block = extract(content);
     if (!block) return {};
     const settings = {};
-    block.yaml.split('\n').forEach(line => {
+    block.yaml.split('\n').forEach((line) => {
       const colonIndex = line.indexOf(':');
       if (colonIndex !== -1) {
         const key = line.substring(0, colonIndex).trim();

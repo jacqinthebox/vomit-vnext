@@ -129,7 +129,9 @@ function parseWikilinks(content) {
 
     // Compute line/col from match index using binary search over lineOffsets.
     const idx = match.index;
-    let lo = 0, hi = lineOffsets.length - 1, line = 0;
+    let lo = 0,
+      hi = lineOffsets.length - 1,
+      line = 0;
     while (lo <= hi) {
       const mid = (lo + hi) >>> 1;
       if (lineOffsets[mid] <= idx) {
@@ -153,7 +155,7 @@ function parseWikilinks(content) {
       heading,
       line: line + 1, // 1-indexed for editor jumping
       col: col + 1,
-      context
+      context,
     });
   }
 
@@ -199,11 +201,15 @@ function parseMarkdownLinks(content) {
     }
     if (!target) continue; // same-file anchor
     if (/^[a-z][a-z0-9+.-]*:/i.test(target)) continue; // http:, mailto:, …
-    try { target = decodeURIComponent(target); } catch {}
+    try {
+      target = decodeURIComponent(target);
+    } catch {}
     if (!/\.md$/i.test(target)) continue;
 
     const idx = match.index;
-    let lo = 0, hi = lineOffsets.length - 1, line = 0;
+    let lo = 0,
+      hi = lineOffsets.length - 1,
+      line = 0;
     while (lo <= hi) {
       const mid = (lo + hi) >>> 1;
       if (lineOffsets[mid] <= idx) {
@@ -226,7 +232,7 @@ function parseMarkdownLinks(content) {
       heading,
       line: line + 1,
       col: col + 1,
-      context
+      context,
     });
   }
 
@@ -241,9 +247,10 @@ function parseMarkdownLinks(content) {
  */
 function resolveMdTarget(db, bucketRoot, target, sourcePath) {
   if (!target) return sourcePath || null;
-  const abs = (target.startsWith('/') || target.startsWith('\\'))
-    ? path.join(bucketRoot, target)
-    : path.resolve(sourcePath ? path.dirname(sourcePath) : bucketRoot, target);
+  const abs =
+    target.startsWith('/') || target.startsWith('\\')
+      ? path.join(bucketRoot, target)
+      : path.resolve(sourcePath ? path.dirname(sourcePath) : bucketRoot, target);
   const row = db.prepare('SELECT path FROM notes WHERE path = ?').get(path.normalize(abs));
   return row ? row.path : null;
 }
@@ -271,9 +278,7 @@ function resolveTarget(db, bucketRoot, target, sourcePath) {
   const normalized = target.replace(/\.md$/i, '').toLowerCase();
 
   // Try basename match first
-  const rows = db.prepare(
-    'SELECT path FROM notes WHERE LOWER(basename) = ?'
-  ).all(normalized);
+  const rows = db.prepare('SELECT path FROM notes WHERE LOWER(basename) = ?').all(normalized);
 
   if (rows.length === 1) {
     return rows[0].path;
@@ -282,7 +287,7 @@ function resolveTarget(db, bucketRoot, target, sourcePath) {
   if (rows.length > 1 && sourcePath) {
     const sourceDir = path.dirname(sourcePath);
     // Prefer same-directory match
-    const sameFolder = rows.find(r => path.dirname(r.path) === sourceDir);
+    const sameFolder = rows.find((r) => path.dirname(r.path) === sourceDir);
     if (sameFolder) return sameFolder.path;
     // Otherwise shortest absolute path
     rows.sort((a, b) => a.path.length - b.path.length);
@@ -310,12 +315,20 @@ function walkBucket(bucketRoot) {
   const found = [];
   const walk = (dir) => {
     let items;
-    try { items = fs.readdirSync(dir); } catch { return; }
+    try {
+      items = fs.readdirSync(dir);
+    } catch {
+      return;
+    }
     for (const item of items) {
       if (item.startsWith('.') || SKIPPED_DIRS.has(item)) continue;
       const fullPath = path.join(dir, item);
       let stat;
-      try { stat = fs.statSync(fullPath); } catch { continue; }
+      try {
+        stat = fs.statSync(fullPath);
+      } catch {
+        continue;
+      }
       if (stat.isDirectory()) {
         walk(fullPath);
       } else if (item.toLowerCase().endsWith('.md')) {
@@ -334,11 +347,19 @@ function walkBucket(bucketRoot) {
  */
 function indexFileRaw(db, bucketRoot, filePath) {
   let stat;
-  try { stat = fs.statSync(filePath); } catch { return false; }
+  try {
+    stat = fs.statSync(filePath);
+  } catch {
+    return false;
+  }
   if (!stat.isFile()) return false;
 
   let content;
-  try { content = fs.readFileSync(filePath, 'utf-8'); } catch { return false; }
+  try {
+    content = fs.readFileSync(filePath, 'utf-8');
+  } catch {
+    return false;
+  }
 
   const basename = path.basename(filePath, path.extname(filePath));
   const title = extractTitle(content);
@@ -346,20 +367,40 @@ function indexFileRaw(db, bucketRoot, filePath) {
   db.prepare(
     `INSERT INTO notes (path, basename, title, mtime) VALUES (?, ?, ?, ?)
      ON CONFLICT(path) DO UPDATE SET basename = excluded.basename,
-       title = excluded.title, mtime = excluded.mtime`
+       title = excluded.title, mtime = excluded.mtime`,
   ).run(filePath, basename, title, stat.mtimeMs);
 
   db.prepare('DELETE FROM wikilinks WHERE source_path = ?').run(filePath);
 
   const insert = db.prepare(
     `INSERT INTO wikilinks (source_path, target_text, target_path, alias, heading, line, col, context, link_type)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   );
   for (const link of parseWikilinks(content)) {
-    insert.run(filePath, link.rawTarget, null, link.alias, link.heading, link.line, link.col, link.context, 'wiki');
+    insert.run(
+      filePath,
+      link.rawTarget,
+      null,
+      link.alias,
+      link.heading,
+      link.line,
+      link.col,
+      link.context,
+      'wiki',
+    );
   }
   for (const link of parseMarkdownLinks(content)) {
-    insert.run(filePath, link.rawTarget, null, link.alias, link.heading, link.line, link.col, link.context, 'md');
+    insert.run(
+      filePath,
+      link.rawTarget,
+      null,
+      link.alias,
+      link.heading,
+      link.line,
+      link.col,
+      link.context,
+      'md',
+    );
   }
 
   return true;
@@ -371,10 +412,12 @@ function resolveAllLinks(db, bucketRoot) {
   for (const row of rows) {
     // Strip any heading suffix from target_text before resolving.
     const hashIdx = row.target_text.indexOf('#');
-    const targetName = hashIdx === -1 ? row.target_text : row.target_text.substring(0, hashIdx).trim();
-    const resolved = row.link_type === 'md'
-      ? resolveMdTarget(db, bucketRoot, targetName, row.source_path)
-      : resolveTarget(db, bucketRoot, targetName, row.source_path);
+    const targetName =
+      hashIdx === -1 ? row.target_text : row.target_text.substring(0, hashIdx).trim();
+    const resolved =
+      row.link_type === 'md'
+        ? resolveMdTarget(db, bucketRoot, targetName, row.source_path)
+        : resolveTarget(db, bucketRoot, targetName, row.source_path);
     update.run(resolved, row.rowid);
   }
 }
@@ -388,18 +431,22 @@ function resolveLinksForName(db, bucketRoot, basename) {
   const name = basename.toLowerCase();
   // Wikilinks reference the bare name; markdown links reference a path ending
   // in <name>.md — cover both so a new file repairs its inbound links.
-  const rows = db.prepare(
-    `SELECT rowid, source_path, target_text, link_type FROM wikilinks
+  const rows = db
+    .prepare(
+      `SELECT rowid, source_path, target_text, link_type FROM wikilinks
      WHERE (link_type = 'wiki' AND (LOWER(target_text) = ? OR LOWER(target_text) LIKE ?))
-        OR (link_type = 'md' AND (LOWER(target_text) = ? OR LOWER(target_text) LIKE ?))`
-  ).all(name, `${name}#%`, `${name}.md`, `%/${name}.md`);
+        OR (link_type = 'md' AND (LOWER(target_text) = ? OR LOWER(target_text) LIKE ?))`,
+    )
+    .all(name, `${name}#%`, `${name}.md`, `%/${name}.md`);
   const update = db.prepare('UPDATE wikilinks SET target_path = ? WHERE rowid = ?');
   for (const row of rows) {
     const hashIdx = row.target_text.indexOf('#');
-    const targetName = hashIdx === -1 ? row.target_text : row.target_text.substring(0, hashIdx).trim();
-    const resolved = row.link_type === 'md'
-      ? resolveMdTarget(db, bucketRoot, targetName, row.source_path)
-      : resolveTarget(db, bucketRoot, targetName, row.source_path);
+    const targetName =
+      hashIdx === -1 ? row.target_text : row.target_text.substring(0, hashIdx).trim();
+    const resolved =
+      row.link_type === 'md'
+        ? resolveMdTarget(db, bucketRoot, targetName, row.source_path)
+        : resolveTarget(db, bucketRoot, targetName, row.source_path);
     update.run(resolved, row.rowid);
   }
 }
@@ -428,7 +475,7 @@ async function indexBucket(bucketRoot, progressCallback) {
             status: 'indexing',
             current: i + 1,
             total: files.length,
-            file: path.relative(bucketRoot, file)
+            file: path.relative(bucketRoot, file),
           });
         }
       }
@@ -438,14 +485,14 @@ async function indexBucket(bucketRoot, progressCallback) {
     reindex();
 
     const linkCount = db.prepare('SELECT COUNT(*) AS c FROM wikilinks').get().c;
-    const brokenCount = db.prepare(
-      'SELECT COUNT(*) AS c FROM wikilinks WHERE target_path IS NULL'
-    ).get().c;
+    const brokenCount = db
+      .prepare('SELECT COUNT(*) AS c FROM wikilinks WHERE target_path IS NULL')
+      .get().c;
 
     return {
       filesProcessed: files.length,
       linksIndexed: linkCount,
-      brokenLinks: brokenCount
+      brokenLinks: brokenCount,
     };
   } finally {
     db.close();
@@ -473,16 +520,18 @@ function indexSingleFile(bucketRoot, filePath) {
     indexFileRaw(db, bucketRoot, filePath);
 
     // Resolve outbound: re-resolve every link from this file.
-    const outbound = db.prepare(
-      'SELECT rowid, target_text, link_type FROM wikilinks WHERE source_path = ?'
-    ).all(filePath);
+    const outbound = db
+      .prepare('SELECT rowid, target_text, link_type FROM wikilinks WHERE source_path = ?')
+      .all(filePath);
     const update = db.prepare('UPDATE wikilinks SET target_path = ? WHERE rowid = ?');
     for (const row of outbound) {
       const hashIdx = row.target_text.indexOf('#');
-      const targetName = hashIdx === -1 ? row.target_text : row.target_text.substring(0, hashIdx).trim();
-      const resolved = row.link_type === 'md'
-        ? resolveMdTarget(db, bucketRoot, targetName, filePath)
-        : resolveTarget(db, bucketRoot, targetName, filePath);
+      const targetName =
+        hashIdx === -1 ? row.target_text : row.target_text.substring(0, hashIdx).trim();
+      const resolved =
+        row.link_type === 'md'
+          ? resolveMdTarget(db, bucketRoot, targetName, filePath)
+          : resolveTarget(db, bucketRoot, targetName, filePath);
       update.run(resolved, row.rowid);
     }
 
@@ -507,14 +556,16 @@ function getBacklinks(bucketRoot, targetPath) {
 
   const db = getWikiDatabase(bucketRoot);
   try {
-    return db.prepare(
-      `SELECT w.source_path, w.line, w.col, w.context, w.alias, w.heading,
+    return db
+      .prepare(
+        `SELECT w.source_path, w.line, w.col, w.context, w.alias, w.heading,
               n.title AS source_title, n.basename AS source_basename
        FROM wikilinks w
        LEFT JOIN notes n ON n.path = w.source_path
        WHERE w.target_path = ?
-       ORDER BY w.source_path, w.line`
-    ).all(targetPath);
+       ORDER BY w.source_path, w.line`,
+      )
+      .all(targetPath);
   } finally {
     db.close();
   }
@@ -548,9 +599,7 @@ function listNotes(bucketRoot) {
 
   const db = getWikiDatabase(bucketRoot);
   try {
-    return db.prepare(
-      'SELECT path, basename, title FROM notes ORDER BY basename'
-    ).all();
+    return db.prepare('SELECT path, basename, title FROM notes ORDER BY basename').all();
   } finally {
     db.close();
   }
@@ -567,13 +616,13 @@ function getGraph(bucketRoot) {
 
   const db = getWikiDatabase(bucketRoot);
   try {
-    const nodes = db.prepare(
-      'SELECT path AS id, basename, title FROM notes'
-    ).all();
-    const edges = db.prepare(
-      `SELECT source_path AS source, target_path AS target
-       FROM wikilinks WHERE target_path IS NOT NULL`
-    ).all();
+    const nodes = db.prepare('SELECT path AS id, basename, title FROM notes').all();
+    const edges = db
+      .prepare(
+        `SELECT source_path AS source, target_path AS target
+       FROM wikilinks WHERE target_path IS NOT NULL`,
+      )
+      .all();
     return { nodes, edges };
   } finally {
     db.close();
@@ -671,5 +720,5 @@ module.exports = {
   getGraph,
   clearWikiDatabase,
   getWikiDatabasePath,
-  registerHandlers
+  registerHandlers,
 };

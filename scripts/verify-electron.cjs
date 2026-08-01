@@ -53,7 +53,11 @@ function cacheRoot() {
     case 'darwin':
       return path.join(os.homedir(), 'Library', 'Caches', 'electron');
     case 'win32':
-      return path.join(process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local'), 'electron', 'Cache');
+      return path.join(
+        process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local'),
+        'electron',
+        'Cache',
+      );
     default:
       return path.join(process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache'), 'electron');
   }
@@ -85,10 +89,16 @@ function extractZip(zipPath, destDir) {
     // ditto preserves symlinks and permissions inside .app bundles.
     execFileSync('ditto', ['-x', '-k', zipPath, destDir], { stdio: 'pipe' });
   } else if (process.platform === 'win32') {
-    execFileSync('powershell.exe', [
-      '-NoProfile', '-NonInteractive', '-Command',
-      `Expand-Archive -Path '${zipPath}' -DestinationPath '${destDir}' -Force`
-    ], { stdio: 'pipe' });
+    execFileSync(
+      'powershell.exe',
+      [
+        '-NoProfile',
+        '-NonInteractive',
+        '-Command',
+        `Expand-Archive -Path '${zipPath}' -DestinationPath '${destDir}' -Force`,
+      ],
+      { stdio: 'pipe' },
+    );
   } else {
     execFileSync('unzip', ['-q', zipPath, '-d', destDir], { stdio: 'pipe' });
   }
@@ -104,7 +114,9 @@ function finalize() {
 }
 
 function repairFromCache() {
-  const version = JSON.parse(fs.readFileSync(path.join(electronDir, 'package.json'), 'utf-8')).version;
+  const version = JSON.parse(
+    fs.readFileSync(path.join(electronDir, 'package.json'), 'utf-8'),
+  ).version;
   const arch = process.env.npm_config_arch || process.arch;
   const zipName = `electron-v${version}-${process.platform}-${arch}.zip`;
   const zipPath = findCachedZip(zipName);
@@ -119,8 +131,12 @@ function repairFromCache() {
 }
 
 function repairViaInstaller() {
-  log('retrying Electron\'s own install script');
-  const result = spawnSync(process.execPath, ['install.js'], { cwd: electronDir, stdio: 'pipe', timeout: 300000 });
+  log("retrying Electron's own install script");
+  const result = spawnSync(process.execPath, ['install.js'], {
+    cwd: electronDir,
+    stdio: 'pipe',
+    timeout: 300000,
+  });
   return result.status === 0 && isHealthy();
 }
 
@@ -139,14 +155,16 @@ function main() {
   }
   try {
     if (repairViaInstaller()) {
-      log('repaired via Electron\'s install script.');
+      log("repaired via Electron's install script.");
       return;
     }
   } catch (e) {
     log(`installer retry failed: ${e.message}`);
   }
 
-  log('could not repair automatically. Delete node_modules/electron and reinstall with a Node LTS (22/24):');
+  log(
+    'could not repair automatically. Delete node_modules/electron and reinstall with a Node LTS (22/24):',
+  );
   log('  rm -rf node_modules/electron && npm install electron');
   process.exitCode = 1;
 }

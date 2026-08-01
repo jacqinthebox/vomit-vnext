@@ -38,8 +38,12 @@ class FileTreeManager {
     });
   }
 
-  get tabManager() { return this._getTabManager(); }
-  get previewManager() { return this._getPreviewManager(); }
+  get tabManager() {
+    return this._getTabManager();
+  }
+  get previewManager() {
+    return this._getPreviewManager();
+  }
 
   // ─────────────────────────────────────────────────────────────
   // Sidebar visibility (independent of file operations)
@@ -95,11 +99,12 @@ class FileTreeManager {
   }
 
   updateResizeHandle() {
-    const anySidebarVisible = this.editorState.isFileTreeVisible ||
-                               this.editorState.isOutlineVisible ||
-                               this.editorState.isSearchVisible ||
-                               this.editorState.isTagExplorerVisible ||
-                               this.editorState.isTodoExplorerVisible;
+    const anySidebarVisible =
+      this.editorState.isFileTreeVisible ||
+      this.editorState.isOutlineVisible ||
+      this.editorState.isSearchVisible ||
+      this.editorState.isTagExplorerVisible ||
+      this.editorState.isTodoExplorerVisible;
     this.sidebarResize.classList.toggle('hidden', !anySidebarVisible);
   }
 
@@ -110,7 +115,8 @@ class FileTreeManager {
   async openFolder(folderPath) {
     // Close tabs when switching projects
     if (this.tabManager) {
-      const hasOnlyEmptyUntitled = this.tabManager.tabs.size === 1 &&
+      const hasOnlyEmptyUntitled =
+        this.tabManager.tabs.size === 1 &&
         !this.tabManager.tabs.values().next().value.filePath &&
         !this.tabManager.tabs.values().next().value.content.trim();
       const isSwitchingProjects = this.treeState.rootPath && this.treeState.rootPath !== folderPath;
@@ -180,7 +186,8 @@ class FileTreeManager {
     const effectiveRoot = this.editorState.projectRoot || this.editorState.currentDirectory;
 
     if (!effectiveRoot) {
-      this.fileTreeContainer.innerHTML = '<div class="file-item empty-message" style="color: var(--text-muted); padding: 16px;">Open a file to see its directory</div>';
+      this.fileTreeContainer.innerHTML =
+        '<div class="file-item empty-message" style="color: var(--text-muted); padding: 16px;">Open a file to see its directory</div>';
       return;
     }
 
@@ -222,7 +229,10 @@ class FileTreeManager {
       if (el && el.dataset.path) {
         e.preventDefault();
         this._showContextMenu(el, e.clientX, e.clientY);
-      } else if (e.target === this.fileTreeContainer || e.target.classList.contains('empty-message')) {
+      } else if (
+        e.target === this.fileTreeContainer ||
+        e.target.classList.contains('empty-message')
+      ) {
         e.preventDefault();
         if (this.editorState.currentDirectory) {
           this._showRootContextMenu(e.clientX, e.clientY);
@@ -332,7 +342,7 @@ class FileTreeManager {
       draggedIsDir = false;
 
       // Remove all drop indicators
-      this.fileTreeContainer.querySelectorAll('.drop-target').forEach(el => {
+      this.fileTreeContainer.querySelectorAll('.drop-target').forEach((el) => {
         el.classList.remove('drop-target');
       });
     });
@@ -361,7 +371,7 @@ class FileTreeManager {
       e.dataTransfer.dropEffect = 'move';
 
       // Add drop target indicator
-      this.fileTreeContainer.querySelectorAll('.drop-target').forEach(el => {
+      this.fileTreeContainer.querySelectorAll('.drop-target').forEach((el) => {
         el.classList.remove('drop-target');
       });
       el.classList.add('drop-target');
@@ -425,7 +435,7 @@ class FileTreeManager {
           }
           // Also check children if it's a container
           if (node.nodeType === 1) {
-            node.querySelectorAll?.('.file-item')?.forEach(item => {
+            node.querySelectorAll?.('.file-item')?.forEach((item) => {
               item.draggable = true;
             });
           }
@@ -436,7 +446,7 @@ class FileTreeManager {
     observer.observe(this.fileTreeContainer, { childList: true, subtree: true });
 
     // Make existing items draggable
-    this.fileTreeContainer.querySelectorAll('.file-item').forEach(item => {
+    this.fileTreeContainer.querySelectorAll('.file-item').forEach((item) => {
       item.draggable = true;
     });
   }
@@ -691,7 +701,7 @@ class FileTreeManager {
       paddingLeft = sibling.style.paddingLeft;
     } else {
       const depth = this._calculateDepth(targetDir) + 1;
-      paddingLeft = `${8 + (depth * 16)}px`;
+      paddingLeft = `${8 + depth * 16}px`;
     }
 
     // Create inline input (match exact structure of real file-items)
@@ -979,9 +989,11 @@ class FileTreeManager {
               // when an alert would be too noisy for big renames.
               console.log(`Wikilinks updated in ${result.wikilinksUpdated} file(s)`);
               try {
-                window.dispatchEvent(new CustomEvent('vomit:status-message', {
-                  detail: { text: `Wikilinks updated in ${result.wikilinksUpdated} file(s)` }
-                }));
+                window.dispatchEvent(
+                  new CustomEvent('vomit:status-message', {
+                    detail: { text: `Wikilinks updated in ${result.wikilinksUpdated} file(s)` },
+                  }),
+                );
               } catch {}
             }
           } else if (result.error) {
@@ -1024,7 +1036,7 @@ class FileTreeManager {
         const tab = this.tabManager.getTabByPath(path);
         if (tab) {
           this.tabManager.tabs.delete(tab.id);
-          this.tabManager.tabOrder = this.tabManager.tabOrder.filter(id => id !== tab.id);
+          this.tabManager.tabOrder = this.tabManager.tabOrder.filter((id) => id !== tab.id);
 
           if (tab.id === this.tabManager.activeTabId) {
             if (this.tabManager.tabOrder.length === 0) {
@@ -1041,9 +1053,10 @@ class FileTreeManager {
       }
 
       // Get sibling or parent for focus
-      const siblingPath = this.dataModel.getSibling(path, 'next') ||
-                          this.dataModel.getSibling(path, 'prev') ||
-                          this.dataModel.getParentPath(path);
+      const siblingPath =
+        this.dataModel.getSibling(path, 'next') ||
+        this.dataModel.getSibling(path, 'prev') ||
+        this.dataModel.getParentPath(path);
 
       // Remove from data model
       this.dataModel.removeNode(path);
@@ -1066,11 +1079,19 @@ class FileTreeManager {
 
   navigateToParent() {
     if (!this.editorState.currentDirectory) return;
-    if (this.editorState.projectRoot && this.editorState.currentDirectory === this.editorState.projectRoot) return;
+    if (
+      this.editorState.projectRoot &&
+      this.editorState.currentDirectory === this.editorState.projectRoot
+    )
+      return;
 
     const newDir = window.PathUtils.dirname(this.editorState.currentDirectory);
     if (newDir && newDir !== this.editorState.currentDirectory) {
-      if (this.editorState.projectRoot && !window.PathUtils.isSubPath(newDir, this.editorState.projectRoot)) return;
+      if (
+        this.editorState.projectRoot &&
+        !window.PathUtils.isSubPath(newDir, this.editorState.projectRoot)
+      )
+        return;
 
       this.editorState.currentDirectory = newDir;
       this._ensureTreeLoaded().then(() => this._focusFirstOrSelected());

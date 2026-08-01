@@ -12,7 +12,6 @@ const wiki = require('../../wiki');
  * @param {{ state: import('../../services/sessionState').SessionState, bus: import('../rendererBus').RendererBus, configStore: typeof import('../../services/configStore'), menuModule: { createMenu: () => void } }} deps
  */
 function createBucketService({ state, bus, configStore, menuModule }) {
-
   /**
    * Switch to a bucket at the given index
    * @param {number} index
@@ -42,10 +41,13 @@ function createBucketService({ state, bus, configStore, menuModule }) {
 
     // Rebuild the wiki index for the new bucket in the background.
     setTimeout(() => {
-      wiki.indexBucket(bucket.path).then(() => {
-        bus.send('wiki-changed', { type: 'reindex' });
-        bus.sendToTerminal('wiki-changed', { type: 'reindex' });
-      }).catch(() => {});
+      wiki
+        .indexBucket(bucket.path)
+        .then(() => {
+          bus.send('wiki-changed', { type: 'reindex' });
+          bus.sendToTerminal('wiki-changed', { type: 'reindex' });
+        })
+        .catch(() => {});
     }, 500);
 
     return { success: true, bucket };
@@ -61,7 +63,7 @@ function createBucketService({ state, bus, configStore, menuModule }) {
     const folderResult = await dialog.showOpenDialog(mainWindow, {
       title: 'Choose Bucket Location',
       properties: ['openDirectory', 'createDirectory'],
-      defaultPath: path.join(os.homedir(), 'Documents')
+      defaultPath: path.join(os.homedir(), 'Documents'),
     });
 
     if (folderResult.canceled || folderResult.filePaths.length === 0) {
@@ -72,7 +74,7 @@ function createBucketService({ state, bus, configStore, menuModule }) {
 
     // Check if bucket already exists
     const buckets = configStore.getBuckets();
-    const existingIndex = buckets.findIndex(b => b.path === chosenPath);
+    const existingIndex = buckets.findIndex((b) => b.path === chosenPath);
     if (existingIndex !== -1) {
       // Switch to existing bucket instead of adding duplicate
       return switchBucket(existingIndex);
@@ -91,7 +93,7 @@ function createBucketService({ state, bus, configStore, menuModule }) {
 
     const bucket = {
       name: path.basename(chosenPath),
-      path: chosenPath
+      path: chosenPath,
     };
 
     const index = configStore.addBucket(bucket);
@@ -139,11 +141,11 @@ function createBucketService({ state, bus, configStore, menuModule }) {
       cancelId: 1,
       title: 'Bucket Folder Missing',
       message: `The folder for "${bucket.name}" no longer exists.`,
-      detail: `${bucket.path}\n\nRemove this bucket from Vomit? Only the bucket entry is removed.`
+      detail: `${bucket.path}\n\nRemove this bucket from Vomit? Only the bucket entry is removed.`,
     });
 
     if (result.response === 0) {
-      const index = configStore.getBuckets().findIndex(b => b.path === bucket.path);
+      const index = configStore.getBuckets().findIndex((b) => b.path === bucket.path);
       if (index !== -1) {
         doRemoveBucket(index);
       }
@@ -171,7 +173,7 @@ function createBucketService({ state, bus, configStore, menuModule }) {
       cancelId: 1,
       title: 'Remove Bucket',
       message: `Remove "${bucket.name}" from Vomit?`,
-      detail: 'This only removes the bucket from Vomit. Your files will not be deleted.'
+      detail: 'This only removes the bucket from Vomit. Your files will not be deleted.',
     });
 
     if (result.response === 1) {
@@ -213,7 +215,7 @@ function createBucketService({ state, bus, configStore, menuModule }) {
     switchBucket,
     addBucket,
     removeBucket,
-    registerHandlers
+    registerHandlers,
   };
 }
 

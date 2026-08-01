@@ -5,7 +5,15 @@ const assert = require('node:assert');
 const { classifyBashCommand, isReadOnlyToolCall } = require('../src/main/services/agentTools');
 
 test('allowlisted read-only commands classify as readonly', () => {
-  for (const cmd of ['ls -la', 'pwd', 'cat package.json', 'grep -r foo src', 'find . -name "*.md"', 'wc -l file.txt', 'head -20 notes.md']) {
+  for (const cmd of [
+    'ls -la',
+    'pwd',
+    'cat package.json',
+    'grep -r foo src',
+    'find . -name "*.md"',
+    'wc -l file.txt',
+    'head -20 notes.md',
+  ]) {
     assert.strictEqual(classifyBashCommand(cmd), 'readonly', cmd);
   }
 });
@@ -22,13 +30,29 @@ test('path prefixes and .exe suffixes are stripped before matching', () => {
 });
 
 test('mutating commands need permission', () => {
-  for (const cmd of ['rm -rf /', 'npm install', 'node script.js', 'curl https://example.com', 'sed -i s/a/b/ file', 'mkdir foo', 'del notes.md']) {
+  for (const cmd of [
+    'rm -rf /',
+    'npm install',
+    'node script.js',
+    'curl https://example.com',
+    'sed -i s/a/b/ file',
+    'mkdir foo',
+    'del notes.md',
+  ]) {
     assert.strictEqual(classifyBashCommand(cmd), 'needs-permission', cmd);
   }
 });
 
 test('shell metacharacters force permission even for read-only commands', () => {
-  for (const cmd of ['ls > out.txt', 'cat a; rm b', 'echo `whoami`', 'echo $(rm -rf .)', 'ls && rm x', 'cat < inject', 'ls\nrm -rf .']) {
+  for (const cmd of [
+    'ls > out.txt',
+    'cat a; rm b',
+    'echo `whoami`',
+    'echo $(rm -rf .)',
+    'ls && rm x',
+    'cat < inject',
+    'ls\nrm -rf .',
+  ]) {
     assert.strictEqual(classifyBashCommand(cmd), 'needs-permission', JSON.stringify(cmd));
   }
 });
@@ -39,7 +63,13 @@ test('pipes are allowed only when every segment is read-only', () => {
 });
 
 test('git read-only subcommands are allowed', () => {
-  for (const cmd of ['git status', 'git log --oneline -5', 'git diff HEAD~1', 'git show abc123', 'git blame file.js']) {
+  for (const cmd of [
+    'git status',
+    'git log --oneline -5',
+    'git diff HEAD~1',
+    'git show abc123',
+    'git blame file.js',
+  ]) {
     assert.strictEqual(classifyBashCommand(cmd), 'readonly', cmd);
   }
 });
@@ -60,7 +90,13 @@ test('git config only allows get/list forms', () => {
 });
 
 test('git mutating subcommands need permission', () => {
-  for (const cmd of ['git push', 'git commit -m x', 'git checkout -b foo', 'git reset --hard', 'git rebase main']) {
+  for (const cmd of [
+    'git push',
+    'git commit -m x',
+    'git checkout -b foo',
+    'git reset --hard',
+    'git rebase main',
+  ]) {
     assert.strictEqual(classifyBashCommand(cmd), 'needs-permission', cmd);
   }
 });

@@ -34,7 +34,6 @@ function guardWindowNavigation(webContents) {
  * @param {{ state: import('./sessionState').SessionState, bus: import('../ipc/rendererBus').RendererBus, getSaveFileAs: () => Promise<void> }} deps
  */
 function createWindowManager({ state, bus, getSaveFileAs }) {
-
   function createMainWindow() {
     const iconPath = path.join(mainDir, '../icon.png');
 
@@ -43,22 +42,24 @@ function createWindowManager({ state, bus, getSaveFileAs }) {
       app.dock.setIcon(iconPath);
     }
 
-    bus.setMainWindow(new BrowserWindow({
-      width: 1200,
-      height: 800,
-      minWidth: 600,
-      minHeight: 400,
-      title: 'Vomit',
-      icon: iconPath,
-      webPreferences: {
-        preload: path.join(mainDir, 'preload.js'),
-        contextIsolation: true,
-        nodeIntegration: false,
-        plugins: true
-      },
-      titleBarStyle: 'hiddenInset',
-      trafficLightPosition: { x: 12, y: 10 }
-    }));
+    bus.setMainWindow(
+      new BrowserWindow({
+        width: 1200,
+        height: 800,
+        minWidth: 600,
+        minHeight: 400,
+        title: 'Vomit',
+        icon: iconPath,
+        webPreferences: {
+          preload: path.join(mainDir, 'preload.js'),
+          contextIsolation: true,
+          nodeIntegration: false,
+          plugins: true,
+        },
+        titleBarStyle: 'hiddenInset',
+        trafficLightPosition: { x: 12, y: 10 },
+      }),
+    );
 
     bus.getMainWindow().loadFile(path.join(mainDir, '../renderer/index.html'));
 
@@ -80,7 +81,7 @@ function createWindowManager({ state, bus, getSaveFileAs }) {
           cancelId: 2,
           title: 'Unsaved Changes',
           message: 'Do you want to save your changes?',
-          detail: 'Your changes will be lost if you close without saving.'
+          detail: 'Your changes will be lost if you close without saving.',
         });
 
         if (result.response === 0) {
@@ -124,10 +125,10 @@ function createWindowManager({ state, bus, getSaveFileAs }) {
       webPreferences: {
         preload: path.join(mainDir, 'preload.js'),
         contextIsolation: true,
-        nodeIntegration: false
+        nodeIntegration: false,
       },
       titleBarStyle: 'hiddenInset',
-      trafficLightPosition: { x: 12, y: 10 }
+      trafficLightPosition: { x: 12, y: 10 },
     });
 
     newWindow.loadFile(path.join(mainDir, '../renderer/index.html'));
@@ -148,17 +149,19 @@ function createWindowManager({ state, bus, getSaveFileAs }) {
   }
 
   function createPresentationWindow() {
-    bus.setPresentationWindow(new BrowserWindow({
-      width: 1280,
-      height: 720,
-      title: 'Presentation',
-      webPreferences: {
-        preload: path.join(mainDir, 'preload.js'),
-        contextIsolation: true,
-        nodeIntegration: false
-      },
-      backgroundColor: '#1e1e1e'
-    }));
+    bus.setPresentationWindow(
+      new BrowserWindow({
+        width: 1280,
+        height: 720,
+        title: 'Presentation',
+        webPreferences: {
+          preload: path.join(mainDir, 'preload.js'),
+          contextIsolation: true,
+          nodeIntegration: false,
+        },
+        backgroundColor: '#1e1e1e',
+      }),
+    );
 
     bus.getPresentationWindow().loadFile(path.join(mainDir, '../renderer/presentation.html'));
 
@@ -170,17 +173,19 @@ function createWindowManager({ state, bus, getSaveFileAs }) {
   }
 
   function createPresenterWindow() {
-    bus.setPresenterWindow(new BrowserWindow({
-      width: 1000,
-      height: 700,
-      title: 'Presenter View',
-      webPreferences: {
-        preload: path.join(mainDir, 'preload.js'),
-        contextIsolation: true,
-        nodeIntegration: false
-      },
-      backgroundColor: '#2d2d2d'
-    }));
+    bus.setPresenterWindow(
+      new BrowserWindow({
+        width: 1000,
+        height: 700,
+        title: 'Presenter View',
+        webPreferences: {
+          preload: path.join(mainDir, 'preload.js'),
+          contextIsolation: true,
+          nodeIntegration: false,
+        },
+        backgroundColor: '#2d2d2d',
+      }),
+    );
 
     bus.getPresenterWindow().loadFile(path.join(mainDir, '../renderer/presenter.html'));
 
@@ -199,17 +204,19 @@ function createWindowManager({ state, bus, getSaveFileAs }) {
       return bus.getDocumentationWindow();
     }
 
-    bus.setDocumentationWindow(new BrowserWindow({
-      width: 900,
-      height: 700,
-      title: 'Documentation',
-      webPreferences: {
-        preload: path.join(mainDir, 'preload.js'),
-        contextIsolation: true,
-        nodeIntegration: false
-      },
-      backgroundColor: '#1e1e1e'
-    }));
+    bus.setDocumentationWindow(
+      new BrowserWindow({
+        width: 900,
+        height: 700,
+        title: 'Documentation',
+        webPreferences: {
+          preload: path.join(mainDir, 'preload.js'),
+          contextIsolation: true,
+          nodeIntegration: false,
+        },
+        backgroundColor: '#1e1e1e',
+      }),
+    );
 
     bus.getDocumentationWindow().loadFile(path.join(mainDir, '../renderer/documentation.html'));
 
@@ -228,19 +235,21 @@ function createWindowManager({ state, bus, getSaveFileAs }) {
   }
 
   function createTerminalWindow() {
-    bus.setTerminalWindow(new BrowserWindow({
-      width: 900,
-      height: 500,
-      minWidth: 600,
-      minHeight: 300,
-      title: 'Terminal',
-      webPreferences: {
-        preload: path.join(mainDir, 'preload.js'),
-        contextIsolation: true,
-        nodeIntegration: false
-      },
-      backgroundColor: '#1e1e1e'
-    }));
+    bus.setTerminalWindow(
+      new BrowserWindow({
+        width: 900,
+        height: 500,
+        minWidth: 600,
+        minHeight: 300,
+        title: 'Terminal',
+        webPreferences: {
+          preload: path.join(mainDir, 'preload.js'),
+          contextIsolation: true,
+          nodeIntegration: false,
+        },
+        backgroundColor: '#1e1e1e',
+      }),
+    );
 
     bus.getTerminalWindow().loadFile(path.join(mainDir, '../renderer/terminal.html'));
 
@@ -256,7 +265,14 @@ function createWindowManager({ state, bus, getSaveFileAs }) {
     return bus.getTerminalWindow();
   }
 
-  return { createMainWindow, createNewEditorWindow, createPresentationWindow, createPresenterWindow, createDocumentationWindow, createTerminalWindow };
+  return {
+    createMainWindow,
+    createNewEditorWindow,
+    createPresentationWindow,
+    createPresenterWindow,
+    createDocumentationWindow,
+    createTerminalWindow,
+  };
 }
 
 module.exports = { createWindowManager };

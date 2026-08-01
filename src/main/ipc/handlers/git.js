@@ -6,7 +6,12 @@ const path = require('path');
 const { execFile } = require('child_process');
 const chokidar = require('chokidar');
 const { findExecutable } = require('./ai');
-const { parsePorcelainZ, classifyStatus, propagateToFolders, computeGutterLines } = require('../../services/gitUtils');
+const {
+  parsePorcelainZ,
+  classifyStatus,
+  propagateToFolders,
+  computeGutterLines,
+} = require('../../services/gitUtils');
 
 const GIT_TIMEOUT_MS = 5000;
 const GIT_MAX_BUFFER = 10 * 1024 * 1024;
@@ -22,7 +27,12 @@ function findGitBinary() {
     const candidates = [
       path.join(process.env.ProgramFiles || 'C:\\Program Files', 'Git', 'cmd', 'git.exe'),
       path.join(process.env.ProgramFiles || 'C:\\Program Files', 'Git', 'bin', 'git.exe'),
-      path.join(process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)', 'Git', 'cmd', 'git.exe')
+      path.join(
+        process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)',
+        'Git',
+        'cmd',
+        'git.exe',
+      ),
     ];
     for (const p of candidates) {
       if (fs.existsSync(p)) return p;
@@ -57,8 +67,14 @@ function createGitService({ state, bus, configStore }) {
       execFile(
         gitPath,
         args,
-        { cwd, timeout: GIT_TIMEOUT_MS, maxBuffer: GIT_MAX_BUFFER, windowsHide: true, encoding: 'utf8' },
-        (err, stdout) => resolve(err ? null : stdout)
+        {
+          cwd,
+          timeout: GIT_TIMEOUT_MS,
+          maxBuffer: GIT_MAX_BUFFER,
+          windowsHide: true,
+          encoding: 'utf8',
+        },
+        (err, stdout) => resolve(err ? null : stdout),
       );
     });
   }
@@ -112,7 +128,9 @@ function createGitService({ state, bus, configStore }) {
     const targets = [path.join(info.gitDir, 'HEAD'), path.join(info.gitDir, 'index')];
     gitWatcher = chokidar.watch(targets, { ignoreInitial: true, persistent: true });
     gitWatcher.on('all', () => emitStatusChanged('git'));
-    gitWatcher.on('error', () => { /* watcher failure = silently degraded */ });
+    gitWatcher.on('error', () => {
+      /* watcher failure = silently degraded */
+    });
   }
 
   function currentRoot() {
@@ -193,7 +211,9 @@ function createGitService({ state, bus, configStore }) {
       return { isRepo: info.isRepo, root: info.root || null };
     });
     ipcMain.handle('git-status', () => getStatus());
-    ipcMain.handle('git-line-diff', (event, filePath, bufferContent) => getLineDiff(filePath, bufferContent));
+    ipcMain.handle('git-line-diff', (event, filePath, bufferContent) =>
+      getLineDiff(filePath, bufferContent),
+    );
   }
 
   return {
@@ -203,7 +223,7 @@ function createGitService({ state, bus, configStore }) {
     getLineDiff,
     notifyExternalChange,
     onWindowFocus,
-    dispose
+    dispose,
   };
 }
 

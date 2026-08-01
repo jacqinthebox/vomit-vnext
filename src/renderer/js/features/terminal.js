@@ -59,9 +59,15 @@ class TerminalManager {
     this._activePermissionId = null;
   }
 
-  get tabManager() { return this._getTabManager(); }
-  get previewManager() { return this._getPreviewManager(); }
-  get fileTreeManager() { return this._getFileTreeManager(); }
+  get tabManager() {
+    return this._getTabManager();
+  }
+  get previewManager() {
+    return this._getPreviewManager();
+  }
+  get fileTreeManager() {
+    return this._getFileTreeManager();
+  }
 
   // --- IPC event handlers ---
 
@@ -151,7 +157,9 @@ class TerminalManager {
     window.addEventListener('vomit:pi-exit', (e) => {
       this.isPiRunning = false;
       if (this.piXterm) {
-        this.piXterm.write('\r\n\x1b[90m[Pi session ended — switch away and back to restart]\x1b[0m\r\n');
+        this.piXterm.write(
+          '\r\n\x1b[90m[Pi session ended — switch away and back to restart]\x1b[0m\r\n',
+        );
       }
     });
 
@@ -167,7 +175,10 @@ class TerminalManager {
     window.addEventListener('vomit:rag-progress', (e) => {
       const progress = e.detail;
       if (progress.status === 'indexing') {
-        this.appendTerminalOutput(`Indexing: ${progress.file} (${progress.current}/${progress.total})`, 'system');
+        this.appendTerminalOutput(
+          `Indexing: ${progress.file} (${progress.current}/${progress.total})`,
+          'system',
+        );
       } else if (progress.status === 'done') {
         this.appendTerminalOutput(`✓ Indexed ${progress.total} files successfully!`, 'output');
       } else if (progress.status === 'error') {
@@ -224,12 +235,17 @@ class TerminalManager {
 
     // Cache whether Pi is installed so Cmd+J can default to the Pi tab only
     // when it will actually work — otherwise it falls back to Vomit AI.
-    window.vomit.piCheck().then(r => {
-      this.piAvailable = !!(r && r.available);
-    }).catch(() => { this.piAvailable = false; });
+    window.vomit
+      .piCheck()
+      .then((r) => {
+        this.piAvailable = !!(r && r.available);
+      })
+      .catch(() => {
+        this.piAvailable = false;
+      });
 
     // Load persisted command history
-    window.vomit.getTerminalHistory().then(history => {
+    window.vomit.getTerminalHistory().then((history) => {
       this.state.terminalHistory = history;
       this.state.terminalHistoryIndex = history.length;
     });
@@ -248,9 +264,15 @@ class TerminalManager {
     this.terminalInput.addEventListener('keydown', async (e) => {
       // Agent permission prompts accept single-keypress answers when the
       // input is empty (a/r/s for diff prompts, y/n/a for plain ones).
-      if (this._activePermissionId && this._pendingInputResolver && this.terminalInput.value === '' &&
-          !e.metaKey && !e.ctrlKey && !e.altKey &&
-          ['a', 'r', 's', 'y', 'n'].includes((e.key || '').toLowerCase())) {
+      if (
+        this._activePermissionId &&
+        this._pendingInputResolver &&
+        this.terminalInput.value === '' &&
+        !e.metaKey &&
+        !e.ctrlKey &&
+        !e.altKey &&
+        ['a', 'r', 's', 'y', 'n'].includes((e.key || '').toLowerCase())
+      ) {
         e.preventDefault();
         const key = e.key.toLowerCase();
         this.appendTerminalOutput(`❯ ${key}`, 'input');
@@ -317,7 +339,8 @@ class TerminalManager {
           this._pickerMoveSelection(-1);
         } else if (this.state.terminalHistoryIndex > 0) {
           this.state.terminalHistoryIndex--;
-          this.terminalInput.value = this.state.terminalHistory[this.state.terminalHistoryIndex] || '';
+          this.terminalInput.value =
+            this.state.terminalHistory[this.state.terminalHistoryIndex] || '';
         }
       } else if (e.key === 'ArrowDown') {
         e.preventDefault();
@@ -325,7 +348,8 @@ class TerminalManager {
           this._pickerMoveSelection(1);
         } else if (this.state.terminalHistoryIndex < this.state.terminalHistory.length - 1) {
           this.state.terminalHistoryIndex++;
-          this.terminalInput.value = this.state.terminalHistory[this.state.terminalHistoryIndex] || '';
+          this.terminalInput.value =
+            this.state.terminalHistory[this.state.terminalHistoryIndex] || '';
         } else {
           this.state.terminalHistoryIndex = this.state.terminalHistory.length;
           this.terminalInput.value = '';
@@ -415,7 +439,7 @@ class TerminalManager {
     this.initTerminalTitle();
 
     // Setup terminal tab switching
-    this.terminalTabs.forEach(tab => {
+    this.terminalTabs.forEach((tab) => {
       tab.addEventListener('click', () => {
         const targetTab = tab.dataset.terminal;
         this.switchTerminalTab(targetTab);
@@ -440,7 +464,12 @@ class TerminalManager {
 
     // Also listen on document level when terminal is visible
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'c' && e.ctrlKey && this.state.isTerminalPanelVisible && this.state.isClaudeRunning) {
+      if (
+        e.key === 'c' &&
+        e.ctrlKey &&
+        this.state.isTerminalPanelVisible &&
+        this.state.isClaudeRunning
+      ) {
         e.preventDefault();
         this.stopAI();
       }
@@ -450,7 +479,7 @@ class TerminalManager {
   showAvailableCommands() {
     const { COMMAND_REGISTRY } = window.TerminalCommands;
     this.appendTerminalOutput('Available commands:', 'system');
-    COMMAND_REGISTRY.filter(c => !c.hidden).forEach(c => {
+    COMMAND_REGISTRY.filter((c) => !c.hidden).forEach((c) => {
       const args = c.argsHint ? ` ${c.argsHint}` : '';
       this.appendTerminalOutput(`  ${c.name}${args}  —  ${c.description}`, 'system');
     });
@@ -483,7 +512,7 @@ class TerminalManager {
 
     // Hint mode: exact command name followed by a trailing space (after Tab completion)
     if (inputValue.endsWith(' ') && trimmedLower.startsWith('/')) {
-      const exact = COMMAND_REGISTRY.find(c => c.name.toLowerCase() === trimmedLower);
+      const exact = COMMAND_REGISTRY.find((c) => c.name.toLowerCase() === trimmedLower);
       if (exact && exact.args !== 'none') {
         filtered = [exact];
       } else {
@@ -492,7 +521,7 @@ class TerminalManager {
       }
     } else {
       filtered = [...COMMAND_REGISTRY]
-        .filter(c => !c.hidden && c.name.toLowerCase().startsWith(lower))
+        .filter((c) => !c.hidden && c.name.toLowerCase().startsWith(lower))
         .sort((a, b) => a.name.localeCompare(b.name));
     }
 
@@ -519,8 +548,8 @@ class TerminalManager {
 
   _renderPicker() {
     const { items, selectedIndex } = this.pickerState;
-    const maxLen = Math.max(...items.map(c => c.name.length));
-    const maxHintLen = Math.max(0, ...items.map(c => (c.argsHint || '').length));
+    const maxLen = Math.max(...items.map((c) => c.name.length));
+    const maxHintLen = Math.max(0, ...items.map((c) => (c.argsHint || '').length));
     const showArgs = maxHintLen > 0;
 
     if (!this.pickerState.blockEl) {
@@ -530,15 +559,19 @@ class TerminalManager {
       this.pickerState.blockEl = el;
     }
 
-    this.pickerState.blockEl.innerHTML = items.map((c, i) => {
-      const isSelected = i === selectedIndex;
-      const marker = isSelected ? '▸' : ' ';
-      const name = c.name.padEnd(maxLen);
-      const argsStr = showArgs ? `  ${(c.argsHint || '').padEnd(maxHintLen)}` : '';
-      const cls = isSelected ? 'terminal-line system terminal-picker-selected' : 'terminal-line system';
-      const text = ` ${marker} ${name}${argsStr}  —  ${c.description}`;
-      return `<div class="${cls}" style="white-space:pre">${this.escapeHtml(text)}</div>`;
-    }).join('');
+    this.pickerState.blockEl.innerHTML = items
+      .map((c, i) => {
+        const isSelected = i === selectedIndex;
+        const marker = isSelected ? '▸' : ' ';
+        const name = c.name.padEnd(maxLen);
+        const argsStr = showArgs ? `  ${(c.argsHint || '').padEnd(maxHintLen)}` : '';
+        const cls = isSelected
+          ? 'terminal-line system terminal-picker-selected'
+          : 'terminal-line system';
+        const text = ` ${marker} ${name}${argsStr}  —  ${c.description}`;
+        return `<div class="${cls}" style="white-space:pre">${this.escapeHtml(text)}</div>`;
+      })
+      .join('');
 
     // Scroll the selected row into view rather than always jumping to bottom
     const selectedEl = this.pickerState.blockEl.querySelector('.terminal-picker-selected');
@@ -557,7 +590,7 @@ class TerminalManager {
     this.state.activeTerminalTab = tabName;
 
     // Update tab buttons
-    this.terminalTabs.forEach(tab => {
+    this.terminalTabs.forEach((tab) => {
       tab.classList.toggle('active', tab.dataset.terminal === tabName);
     });
 
@@ -622,10 +655,10 @@ class TerminalManager {
         if (this.piXterm) {
           this.piXterm.write(
             '\x1b[33mPi is not installed.\x1b[0m\r\n\r\n' +
-            'Install it with:\r\n\r\n' +
-            '  \x1b[36mnpm i -g @earendil-works/pi-coding-agent\x1b[0m\r\n\r\n' +
-            'then reopen this tab. Configure models in ~/.pi/agent/models.json\r\n' +
-            '(point it at your local Ollama or vLLM endpoint).\r\n'
+              'Install it with:\r\n\r\n' +
+              '  \x1b[36mnpm i -g @earendil-works/pi-coding-agent\x1b[0m\r\n\r\n' +
+              'then reopen this tab. Configure models in ~/.pi/agent/models.json\r\n' +
+              '(point it at your local Ollama or vLLM endpoint).\r\n',
           );
         }
         return;
@@ -791,7 +824,7 @@ class TerminalManager {
         brightBlue: '#6871ff',
         brightMagenta: '#ff76ff',
         brightCyan: '#5ffdff',
-        brightWhite: '#fffefe'
+        brightWhite: '#fffefe',
       };
     } else {
       // Dark theme colors - derive from CSS variables where possible
@@ -817,7 +850,7 @@ class TerminalManager {
         brightBlue: '#89b4fa',
         brightMagenta: '#cba6f7',
         brightCyan: '#94e2d5',
-        brightWhite: '#ffffff'
+        brightWhite: '#ffffff',
       };
     }
   }
@@ -849,10 +882,11 @@ class TerminalManager {
       cursorBlink: true,
       cursorStyle: 'bar',
       fontSize: 13,
-      fontFamily: "'MesloLGS NF', 'Hack Nerd Font', 'FiraCode Nerd Font', 'JetBrainsMono Nerd Font', 'SF Mono', 'Monaco', 'Menlo', 'Consolas', monospace",
+      fontFamily:
+        "'MesloLGS NF', 'Hack Nerd Font', 'FiraCode Nerd Font', 'JetBrainsMono Nerd Font', 'SF Mono', 'Monaco', 'Menlo', 'Consolas', monospace",
       theme: this.getXtermTheme(),
       allowProposedApi: true,
-      scrollback: 10000
+      scrollback: 10000,
     });
 
     // Create and load fit addon
@@ -880,7 +914,11 @@ class TerminalManager {
 
     // Handle window resize
     window.addEventListener('resize', () => {
-      if (this.state.isTerminalPanelVisible && this.state.activeTerminalTab === 'shell' && this.xtermFitAddon) {
+      if (
+        this.state.isTerminalPanelVisible &&
+        this.state.activeTerminalTab === 'shell' &&
+        this.xtermFitAddon
+      ) {
         this.xtermFitAddon.fit();
         if (this.state.isShellRunning) {
           window.vomit.shellResize(this.xterm.cols, this.xterm.rows);
@@ -897,10 +935,11 @@ class TerminalManager {
       cursorBlink: true,
       cursorStyle: 'bar',
       fontSize: 13,
-      fontFamily: "'MesloLGS NF', 'Hack Nerd Font', 'FiraCode Nerd Font', 'JetBrainsMono Nerd Font', 'SF Mono', 'Monaco', 'Menlo', 'Consolas', monospace",
+      fontFamily:
+        "'MesloLGS NF', 'Hack Nerd Font', 'FiraCode Nerd Font', 'JetBrainsMono Nerd Font', 'SF Mono', 'Monaco', 'Menlo', 'Consolas', monospace",
       theme: this.getXtermTheme(),
       allowProposedApi: true,
-      scrollback: 10000
+      scrollback: 10000,
     });
 
     this.piFitAddon = new FitAddon.FitAddon();
@@ -923,7 +962,11 @@ class TerminalManager {
 
     // Handle window resize
     window.addEventListener('resize', () => {
-      if (this.state.isTerminalPanelVisible && this.state.activeTerminalTab === 'pi' && this.piFitAddon) {
+      if (
+        this.state.isTerminalPanelVisible &&
+        this.state.activeTerminalTab === 'pi' &&
+        this.piFitAddon
+      ) {
         this.piFitAddon.fit();
         if (this.isPiRunning) {
           window.vomit.piResize(this.piXterm.cols, this.piXterm.rows);
@@ -993,7 +1036,10 @@ class TerminalManager {
     // current folder as context.
     const cwd = this.state.projectRoot || this.state.currentDirectory;
     if (!cwd) {
-      this.appendTerminalOutput('Error: No project folder open. Add or select a bucket from the Buckets menu first.', 'error');
+      this.appendTerminalOutput(
+        'Error: No project folder open. Add or select a bucket from the Buckets menu first.',
+        'error',
+      );
       return;
     }
     await this.executeDefaultCommand(command, cwd);
@@ -1019,7 +1065,9 @@ class TerminalManager {
       const docLabel = this.state.currentFilePath
         ? ` (${window.PathUtils.basename(this.state.currentFilePath)})`
         : '';
-      parts.push(`Here is the document currently open in the editor${docLabel}:\n---\n${docContent}\n---`);
+      parts.push(
+        `Here is the document currently open in the editor${docLabel}:\n---\n${docContent}\n---`,
+      );
     }
     const finalCommand = `${parts.join('\n\n')}\n\nUser request: ${prompt}`;
 
@@ -1213,12 +1261,15 @@ Now create the presentation about: ${topic}`;
   async pseudonymizeCurrentDoc(cwd, mode = 'ai', customers = []) {
     const normalizedMode = mode === 'deterministic' ? 'deterministic' : 'ai';
     const forcedCustomers = Array.isArray(customers) ? customers : [];
-    this.appendTerminalOutput(`❯ /pseudo${normalizedMode === 'deterministic' ? ' deterministic' : ''}${forcedCustomers.map(c => ` --customer "${this.formatPseudoCustomer(c)}"`).join('')}`, 'input');
+    this.appendTerminalOutput(
+      `❯ /pseudo${normalizedMode === 'deterministic' ? ' deterministic' : ''}${forcedCustomers.map((c) => ` --customer "${this.formatPseudoCustomer(c)}"`).join('')}`,
+      'input',
+    );
     this.appendTerminalOutput(
       normalizedMode === 'deterministic'
         ? 'Pseudonymizing current document (deterministic)...'
         : 'Pseudonymizing current document...',
-      'system'
+      'system',
     );
 
     const docContent = this.host.getContent();
@@ -1235,8 +1286,10 @@ Now create the presentation about: ${topic}`;
     if (currentFile) {
       const dir = window.PathUtils.dirname(currentFile);
       const filename = window.PathUtils.basename(currentFile);
-      const ext = filename.lastIndexOf('.') > 0 ? filename.substring(filename.lastIndexOf('.')) : '';
-      const basename = filename.lastIndexOf('.') > 0 ? filename.substring(0, filename.lastIndexOf('.')) : filename;
+      const ext =
+        filename.lastIndexOf('.') > 0 ? filename.substring(filename.lastIndexOf('.')) : '';
+      const basename =
+        filename.lastIndexOf('.') > 0 ? filename.substring(0, filename.lastIndexOf('.')) : filename;
       outputPath = window.PathUtils.join(dir, `${basename}-pseudo${ext}`);
       mappingPath = window.PathUtils.join(dir, `${basename}-pseudo.map.json`);
       relativeName = filename;
@@ -1264,13 +1317,21 @@ Now create the presentation about: ${topic}`;
       }
 
       const sortedKeys = Object.keys(mapping).sort((a, b) => b.length - a.length);
-      const applied = this.applyPseudoMappingToContent(docContent, sortedKeys, mapping, customerKeys);
+      const applied = this.applyPseudoMappingToContent(
+        docContent,
+        sortedKeys,
+        mapping,
+        customerKeys,
+      );
 
       await window.vomit.writeFile(outputPath, applied.content);
       this.appendTerminalOutput(`✓ Saved: ${window.PathUtils.basename(outputPath)}`, 'output');
 
       await window.vomit.writeFile(mappingPath, JSON.stringify(mapping, null, 2));
-      this.appendTerminalOutput(`✓ Mapping saved: ${window.PathUtils.basename(mappingPath)} (${Object.keys(mapping).length} entities)`, 'output');
+      this.appendTerminalOutput(
+        `✓ Mapping saved: ${window.PathUtils.basename(mappingPath)} (${Object.keys(mapping).length} entities)`,
+        'output',
+      );
 
       const parentDir = window.PathUtils.dirname(outputPath);
       await this.fileTreeManager.refreshFolder(parentDir);
@@ -1349,7 +1410,12 @@ ${docContent}
         if (mapping && Object.keys(mapping).length > 0) {
           // Apply mapping to original content programmatically
           const sortedKeys = Object.keys(mapping).sort((a, b) => b.length - a.length);
-          const applied = this.applyPseudoMappingToContent(docContent, sortedKeys, mapping, customerKeys);
+          const applied = this.applyPseudoMappingToContent(
+            docContent,
+            sortedKeys,
+            mapping,
+            customerKeys,
+          );
           const content = applied.content;
 
           // Save the pseudonymized content
@@ -1358,7 +1424,10 @@ ${docContent}
 
           // Save the mapping
           await window.vomit.writeFile(mappingPath, JSON.stringify(mapping, null, 2));
-          this.appendTerminalOutput(`✓ Mapping saved: ${window.PathUtils.basename(mappingPath)}`, 'output');
+          this.appendTerminalOutput(
+            `✓ Mapping saved: ${window.PathUtils.basename(mappingPath)}`,
+            'output',
+          );
 
           // Refresh the parent folder in the file tree
           const parentDir = window.PathUtils.dirname(outputPath);
@@ -1383,7 +1452,7 @@ ${docContent}
     const normalizedMode = mode === 'ai' ? 'ai' : 'deterministic';
     this.appendTerminalOutput(
       `❯ /pseudo-selection${normalizedMode === 'ai' ? ' --ai' : ''}`,
-      'input'
+      'input',
     );
 
     const hasSelection = this.host.somethingSelected();
@@ -1393,7 +1462,7 @@ ${docContent}
         hasSelection
           ? 'Error: Selected text is empty.'
           : 'Error: Select text in the editor first (or open a document).',
-        'error'
+        'error',
       );
       return;
     }
@@ -1402,9 +1471,15 @@ ${docContent}
       // Accumulate into the session map so /pseudo-restore can reverse it.
       Object.assign(this.pseudoTextMap, mapping);
       const count = Object.keys(mapping).length;
-      this.appendTerminalOutput(`✓ Pseudonymized (${count} ${count === 1 ? 'entity' : 'entities'}):`, 'output');
+      this.appendTerminalOutput(
+        `✓ Pseudonymized (${count} ${count === 1 ? 'entity' : 'entities'}):`,
+        'output',
+      );
       this.appendTerminalOutput(content, 'output');
-      this.appendTerminalOutput('Reverse with /pseudo-restore (select the pseudonymized text first).', 'system');
+      this.appendTerminalOutput(
+        'Reverse with /pseudo-restore (select the pseudonymized text first).',
+        'system',
+      );
     };
 
     // Deterministic: build the mapping locally with the same engine the repo
@@ -1507,7 +1582,10 @@ ${sourceText}
 
     const entries = Object.entries(this.pseudoTextMap || {});
     if (entries.length === 0) {
-      this.appendTerminalOutput('Error: No mapping this session. Run /pseudo-selection first.', 'error');
+      this.appendTerminalOutput(
+        'Error: No mapping this session. Run /pseudo-selection first.',
+        'error',
+      );
       return;
     }
 
@@ -1518,7 +1596,7 @@ ${sourceText}
         hasSelection
           ? 'Error: Selected text is empty.'
           : 'Error: Select the pseudonymized text in the editor first (or open a document).',
-        'error'
+        'error',
       );
       return;
     }
@@ -1533,7 +1611,10 @@ ${sourceText}
     const applied = this.applyPseudoMappingToContent(sourceText, sortedKeys, reverse);
 
     if (!applied.changed) {
-      this.appendTerminalOutput('No pseudonymized values from this session found in the selection.', 'system');
+      this.appendTerminalOutput(
+        'No pseudonymized values from this session found in the selection.',
+        'system',
+      );
       return;
     }
 
@@ -1554,7 +1635,8 @@ ${sourceText}
     const dir = window.PathUtils.dirname(currentFile);
     const filename = window.PathUtils.basename(currentFile);
     const ext = filename.lastIndexOf('.') > 0 ? filename.substring(filename.lastIndexOf('.')) : '';
-    const basename = filename.lastIndexOf('.') > 0 ? filename.substring(0, filename.lastIndexOf('.')) : filename;
+    const basename =
+      filename.lastIndexOf('.') > 0 ? filename.substring(0, filename.lastIndexOf('.')) : filename;
 
     let mappingPath;
     let originalPath;
@@ -1565,7 +1647,7 @@ ${sourceText}
       mappingPath = `${dir}/${basename}.map.json`;
       originalPath = `${dir}/${originalBasename}${ext}`;
     } else {
-      this.appendTerminalOutput('Error: This doesn\'t appear to be a pseudonymized file.', 'error');
+      this.appendTerminalOutput("Error: This doesn't appear to be a pseudonymized file.", 'error');
       this.appendTerminalOutput('Open a *-pseudo.md file to run /pseudo-restore.', 'system');
       return;
     }
@@ -1575,7 +1657,10 @@ ${sourceText}
       const mappingContent = await window.vomit.readFile(mappingPath);
 
       if (!mappingContent) {
-        this.appendTerminalOutput(`Error: No mapping found at ${window.PathUtils.basename(mappingPath)}`, 'error');
+        this.appendTerminalOutput(
+          `Error: No mapping found at ${window.PathUtils.basename(mappingPath)}`,
+          'error',
+        );
         this.appendTerminalOutput('Run /pseudo first to create a mapping.', 'system');
         return;
       }
@@ -1644,19 +1729,75 @@ ${sourceText}
   // --- Pseudo-repo workflow (multi-repo bucket pseudonymization) ---
 
   getPseudoTargetExtensions() {
-    return ['.tf', '.tfvars', '.yaml', '.yml', '.json', '.md', '.markdown', '.txt', '.text', '.adoc', '.rst', '.env', '.sh', '.ps1', '.py', '.js', '.ts', '.tsx', '.jsx', '.go', '.cs', '.fs', '.vb', '.csproj', '.fsproj', '.vbproj', '.sln', '.props', '.targets', '.config', '.hcl', '.bicep', '.toml', '.xml', '.sql', '.ini', '.dockerfile', '.tpl'];
+    return [
+      '.tf',
+      '.tfvars',
+      '.yaml',
+      '.yml',
+      '.json',
+      '.md',
+      '.markdown',
+      '.txt',
+      '.text',
+      '.adoc',
+      '.rst',
+      '.env',
+      '.sh',
+      '.ps1',
+      '.py',
+      '.js',
+      '.ts',
+      '.tsx',
+      '.jsx',
+      '.go',
+      '.cs',
+      '.fs',
+      '.vb',
+      '.csproj',
+      '.fsproj',
+      '.vbproj',
+      '.sln',
+      '.props',
+      '.targets',
+      '.config',
+      '.hcl',
+      '.bicep',
+      '.toml',
+      '.xml',
+      '.sql',
+      '.ini',
+      '.dockerfile',
+      '.tpl',
+    ];
   }
 
   getPseudoSkipDirs() {
-    return new Set(['.git', '.terraform', '.terragrunt-cache', 'node_modules', 'pseudo', 'pseudonymized', 'dist', 'build', 'bin', 'obj', '.next', 'coverage', 'vendor']);
+    return new Set([
+      '.git',
+      '.terraform',
+      '.terragrunt-cache',
+      'node_modules',
+      'pseudo',
+      'pseudonymized',
+      'dist',
+      'build',
+      'bin',
+      'obj',
+      '.next',
+      'coverage',
+      'vendor',
+    ]);
   }
 
   normalizePseudoTargetFolder(targetFolder) {
-    const value = String(targetFolder || '').trim().replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
+    const value = String(targetFolder || '')
+      .trim()
+      .replace(/\\/g, '/')
+      .replace(/^\/+|\/+$/g, '');
     if (!value) return null;
 
     const parts = value.split('/').filter(Boolean);
-    if (parts.some(part => part === '.' || part === '..')) return null;
+    if (parts.some((part) => part === '.' || part === '..')) return null;
     return parts.join('/');
   }
 
@@ -1667,7 +1808,7 @@ ${sourceText}
     let currentPath = cwd;
     for (const part of normalized.split('/')) {
       const items = await window.vomit.getDirectoryContents(currentPath);
-      const match = items.find(item => item.isDirectory && item.name === part);
+      const match = items.find((item) => item.isDirectory && item.name === part);
       if (!match) return null;
       currentPath = match.path;
     }
@@ -1735,13 +1876,17 @@ ${sourceText}
     const keys = new Set();
     if (!Array.isArray(customers) || customers.length === 0) return keys;
     for (const entry of customers) {
-      const real = typeof entry === 'string'
-        ? entry.trim()
-        : (entry && typeof entry.name === 'string' ? entry.name.trim() : '');
+      const real =
+        typeof entry === 'string'
+          ? entry.trim()
+          : entry && typeof entry.name === 'string'
+            ? entry.name.trim()
+            : '';
       if (!real) continue;
-      const replacement = (entry && typeof entry.replacement === 'string' && entry.replacement.trim())
-        ? entry.replacement.trim()
-        : null;
+      const replacement =
+        entry && typeof entry.replacement === 'string' && entry.replacement.trim()
+          ? entry.replacement.trim()
+          : null;
       keys.add(real);
       if (replacement) {
         mapping[real] = replacement;
@@ -1857,14 +2002,35 @@ ${sourceText}
     const maxLength = category === 'secret' ? 10000 : category === 'connectionString' ? 2000 : 1000;
     if (trimmed.length < 3 || trimmed.length > maxLength) return true;
     if (this.isPseudoStructuralIdentifier(trimmed)) return true;
-    if (trimmed.includes('${') || trimmed.startsWith('var.') || trimmed.startsWith('local.') || trimmed.startsWith('data.')) return true;
-    if (/^(true|false|null|none|default|latest|main|master|dev|test|prod|stage|staging)$/i.test(trimmed)) return true;
+    if (
+      trimmed.includes('${') ||
+      trimmed.startsWith('var.') ||
+      trimmed.startsWith('local.') ||
+      trimmed.startsWith('data.')
+    )
+      return true;
+    if (
+      /^(true|false|null|none|default|latest|main|master|dev|test|prod|stage|staging)$/i.test(
+        trimmed,
+      )
+    )
+      return true;
     if (/^(example|fake|placeholder|changeme|redacted|dummy)/i.test(trimmed)) return true;
-    if (/^(ado-org|ado-project|ado-repo|ado-pipeline|service-connection|variable-group|resource|namespace)-\d+/i.test(trimmed)) return true;
+    if (
+      /^(ado-org|ado-project|ado-repo|ado-pipeline|service-connection|variable-group|resource|namespace)-\d+/i.test(
+        trimmed,
+      )
+    )
+      return true;
     if (/^Customer-\d+$/i.test(trimmed)) return true;
     if (/^(FAKE_SECRET|FAKE_CONNECTION_STRING)_\d+/i.test(trimmed)) return true;
     if (/^(Example\.App|example\.package)\d+/i.test(trimmed)) return true;
-    if (/^registry\.example\.invalid|^registry\d+\.example\.invalid|^kv-example-\d+|^stexample\d+/i.test(trimmed)) return true;
+    if (
+      /^registry\.example\.invalid|^registry\d+\.example\.invalid|^kv-example-\d+|^stexample\d+/i.test(
+        trimmed,
+      )
+    )
+      return true;
     if (/^user\d+@example\.com$/i.test(trimmed)) return true;
     if (/^10\.254\./.test(trimmed)) return true;
     if (/^00000000-0000-4000-8000-/.test(trimmed)) return true;
@@ -1873,16 +2039,60 @@ ${sourceText}
 
   getPseudoStructuralIdentifiers() {
     return new Set([
-      'apiVersion', 'kind', 'metadata', 'spec', 'status', 'data', 'stringData',
-      'name', 'namespace', 'namespaces', 'namespaceSelector', 'podSelector',
-      'matchLabels', 'matchExpressions', 'selector', 'labels', 'annotations',
-      'roleRef', 'subjects', 'subject', 'apiGroup', 'resource', 'resources', 'verbs',
-      'cluster', 'clusterResourceWhitelist', 'namespaceResourceBlacklist',
-      'destination', 'destinations', 'source', 'sources', 'project',
-      'basename', 'basenameNormalized', 'path', 'server', 'repoURL', 'targetRevision',
-      'cpu', 'memory', 'limits', 'requests', 'regexp', 'regex',
-      'Chart', 'Chart.yaml', 'version', 'appVersion', 'description',
-      'Values', 'Release', 'Template', 'Files', 'Capabilities'
+      'apiVersion',
+      'kind',
+      'metadata',
+      'spec',
+      'status',
+      'data',
+      'stringData',
+      'name',
+      'namespace',
+      'namespaces',
+      'namespaceSelector',
+      'podSelector',
+      'matchLabels',
+      'matchExpressions',
+      'selector',
+      'labels',
+      'annotations',
+      'roleRef',
+      'subjects',
+      'subject',
+      'apiGroup',
+      'resource',
+      'resources',
+      'verbs',
+      'cluster',
+      'clusterResourceWhitelist',
+      'namespaceResourceBlacklist',
+      'destination',
+      'destinations',
+      'source',
+      'sources',
+      'project',
+      'basename',
+      'basenameNormalized',
+      'path',
+      'server',
+      'repoURL',
+      'targetRevision',
+      'cpu',
+      'memory',
+      'limits',
+      'requests',
+      'regexp',
+      'regex',
+      'Chart',
+      'Chart.yaml',
+      'version',
+      'appVersion',
+      'description',
+      'Values',
+      'Release',
+      'Template',
+      'Files',
+      'Capabilities',
     ]);
   }
 
@@ -1931,7 +2141,7 @@ ${sourceText}
     if (this.isPseudoTokenValue(real)) {
       return content.replace(
         new RegExp(`(?<![A-Za-z0-9_.-])${escaped}(?![A-Za-z0-9_.-])`, 'g'),
-        fake
+        fake,
       );
     }
     return content.replace(new RegExp(escaped, 'g'), fake);
@@ -1942,10 +2152,7 @@ ${sourceText}
   // while partial words ("Contosoish", "Acme Corporation") are left intact.
   replaceCustomerName(content, real, fake) {
     const escaped = this.escapeRegex(real);
-    return content.replace(
-      new RegExp(`(?<![A-Za-z0-9])${escaped}(?![A-Za-z0-9])`, 'gi'),
-      fake
-    );
+    return content.replace(new RegExp(`(?<![A-Za-z0-9])${escaped}(?![A-Za-z0-9])`, 'gi'), fake);
   }
 
   applyPseudoMappingToContent(content, sortedKeys, mapping, customerKeys = new Set()) {
@@ -1972,7 +2179,7 @@ ${sourceText}
         const escaped = this.escapeRegex(real);
         nextContent = nextContent.replace(
           new RegExp(`(^|[^A-Za-z0-9_])\\.Values\\.${escaped}(?=\\b|\\.|\\s|\\}|\\)|\\||,)`, 'g'),
-          (match, prefix) => `${prefix}(index .Values ${JSON.stringify(fake)})`
+          (match, prefix) => `${prefix}(index .Values ${JSON.stringify(fake)})`,
         );
       }
 
@@ -2025,26 +2232,72 @@ ${sourceText}
 
     collect(/(?<![:/])\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, 'email');
     collect(/\b(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)\b/g, 'ip');
-    collect(/\b(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)\/(?:[0-9]|[12]\d|3[0-2])\b/g, 'cidr');
-    collect(/\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/gi, 'uuid');
+    collect(
+      /\b(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)\/(?:[0-9]|[12]\d|3[0-2])\b/g,
+      'cidr',
+    );
+    collect(
+      /\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/gi,
+      'uuid',
+    );
     collect(/\/subscriptions\/[0-9a-f-]{36}\/[^\s"'`<>),]+/gi, 'azureResourceId');
     collect(/\barn:aws[a-z-]*:[^:\s"'`]+:[^:\s"'`]*:\d{12}:[^\s"'`<>]+/g, 'awsArn');
     collect(/\b(?:aws_)?account(?:_id)?\s*[:=]\s*["'](\d{12})["']/gi, 'awsAccount', 1);
     collect(/\bhttps?:\/\/[^\s"'`<>]+/gi, 'url');
-    collect(/\b(?:password|passwd|pwd|secret|token|api[_-]?key|client[_-]?secret|access[_-]?key|private[_-]?key)\b\s*[:=]\s*["']([^"'\n]{6,})["']/gi, 'secret', 1);
+    collect(
+      /\b(?:password|passwd|pwd|secret|token|api[_-]?key|client[_-]?secret|access[_-]?key|private[_-]?key)\b\s*[:=]\s*["']([^"'\n]{6,})["']/gi,
+      'secret',
+      1,
+    );
     collect(/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g, 'secret');
-    collect(/-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g, 'secret');
-    collect(/\b(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis|amqps?|sqlserver):\/\/[^\s"'`<>]+/gi, 'connectionString');
-    collect(/["']((?=[^"'\n]*(?:Server|Data Source|Host|Database|Initial Catalog|User Id|Username|Password|AccountKey|SharedAccessKey|DefaultEndpointsProtocol|Endpoint=sb:\/\/))[^"'\n;=]+=[^"'\n]{12,})["']/gi, 'connectionString', 1);
-    collect(/\b(?:database|database_name|db_name|initial catalog)\b\s*[:=]\s*["']([^"'\n]{3,})["']/gi, 'database', 1);
-    collect(/\b(?:username|user_id|user id|db_user|database_user)\b\s*[:=]\s*["']([^"'\n]{3,})["']/gi, 'resource', 1);
+    collect(
+      /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g,
+      'secret',
+    );
+    collect(
+      /\b(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis|amqps?|sqlserver):\/\/[^\s"'`<>]+/gi,
+      'connectionString',
+    );
+    collect(
+      /["']((?=[^"'\n]*(?:Server|Data Source|Host|Database|Initial Catalog|User Id|Username|Password|AccountKey|SharedAccessKey|DefaultEndpointsProtocol|Endpoint=sb:\/\/))[^"'\n;=]+=[^"'\n]{12,})["']/gi,
+      'connectionString',
+      1,
+    );
+    collect(
+      /\b(?:database|database_name|db_name|initial catalog)\b\s*[:=]\s*["']([^"'\n]{3,})["']/gi,
+      'database',
+      1,
+    );
+    collect(
+      /\b(?:username|user_id|user id|db_user|database_user)\b\s*[:=]\s*["']([^"'\n]{3,})["']/gi,
+      'resource',
+      1,
+    );
     collect(/https:\/\/([a-z0-9-]{3,24})\.vault\.azure\.net\b/gi, 'keyVault', 1);
-    collect(/\b([a-z0-9]{3,24})\.(?:blob|queue|table|file|dfs)\.core\.windows\.net\b/gi, 'storageAccount', 1);
-    collect(/\b(?:APPINSIGHTS_INSTRUMENTATIONKEY|APPLICATIONINSIGHTS_CONNECTION_STRING|InstrumentationKey)\b\s*[:=]\s*["']([^"'\n]{6,})["']/gi, 'secret', 1);
-    collect(/\b(?:AZURE_CLIENT_ID|AZURE_TENANT_ID|AZURE_SUBSCRIPTION_ID|client_id|tenant_id|subscription_id)\b\s*[:=]\s*["']([0-9a-f-]{36})["']/gi, 'uuid', 1);
-    collect(/\b(?:id|spn|uami|umi|mi|app|ag|sg|rg|vnet|snet|nsg|rt|pip|kv|st|sa|acr|aks|aro|vm|nic|lb|fw|dns|zone|quay|devhub|backstage|argocd|eso)-[a-z0-9][a-z0-9-]{2,}\b/gi, 'resource');
+    collect(
+      /\b([a-z0-9]{3,24})\.(?:blob|queue|table|file|dfs)\.core\.windows\.net\b/gi,
+      'storageAccount',
+      1,
+    );
+    collect(
+      /\b(?:APPINSIGHTS_INSTRUMENTATIONKEY|APPLICATIONINSIGHTS_CONNECTION_STRING|InstrumentationKey)\b\s*[:=]\s*["']([^"'\n]{6,})["']/gi,
+      'secret',
+      1,
+    );
+    collect(
+      /\b(?:AZURE_CLIENT_ID|AZURE_TENANT_ID|AZURE_SUBSCRIPTION_ID|client_id|tenant_id|subscription_id)\b\s*[:=]\s*["']([0-9a-f-]{36})["']/gi,
+      'uuid',
+      1,
+    );
+    collect(
+      /\b(?:id|spn|uami|umi|mi|app|ag|sg|rg|vnet|snet|nsg|rt|pip|kv|st|sa|acr|aks|aro|vm|nic|lb|fw|dns|zone|quay|devhub|backstage|argocd|eso)-[a-z0-9][a-z0-9-]{2,}\b/gi,
+      'resource',
+    );
     collect(/\b[a-z0-9][a-z0-9-]{1,}\.(?:apps|api)\.[a-z0-9-]+(?:\.[a-z0-9-]+)+\b/gi, 'domain');
-    collect(/\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:internal|local|corp|lan|fx|cloud|dev|test|example|invalid)\b/gi, 'domain');
+    collect(
+      /\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:internal|local|corp|lan|fx|cloud|dev|test|example|invalid)\b/gi,
+      'domain',
+    );
 
     let match;
     const devAzure = /https:\/\/dev\.azure\.com\/([^\/\s"'`?#]+)\/([^\/\s"'`?#]+)/gi;
@@ -2061,7 +2314,8 @@ ${sourceText}
 
     const isAdoFile = /azuredevops_|dev\.azure\.com|visualstudio\.com/i.test(content);
     if (isAdoFile) {
-      const adoBlockRegex = /\b(?:resource|data)\s+"(azuredevops_[^"]+)"\s+"([^"]+)"\s*\{([\s\S]*?)(?=\n\s*(?:resource|data)\s+"|\n\s*}\s*$|$)/gi;
+      const adoBlockRegex =
+        /\b(?:resource|data)\s+"(azuredevops_[^"]+)"\s+"([^"]+)"\s*\{([\s\S]*?)(?=\n\s*(?:resource|data)\s+"|\n\s*}\s*$|$)/gi;
       while ((match = adoBlockRegex.exec(content)) !== null) {
         const type = match[1].toLowerCase();
         const label = match[2];
@@ -2070,29 +2324,43 @@ ${sourceText}
 
         const nameMatch = body.match(/\bname\s*=\s*"([^"\n]{3,})"/i);
         if (nameMatch) {
-          const category = type.includes('git_repository') ? 'adoRepo'
-            : type.includes('build_definition') || type.includes('pipeline') ? 'adoPipeline'
-            : type.includes('serviceendpoint') ? 'serviceConnection'
-            : type.includes('variable_group') ? 'variableGroup'
-            : type.includes('project') ? 'adoProject'
-            : 'resource';
+          const category = type.includes('git_repository')
+            ? 'adoRepo'
+            : type.includes('build_definition') || type.includes('pipeline')
+              ? 'adoPipeline'
+              : type.includes('serviceendpoint')
+                ? 'serviceConnection'
+                : type.includes('variable_group')
+                  ? 'variableGroup'
+                  : type.includes('project')
+                    ? 'adoProject'
+                    : 'resource';
           add(nameMatch[1], category);
         }
       }
 
-      const adoValueRegex = /\b(name|project_name|repository_name|repo_name|pipeline_name|service_endpoint_name|service_connection_name|variable_group_name|agent_pool_name|feed_name|environment_name)\s*=\s*"([^"\n]{3,})"/gi;
+      const adoValueRegex =
+        /\b(name|project_name|repository_name|repo_name|pipeline_name|service_endpoint_name|service_connection_name|variable_group_name|agent_pool_name|feed_name|environment_name)\s*=\s*"([^"\n]{3,})"/gi;
       while ((match = adoValueRegex.exec(content)) !== null) {
         const key = match[1].toLowerCase();
         const value = match[2];
-        const category = key.includes('project') ? 'adoProject'
-          : key.includes('repo') ? 'adoRepo'
-          : key.includes('pipeline') ? 'adoPipeline'
-          : key.includes('service') ? 'serviceConnection'
-          : key.includes('variable_group') ? 'variableGroup'
-          : key.includes('agent_pool') ? 'resource'
-          : key.includes('feed') ? 'resource'
-          : key.includes('environment') ? 'resource'
-          : 'adoProject';
+        const category = key.includes('project')
+          ? 'adoProject'
+          : key.includes('repo')
+            ? 'adoRepo'
+            : key.includes('pipeline')
+              ? 'adoPipeline'
+              : key.includes('service')
+                ? 'serviceConnection'
+                : key.includes('variable_group')
+                  ? 'variableGroup'
+                  : key.includes('agent_pool')
+                    ? 'resource'
+                    : key.includes('feed')
+                      ? 'resource'
+                      : key.includes('environment')
+                        ? 'resource'
+                        : 'adoProject';
         add(value, category);
       }
 
@@ -2102,54 +2370,91 @@ ${sourceText}
       }
     }
 
-    const iacNameRegex = /\b(?:resource_group_name|key_vault_name|storage_account_name|server_name|hostname|host_name|database_name|workspace_name)\s*=\s*"([^"\n]{3,})"/gi;
+    const iacNameRegex =
+      /\b(?:resource_group_name|key_vault_name|storage_account_name|server_name|hostname|host_name|database_name|workspace_name)\s*=\s*"([^"\n]{3,})"/gi;
     while ((match = iacNameRegex.exec(content)) !== null) {
       add(match[1], match[0].toLowerCase().includes('host') ? 'domain' : 'resource');
     }
 
     const lowerPath = (relativePath || '').toLowerCase();
-    const isDotNetFile = /\.(cs|fs|vb|csproj|fsproj|vbproj|sln|props|targets|config|json)$/i.test(lowerPath);
+    const isDotNetFile = /\.(cs|fs|vb|csproj|fsproj|vbproj|sln|props|targets|config|json)$/i.test(
+      lowerPath,
+    );
     if (isDotNetFile) {
       collect(/\bnamespace\s+([A-Z][A-Za-z0-9_]*(?:\.[A-Z][A-Za-z0-9_]*)+)/g, 'namespace', 1);
-      collect(/<(?:RootNamespace|AssemblyName|PackageId|Product|Company)>([^<]{3,})<\/(?:RootNamespace|AssemblyName|PackageId|Product|Company)>/gi, 'package', 1);
+      collect(
+        /<(?:RootNamespace|AssemblyName|PackageId|Product|Company)>([^<]{3,})<\/(?:RootNamespace|AssemblyName|PackageId|Product|Company)>/gi,
+        'package',
+        1,
+      );
       collect(/<UserSecretsId>([^<]{6,})<\/UserSecretsId>/gi, 'secret', 1);
-      collect(/["'](?:ConnectionStrings:[^"']+|DefaultConnection|ApplicationInsights:[^"']+)["']\s*[:=]\s*["']([^"'\n]{6,})["']/gi, 'connectionString', 1);
-      collect(/^\s*(?:Project\([^)]*\)\s*=\s*)?"([^"]{3,})",\s*"[^"]+\.(?:csproj|fsproj|vbproj)"/gmi, 'package', 1);
+      collect(
+        /["'](?:ConnectionStrings:[^"']+|DefaultConnection|ApplicationInsights:[^"']+)["']\s*[:=]\s*["']([^"'\n]{6,})["']/gi,
+        'connectionString',
+        1,
+      );
+      collect(
+        /^\s*(?:Project\([^)]*\)\s*=\s*)?"([^"]{3,})",\s*"[^"]+\.(?:csproj|fsproj|vbproj)"/gim,
+        'package',
+        1,
+      );
     }
 
-    const isPythonFile = /\.(py|toml|ini|env|yaml|yml|json)$/i.test(lowerPath) || lowerPath.endsWith('requirements.txt');
+    const isPythonFile =
+      /\.(py|toml|ini|env|yaml|yml|json)$/i.test(lowerPath) ||
+      lowerPath.endsWith('requirements.txt');
     if (isPythonFile) {
-      collect(/\b(?:SECRET_KEY|DATABASE_URL|REDIS_URL|CELERY_BROKER_URL|BROKER_URL|SQLALCHEMY_DATABASE_URI)\s*=\s*["']([^"'\n]{6,})["']/g, 'secret', 1);
+      collect(
+        /\b(?:SECRET_KEY|DATABASE_URL|REDIS_URL|CELERY_BROKER_URL|BROKER_URL|SQLALCHEMY_DATABASE_URI)\s*=\s*["']([^"'\n]{6,})["']/g,
+        'secret',
+        1,
+      );
       collect(/\bDJANGO_SETTINGS_MODULE\s*=\s*["']([^"'\n]{3,})["']/g, 'namespace', 1);
-      collect(/^\s*name\s*=\s*["']([A-Za-z0-9_.-]{3,})["']/gmi, 'package', 1);
-      collect(/\bsetup\s*\([\s\S]*?\bname\s*=\s*["']([A-Za-z0-9_.-]{3,})["']/gmi, 'package', 1);
+      collect(/^\s*name\s*=\s*["']([A-Za-z0-9_.-]{3,})["']/gim, 'package', 1);
+      collect(/\bsetup\s*\([\s\S]*?\bname\s*=\s*["']([A-Za-z0-9_.-]{3,})["']/gim, 'package', 1);
     }
 
-    const isKubernetesFile = /apiVersion\s*:|kind\s*:|helm\.sh|containers\s*:|ingress/i.test(content);
+    const isKubernetesFile = /apiVersion\s*:|kind\s*:|helm\.sh|containers\s*:|ingress/i.test(
+      content,
+    );
     if (isKubernetesFile) {
-      collect(/^\s*namespace\s*:\s*["']?([A-Za-z0-9_.-]{3,})["']?/gmi, 'k8sNamespace', 1);
-      collect(/^\s*name\s*:\s*["']?([A-Za-z0-9_.-]{3,})["']?/gmi, 'resource', 1);
-      collect(/^\s*host\s*:\s*["']?([^"'\s]+)["']?/gmi, 'domain', 1);
-      const k8sImageRegex = /^\s*image\s*:\s*["']?([^"'\s]+)["']?/gmi;
+      collect(/^\s*namespace\s*:\s*["']?([A-Za-z0-9_.-]{3,})["']?/gim, 'k8sNamespace', 1);
+      collect(/^\s*name\s*:\s*["']?([A-Za-z0-9_.-]{3,})["']?/gim, 'resource', 1);
+      collect(/^\s*host\s*:\s*["']?([^"'\s]+)["']?/gim, 'domain', 1);
+      const k8sImageRegex = /^\s*image\s*:\s*["']?([^"'\s]+)["']?/gim;
       while ((match = k8sImageRegex.exec(content)) !== null) addDockerImage(match[1]);
     }
 
-    const dockerFromRegex = /^\s*FROM\s+([^\s]+)(?:\s+AS\s+\S+)?\s*$/gmi;
+    const dockerFromRegex = /^\s*FROM\s+([^\s]+)(?:\s+AS\s+\S+)?\s*$/gim;
     while ((match = dockerFromRegex.exec(content)) !== null) addDockerImage(match[1]);
 
-    const dockerImageRegex = /\b(?:image|container_image|docker_image)\s*[:=]\s*["']?([^"'\s]+\/[^"'\s]+(?::[^"'\s]+)?)["']?/gi;
+    const dockerImageRegex =
+      /\b(?:image|container_image|docker_image)\s*[:=]\s*["']?([^"'\s]+\/[^"'\s]+(?::[^"'\s]+)?)["']?/gi;
     while ((match = dockerImageRegex.exec(content)) !== null) addDockerImage(match[1]);
 
-    collect(/\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:com|net|org|io|dev|cloud|local|internal|corp|nl|be|de|fr|uk|us|fx)\b/gi, 'domain');
+    collect(
+      /\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:com|net|org|io|dev|cloud|local|internal|corp|nl|be|de|fr|uk|us|fx)\b/gi,
+      'domain',
+    );
 
     return added;
   }
 
-  async runPseudoRepo(cwd, targetFolder = null, mode = 'deterministic', commandName = '/pseudo-deterministic', customers = [], options = {}) {
+  async runPseudoRepo(
+    cwd,
+    targetFolder = null,
+    mode = 'deterministic',
+    commandName = '/pseudo-deterministic',
+    customers = [],
+    options = {},
+  ) {
     const normalizedMode = mode === 'ai' ? 'ai' : 'deterministic';
     const forcedCustomers = Array.isArray(customers) ? customers : [];
     const processAll = !!options.all;
-    this.appendTerminalOutput(`❯ ${commandName}${targetFolder ? ' ' + targetFolder : ''}${processAll ? ' --all' : ''}${normalizedMode === 'ai' ? ' --ai' : ''}${forcedCustomers.map(c => ` --customer "${this.formatPseudoCustomer(c)}"`).join('')}`, 'input');
+    this.appendTerminalOutput(
+      `❯ ${commandName}${targetFolder ? ' ' + targetFolder : ''}${processAll ? ' --all' : ''}${normalizedMode === 'ai' ? ' --ai' : ''}${forcedCustomers.map((c) => ` --customer "${this.formatPseudoCustomer(c)}"`).join('')}`,
+      'input',
+    );
 
     try {
       // 1. Resolve the target. An explicit folder can be a repo or a plain docs folder.
@@ -2158,22 +2463,38 @@ ${sourceText}
         this.appendTerminalOutput(`Resolving target folder: ${targetFolder}`, 'system');
         const target = await this.resolvePseudoTargetFolder(cwd, targetFolder);
         if (!target) {
-          this.appendTerminalOutput(`Error: Folder "${targetFolder}" not found in this bucket.`, 'error');
+          this.appendTerminalOutput(
+            `Error: Folder "${targetFolder}" not found in this bucket.`,
+            'error',
+          );
           const rawTarget = String(targetFolder).trim();
           const bucketName = window.PathUtils.basename(cwd);
           const normalizedTarget = this.normalizePseudoTargetFolder(rawTarget);
           const firstPart = normalizedTarget ? normalizedTarget.split('/')[0] : null;
-          if (rawTarget.startsWith('~') || rawTarget.startsWith('/') || /^[A-Za-z]:[\\/]/.test(rawTarget)) {
-            this.appendTerminalOutput(`Hint: the folder must be a path relative to the bucket root (${cwd}), not an absolute or ~ path.`, 'system');
+          if (
+            rawTarget.startsWith('~') ||
+            rawTarget.startsWith('/') ||
+            /^[A-Za-z]:[\\/]/.test(rawTarget)
+          ) {
+            this.appendTerminalOutput(
+              `Hint: the folder must be a path relative to the bucket root (${cwd}), not an absolute or ~ path.`,
+              'system',
+            );
           } else if (firstPart === bucketName) {
             const withoutBucket = normalizedTarget.split('/').slice(1).join('/');
-            this.appendTerminalOutput(`Hint: the path is resolved inside the bucket "${bucketName}" — don't repeat the bucket name. Try: ${commandName}${withoutBucket ? ' ' + withoutBucket : ''}`, 'system');
+            this.appendTerminalOutput(
+              `Hint: the path is resolved inside the bucket "${bucketName}" — don't repeat the bucket name. Try: ${commandName}${withoutBucket ? ' ' + withoutBucket : ''}`,
+              'system',
+            );
           } else {
-            this.appendTerminalOutput(`Hint: the folder must be a path relative to the bucket root (${cwd}). Names are matched exactly (case-sensitive).`, 'system');
+            this.appendTerminalOutput(
+              `Hint: the folder must be a path relative to the bucket root (${cwd}). Names are matched exactly (case-sensitive).`,
+              'system',
+            );
           }
           this.appendTerminalOutput('Available top-level folders:', 'system');
           const items = await window.vomit.getDirectoryContents(cwd);
-          const dirs = items.filter(i => i.isDirectory && !i.name.startsWith('.'));
+          const dirs = items.filter((i) => i.isDirectory && !i.name.startsWith('.'));
           for (const d of dirs.slice(0, 10)) {
             this.appendTerminalOutput(`  ${d.name}/`, 'system');
           }
@@ -2183,33 +2504,51 @@ ${sourceText}
         repos = [target];
         this.appendTerminalOutput(`Targeting: ${target.name}/`, 'system');
       } else if (processAll) {
-        this.appendTerminalOutput('Processing ALL top-level folders in bucket (git and non-git)...', 'system');
+        this.appendTerminalOutput(
+          'Processing ALL top-level folders in bucket (git and non-git)...',
+          'system',
+        );
         const items = await window.vomit.getDirectoryContents(cwd);
         repos = items
-          .filter(i => i.isDirectory && !i.name.startsWith('.') && i.name !== 'pseudo' && i.name !== 'node_modules')
-          .map(i => ({ name: i.name, path: i.path }));
+          .filter(
+            (i) =>
+              i.isDirectory &&
+              !i.name.startsWith('.') &&
+              i.name !== 'pseudo' &&
+              i.name !== 'node_modules',
+          )
+          .map((i) => ({ name: i.name, path: i.path }));
         if (repos.length === 0) {
           this.appendTerminalOutput(`No top-level folders found in: ${cwd}`, 'error');
           return;
         }
-        this.appendTerminalOutput(`Found ${repos.length} folder(s): ${repos.map(r => r.name).join(', ')}`, 'system');
+        this.appendTerminalOutput(
+          `Found ${repos.length} folder(s): ${repos.map((r) => r.name).join(', ')}`,
+          'system',
+        );
       } else {
         this.appendTerminalOutput('Detecting repos in bucket...', 'system');
         repos = await window.vomit.pseudoDetectRepos(cwd);
         if (repos.length === 0) {
           this.appendTerminalOutput(`No git sub-repos found in: ${cwd}`, 'error');
           this.appendTerminalOutput('Expected: top-level subdirectories with .git/', 'system');
-          this.appendTerminalOutput('Tip: add --all to process every top-level folder (not just git repos), or name a folder explicitly.', 'system');
+          this.appendTerminalOutput(
+            'Tip: add --all to process every top-level folder (not just git repos), or name a folder explicitly.',
+            'system',
+          );
           this.appendTerminalOutput('Listing top-level dirs...', 'system');
           const items = await window.vomit.getDirectoryContents(cwd);
-          const dirs = items.filter(i => i.isDirectory && !i.name.startsWith('.'));
+          const dirs = items.filter((i) => i.isDirectory && !i.name.startsWith('.'));
           for (const d of dirs.slice(0, 10)) {
             this.appendTerminalOutput(`  ${d.name}/`, 'system');
           }
           return;
         }
 
-        this.appendTerminalOutput(`Found ${repos.length} repo(s): ${repos.map(r => r.name).join(', ')}`, 'system');
+        this.appendTerminalOutput(
+          `Found ${repos.length} repo(s): ${repos.map((r) => r.name).join(', ')}`,
+          'system',
+        );
       }
 
       // 2. Phase 1 — build shared mapping either locally or with AI assistance.
@@ -2217,7 +2556,7 @@ ${sourceText}
         normalizedMode === 'ai'
           ? '\n── Phase 1: AI-assisted document/entity extraction ──'
           : '\n── Phase 1: Fast deterministic entity scan ──',
-        'system'
+        'system',
       );
 
       let mapping = {};
@@ -2226,8 +2565,12 @@ ${sourceText}
       if (existingMapping) {
         const sanitized = this.sanitizePseudoMapping(existingMapping);
         mapping = sanitized.mapping;
-        const removedText = sanitized.removed > 0 ? ` (${sanitized.removed} structural/invalid entries skipped)` : '';
-        this.appendTerminalOutput(`Loaded existing mapping (${Object.keys(mapping).length} entities)${removedText}.`, 'system');
+        const removedText =
+          sanitized.removed > 0 ? ` (${sanitized.removed} structural/invalid entries skipped)` : '';
+        this.appendTerminalOutput(
+          `Loaded existing mapping (${Object.keys(mapping).length} entities)${removedText}.`,
+          'system',
+        );
       }
 
       const targetExtensions = this.getPseudoTargetExtensions();
@@ -2242,7 +2585,10 @@ ${sourceText}
         for (let i = 0; i < files.length; i++) {
           totalFiles++;
           if (i === 0 || (i + 1) % 25 === 0 || i + 1 === files.length) {
-            this.appendTerminalOutput(`  [${i + 1}/${files.length}] Scanning: ${files[i].relativePath}`, 'system');
+            this.appendTerminalOutput(
+              `  [${i + 1}/${files.length}] Scanning: ${files[i].relativePath}`,
+              'system',
+            );
           }
 
           const content = await window.vomit.readFile(files[i].path);
@@ -2253,7 +2599,10 @@ ${sourceText}
             const chunks = this.createPseudoContentChunks(content);
             for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
               if (chunks.length > 1) {
-                this.appendTerminalOutput(`    AI scan chunk ${chunkIndex + 1}/${chunks.length}`, 'system');
+                this.appendTerminalOutput(
+                  `    AI scan chunk ${chunkIndex + 1}/${chunks.length}`,
+                  'system',
+                );
               }
 
               const extractPrompt = `You are an entity extraction tool for GDPR pseudonymization.
@@ -2300,21 +2649,29 @@ ${chunks[chunkIndex]}
                     const newEntities = JSON.parse(jsonMatch[0]);
                     for (const [real, fake] of Object.entries(newEntities)) {
                       const realValue = typeof real === 'string' ? real.trim() : '';
-                      if (realValue && !mapping[realValue] && !this.shouldSkipPseudoEntity(realValue, 'resource')) {
-                        mapping[realValue] = typeof fake === 'string' && fake.trim().length > 0
-                          ? fake.trim()
-                          : this.createPseudoReplacement('resource', counters);
+                      if (
+                        realValue &&
+                        !mapping[realValue] &&
+                        !this.shouldSkipPseudoEntity(realValue, 'resource')
+                      ) {
+                        mapping[realValue] =
+                          typeof fake === 'string' && fake.trim().length > 0
+                            ? fake.trim()
+                            : this.createPseudoReplacement('resource', counters);
                         added++;
                       }
                     }
                   }
                 } catch (e) {
-                  this.appendTerminalOutput(`    ⚠ Could not parse AI mappings for ${files[i].relativePath}`, 'error');
+                  this.appendTerminalOutput(
+                    `    ⚠ Could not parse AI mappings for ${files[i].relativePath}`,
+                    'error',
+                  );
                 }
               }
 
               // Keep AI-assisted document mode gentle on local model servers.
-              await new Promise(r => setTimeout(r, 750));
+              await new Promise((r) => setTimeout(r, 750));
             }
           }
 
@@ -2331,8 +2688,14 @@ ${chunks[chunkIndex]}
 
       if (totalFiles === 0) {
         this.appendTerminalOutput('\nNo supported text files found to pseudonymize.', 'error');
-        this.appendTerminalOutput('Supported examples: .md, .markdown, .txt, .adoc, .rst, .yaml, .json, .tf, .xml, .sql, and common source/config files.', 'system');
-        this.appendTerminalOutput('Binary formats like .docx, .pdf, .xlsx, and .pptx are skipped.', 'system');
+        this.appendTerminalOutput(
+          'Supported examples: .md, .markdown, .txt, .adoc, .rst, .yaml, .json, .tf, .xml, .sql, and common source/config files.',
+          'system',
+        );
+        this.appendTerminalOutput(
+          'Binary formats like .docx, .pdf, .xlsx, and .pptx are skipped.',
+          'system',
+        );
         return;
       }
 
@@ -2341,7 +2704,10 @@ ${chunks[chunkIndex]}
 
       const customerKeys = this.seedPseudoCustomers(mapping, counters, forcedCustomers);
       if (customerKeys.size > 0) {
-        this.appendTerminalOutput(`Forced ${customerKeys.size} customer name(s) into the mapping:`, 'output');
+        this.appendTerminalOutput(
+          `Forced ${customerKeys.size} customer name(s) into the mapping:`,
+          'output',
+        );
         for (const key of customerKeys) {
           this.appendTerminalOutput(`    ${key} → ${mapping[key]}`, 'output');
         }
@@ -2349,7 +2715,10 @@ ${chunks[chunkIndex]}
 
       // Save final mapping
       await window.vomit.pseudoSaveMapping(cwd, mapping);
-      this.appendTerminalOutput(`\n✓ Mapping complete: ${Object.keys(mapping).length} entities total (${totalAdded} new from ${totalFiles} files).`, 'output');
+      this.appendTerminalOutput(
+        `\n✓ Mapping complete: ${Object.keys(mapping).length} entities total (${totalAdded} new from ${totalFiles} files).`,
+        'output',
+      );
 
       // 3. Phase 2 — Apply mapping to create pseudo repos
       this.appendTerminalOutput('\n── Phase 2: Creating pseudo repos ──', 'system');
@@ -2368,7 +2737,10 @@ ${chunks[chunkIndex]}
         const fileCount = await window.vomit.pseudoCopyStructure(repo.path, pseudoPath);
         this.appendTerminalOutput(`  Copied ${fileCount} files.`, 'system');
         if (fileCount === 0) {
-          this.appendTerminalOutput('  No copyable text files found; skipping git baseline for this target.', 'error');
+          this.appendTerminalOutput(
+            '  No copyable text files found; skipping git baseline for this target.',
+            'error',
+          );
           continue;
         }
 
@@ -2383,7 +2755,12 @@ ${chunks[chunkIndex]}
           let content = await window.vomit.readFile(file.path);
           let changed = false;
 
-          const applied = this.applyPseudoMappingToContent(content, sortedKeys, mapping, customerKeys);
+          const applied = this.applyPseudoMappingToContent(
+            content,
+            sortedKeys,
+            mapping,
+            customerKeys,
+          );
           content = applied.content;
           changed = applied.changed;
 
@@ -2402,16 +2779,19 @@ ${chunks[chunkIndex]}
             name: repo.name,
             sourcePath: repo.path,
             pseudoPath: pseudoPath,
-            baselineHash: gitResult.baselineHash
+            baselineHash: gitResult.baselineHash,
           });
-          this.appendTerminalOutput(`  ✓ Git baseline: ${gitResult.baselineHash.substring(0, 8)}`, 'output');
+          this.appendTerminalOutput(
+            `  ✓ Git baseline: ${gitResult.baselineHash.substring(0, 8)}`,
+            'output',
+          );
         } else {
           this.appendTerminalOutput(`  ⚠ Git init failed: ${gitResult.error}`, 'error');
           projectData.repos.push({
             name: repo.name,
             sourcePath: repo.path,
             pseudoPath: pseudoPath,
-            baselineHash: null
+            baselineHash: null,
           });
         }
       }
@@ -2421,7 +2801,10 @@ ${chunks[chunkIndex]}
 
       this.appendTerminalOutput('\n══════════════════════════════════════', 'system');
       this.appendTerminalOutput('✓ Pseudonymization complete!', 'output');
-      this.appendTerminalOutput(`  Mapping: mapping.json (${Object.keys(mapping).length} entities)`, 'system');
+      this.appendTerminalOutput(
+        `  Mapping: mapping.json (${Object.keys(mapping).length} entities)`,
+        'system',
+      );
       for (const repo of projectData.repos) {
         this.appendTerminalOutput(`  Repo: pseudo/${repo.name}/`, 'system');
       }
@@ -2430,7 +2813,6 @@ ${chunks[chunkIndex]}
       this.appendTerminalOutput('══════════════════════════════════════', 'system');
 
       this.fileTreeManager.loadFileTree();
-
     } catch (err) {
       this.appendTerminalOutput(`Error: ${err.message}`, 'error');
     }
@@ -2449,9 +2831,9 @@ ${chunks[chunkIndex]}
       }
 
       // Find the repo
-      const repoInfo = project.repos.find(r => r.name === repoName);
+      const repoInfo = project.repos.find((r) => r.name === repoName);
       if (!repoInfo) {
-        const available = project.repos.map(r => r.name).join(', ');
+        const available = project.repos.map((r) => r.name).join(', ');
         this.appendTerminalOutput(`Error: Repo "${repoName}" not found.`, 'error');
         this.appendTerminalOutput(`Available: ${available}`, 'system');
         return;
@@ -2469,12 +2851,35 @@ ${chunks[chunkIndex]}
       // Get changed files
       let changedFiles;
       if (repoInfo.baselineHash) {
-        changedFiles = await window.vomit.pseudoGitChangedFiles(repoInfo.pseudoPath, repoInfo.baselineHash);
+        changedFiles = await window.vomit.pseudoGitChangedFiles(
+          repoInfo.pseudoPath,
+          repoInfo.baselineHash,
+        );
       } else {
         this.appendTerminalOutput('Warning: No git baseline — processing all files.', 'system');
-        const targetExtensions = ['.tf', '.yaml', '.yml', '.json', '.md', '.env', '.sh', '.ps1', '.py', '.js', '.ts', '.tsx', '.jsx', '.go', '.hcl', '.bicep', '.toml', '.xml', '.sql'];
+        const targetExtensions = [
+          '.tf',
+          '.yaml',
+          '.yml',
+          '.json',
+          '.md',
+          '.env',
+          '.sh',
+          '.ps1',
+          '.py',
+          '.js',
+          '.ts',
+          '.tsx',
+          '.jsx',
+          '.go',
+          '.hcl',
+          '.bicep',
+          '.toml',
+          '.xml',
+          '.sql',
+        ];
         const allFiles = await this.getFilesRecursively(repoInfo.pseudoPath, targetExtensions);
-        changedFiles = allFiles.map(f => f.relativePath);
+        changedFiles = allFiles.map((f) => f.relativePath);
       }
 
       if (changedFiles.length === 0) {
@@ -2517,7 +2922,6 @@ ${chunks[chunkIndex]}
       this.appendTerminalOutput(`\n✓ Applied ${applied} file(s) to ${repoName}/`, 'output');
       this.appendTerminalOutput(`Review with: cd ${repoInfo.sourcePath} && git diff`, 'system');
       this.fileTreeManager.loadFileTree();
-
     } catch (err) {
       this.appendTerminalOutput(`Error: ${err.message}`, 'error');
     }
@@ -2546,15 +2950,24 @@ ${chunks[chunkIndex]}
       subpath
         ? `Refreshing ${subpath} in the bucket RAG index...`
         : 'Indexing current bucket for RAG...',
-      'system'
+      'system',
     );
-    this.appendTerminalOutput('Embeddings need nomic-embed-text: via Ollama (ollama pull nomic-embed-text) or the active OpenAI-compatible endpoint (e.g. LM Studio)', 'system');
+    this.appendTerminalOutput(
+      'Embeddings need nomic-embed-text: via Ollama (ollama pull nomic-embed-text) or the active OpenAI-compatible endpoint (e.g. LM Studio)',
+      'system',
+    );
 
     try {
       const result = await window.vomit.ragIndex(projectRoot, targetPath);
       if (result.success) {
-        this.appendTerminalOutput(`✓ Bucket index updated! ${result.indexed} chunks from ${result.files} files.`, 'output');
-        this.appendTerminalOutput('Use /rag <query> to search the current bucket with context.', 'system');
+        this.appendTerminalOutput(
+          `✓ Bucket index updated! ${result.indexed} chunks from ${result.files} files.`,
+          'output',
+        );
+        this.appendTerminalOutput(
+          'Use /rag <query> to search the current bucket with context.',
+          'system',
+        );
       } else {
         this.appendTerminalOutput(`✗ Indexing failed: ${result.error}`, 'error');
       }
@@ -2574,17 +2987,27 @@ ${chunks[chunkIndex]}
         return;
       }
 
-      const removed = clearResult.deleted > 0
-        ? `Removed ${clearResult.deleted} database file${clearResult.deleted === 1 ? '' : 's'}.`
-        : 'No existing RAG database found.';
+      const removed =
+        clearResult.deleted > 0
+          ? `Removed ${clearResult.deleted} database file${clearResult.deleted === 1 ? '' : 's'}.`
+          : 'No existing RAG database found.';
       this.appendTerminalOutput(removed, 'system');
       this.appendTerminalOutput('Rebuilding full bucket index...', 'system');
-      this.appendTerminalOutput('Embeddings need nomic-embed-text: via Ollama (ollama pull nomic-embed-text) or the active OpenAI-compatible endpoint (e.g. LM Studio)', 'system');
+      this.appendTerminalOutput(
+        'Embeddings need nomic-embed-text: via Ollama (ollama pull nomic-embed-text) or the active OpenAI-compatible endpoint (e.g. LM Studio)',
+        'system',
+      );
 
       const result = await window.vomit.ragIndex(cwd, cwd);
       if (result.success) {
-        this.appendTerminalOutput(`✓ Reindex complete! ${result.indexed} chunks from ${result.files} files.`, 'output');
-        this.appendTerminalOutput('Use /rag <query> to search the current bucket with fresh context.', 'system');
+        this.appendTerminalOutput(
+          `✓ Reindex complete! ${result.indexed} chunks from ${result.files} files.`,
+          'output',
+        );
+        this.appendTerminalOutput(
+          'Use /rag <query> to search the current bucket with fresh context.',
+          'system',
+        );
       } else {
         this.appendTerminalOutput(`✗ Reindex failed: ${result.error}`, 'error');
       }
@@ -2613,7 +3036,10 @@ ${chunks[chunkIndex]}
 
       if (!results.success) {
         if (results.error === 'not_indexed') {
-          this.appendTerminalOutput('No bucket index found. Run /index first to index the current bucket.', 'error');
+          this.appendTerminalOutput(
+            'No bucket index found. Run /index first to index the current bucket.',
+            'error',
+          );
         } else {
           this.appendTerminalOutput(`Search failed: ${results.error}`, 'error');
         }
@@ -2640,7 +3066,10 @@ ${chunks[chunkIndex]}
       }
       const sources = [...fileStats.values()].sort((a, b) => b.best - a.best);
 
-      this.appendTerminalOutput(`Found ${results.chunks.length} relevant chunks across ${sources.length} document(s):`, 'system');
+      this.appendTerminalOutput(
+        `Found ${results.chunks.length} relevant chunks across ${sources.length} document(s):`,
+        'system',
+      );
       for (const s of sources) {
         const rel = this._ragDisplayPath(s.file, cwd);
         const pct = Math.round((s.best || 0) * 100);
@@ -2654,10 +3083,9 @@ ${chunks[chunkIndex]}
       // answer's "(source: notes.md)" citations into clickable links.
       this._ragLinkTargets = sources.map((s) => ({
         file: s.file,
-        labels: [...new Set([
-          this._ragDisplayPath(s.file, cwd),
-          window.PathUtils.basename(s.file),
-        ])].filter(Boolean),
+        labels: [
+          ...new Set([this._ragDisplayPath(s.file, cwd), window.PathUtils.basename(s.file)]),
+        ].filter(Boolean),
       }));
 
       const contextParts = results.chunks.map((chunk) => {
@@ -2761,12 +3189,10 @@ Provide a helpful, accurate answer based on the context above. Cite the source d
     try {
       const result = await window.vomit.wikiIndex(cwd);
       if (result.success) {
-        const broken = result.brokenLinks > 0
-          ? ` (${result.brokenLinks} broken)`
-          : '';
+        const broken = result.brokenLinks > 0 ? ` (${result.brokenLinks} broken)` : '';
         this.appendTerminalOutput(
           `✓ Wiki index built: ${result.linksIndexed} links across ${result.filesProcessed} notes${broken}.`,
-          'output'
+          'output',
         );
       } else {
         this.appendTerminalOutput(`✗ Wiki index failed: ${result.error}`, 'error');
@@ -2778,7 +3204,9 @@ Provide a helpful, accurate answer based on the context above. Cite the source d
 
   async getFilesRecursively(dir, extensions) {
     const files = [];
-    const skipDirs = this.getPseudoSkipDirs ? this.getPseudoSkipDirs() : new Set(['node_modules', 'pseudo']);
+    const skipDirs = this.getPseudoSkipDirs
+      ? this.getPseudoSkipDirs()
+      : new Set(['node_modules', 'pseudo']);
 
     const scan = async (currentDir, relativePath = '') => {
       const items = await window.vomit.getDirectoryContents(currentDir);
@@ -2791,7 +3219,8 @@ Provide a helpful, accurate answer based on the context above. Cite the source d
           await scan(item.path, itemRelativePath);
         } else {
           if (item.name.startsWith('.') && item.name !== '.env') continue;
-          const ext = item.name === '.env' ? '.env' : '.' + item.name.split('.').pop().toLowerCase();
+          const ext =
+            item.name === '.env' ? '.env' : '.' + item.name.split('.').pop().toLowerCase();
           if (extensions.includes(ext)) {
             files.push({ path: item.path, relativePath: itemRelativePath });
           }
@@ -2822,7 +3251,7 @@ Provide a helpful, accurate answer based on the context above. Cite the source d
   normalizeTerminalText(value) {
     if (typeof value === 'string') return value;
     if (value == null) return '';
-    if (Array.isArray(value)) return value.map(v => this.normalizeTerminalText(v)).join('');
+    if (Array.isArray(value)) return value.map((v) => this.normalizeTerminalText(v)).join('');
     if (typeof value === 'object') {
       if (typeof value.text === 'string') return value.text;
       if (typeof value.content === 'string') return value.content;
@@ -2875,7 +3304,8 @@ Provide a helpful, accurate answer based on the context above. Cite the source d
 
     const indicator = document.createElement('div');
     indicator.className = 'terminal-line terminal-thinking-indicator';
-    indicator.innerHTML = '<span class="thinking-dots"><span>.</span><span>.</span><span>.</span></span><span class="thinking-elapsed"></span>';
+    indicator.innerHTML =
+      '<span class="thinking-dots"><span>.</span><span>.</span><span>.</span></span><span class="thinking-elapsed"></span>';
     this.terminalOutput.appendChild(indicator);
     this.terminalOutput.scrollTop = this.terminalOutput.scrollHeight;
 
@@ -2883,7 +3313,9 @@ Provide a helpful, accurate answer based on the context above. Cite the source d
     // an elapsed counter shows time is passing, not just pixels animating.
     const startedAt = Date.now();
     this._thinkingTimer = setInterval(() => {
-      const el = this.terminalOutput.querySelector('.terminal-thinking-indicator .thinking-elapsed');
+      const el = this.terminalOutput.querySelector(
+        '.terminal-thinking-indicator .thinking-elapsed',
+      );
       if (!el) return;
       const seconds = Math.round((Date.now() - startedAt) / 1000);
       if (seconds >= 3) el.textContent = ` ${seconds}s`;
@@ -2911,7 +3343,8 @@ Provide a helpful, accurate answer based on the context above. Cite the source d
     if (m.genTokens != null) parts.push(`${m.genTokens} tok`);
     // Headline rate is overall throughput (gen tokens / total time) — the same
     // measurement for every backend, so it's comparable.
-    if (m.tokensPerSec != null) parts.push(`${m.estimated ? '~' : ''}${m.tokensPerSec.toFixed(1)} tok/s`);
+    if (m.tokensPerSec != null)
+      parts.push(`${m.estimated ? '~' : ''}${m.tokensPerSec.toFixed(1)} tok/s`);
     // Extras only available when the backend reports them (Ollama).
     if (m.decodeTps != null) parts.push(`${m.decodeTps.toFixed(0)} tok/s decode`);
     if (m.ttftMs != null) parts.push(`TTFT ${fmtMs(m.ttftMs)}`);
@@ -2922,7 +3355,9 @@ Provide a helpful, accurate answer based on the context above. Cite the source d
 
   markOutputComplete() {
     this.hideThinkingIndicator();
-    const outputStream = this.terminalOutput.querySelector('.terminal-output-stream:not(.complete)');
+    const outputStream = this.terminalOutput.querySelector(
+      '.terminal-output-stream:not(.complete)',
+    );
     if (outputStream) {
       outputStream.classList.add('complete');
 
@@ -2940,7 +3375,10 @@ Provide a helpful, accurate answer based on the context above. Cite the source d
   // Normalize LaTeX delimiters from LLM output.
   // Many models output [ ... ] instead of \[ ... \] for display math.
   normalizeLatexDelimiters(text) {
-    return text.replace(/\[\s*((?:[^[\]]*\\(?:text|frac|times|approx|sqrt|sum|prod|int|cdot)[^[\]]*)+)\s*\]/g, '\\[$1\\]');
+    return text.replace(
+      /\[\s*((?:[^[\]]*\\(?:text|frac|times|approx|sqrt|sum|prod|int|cdot)[^[\]]*)+)\s*\]/g,
+      '\\[$1\\]',
+    );
   }
 
   renderMarkdown(element) {
@@ -2955,16 +3393,19 @@ Provide a helpful, accurate answer based on the context above. Cite the source d
       const renderer = new marked.Renderer();
 
       // Custom code block renderer with syntax highlighting
-      renderer.code = function(tokenOrCode, language) {
-        const code = typeof tokenOrCode === 'object' && tokenOrCode !== null
-          ? tokenOrCode.text || ''
-          : String(tokenOrCode || '');
-        const lang = typeof tokenOrCode === 'object' && tokenOrCode !== null
-          ? tokenOrCode.lang
-          : language;
+      renderer.code = function (tokenOrCode, language) {
+        const code =
+          typeof tokenOrCode === 'object' && tokenOrCode !== null
+            ? tokenOrCode.text || ''
+            : String(tokenOrCode || '');
+        const lang =
+          typeof tokenOrCode === 'object' && tokenOrCode !== null ? tokenOrCode.lang : language;
         if (lang && window.hljs.getLanguage(lang)) {
           try {
-            const highlighted = window.hljs.highlight(code, { language: lang, ignoreIllegals: true });
+            const highlighted = window.hljs.highlight(code, {
+              language: lang,
+              ignoreIllegals: true,
+            });
             return `<pre class="terminal-code"><code class="hljs language-${escapeHtml(lang)}">${highlighted.value}</code></pre>`;
           } catch (e) {
             // Fallback to auto-detection
@@ -2980,10 +3421,11 @@ Provide a helpful, accurate answer based on the context above. Cite the source d
       };
 
       // Custom inline code renderer
-      renderer.codespan = function(tokenOrCode) {
-        const code = typeof tokenOrCode === 'object' && tokenOrCode !== null
-          ? tokenOrCode.text || ''
-          : String(tokenOrCode || '');
+      renderer.codespan = function (tokenOrCode) {
+        const code =
+          typeof tokenOrCode === 'object' && tokenOrCode !== null
+            ? tokenOrCode.text || ''
+            : String(tokenOrCode || '');
         return `<code class="terminal-inline-code">${escapeHtml(code)}</code>`;
       };
 
@@ -3002,7 +3444,7 @@ Provide a helpful, accurate answer based on the context above. Cite the source d
           gfm: true,
           headerIds: false,
           mangle: false,
-          sanitize: false
+          sanitize: false,
         });
         element.innerHTML = html;
 
@@ -3013,9 +3455,9 @@ Provide a helpful, accurate answer based on the context above. Cite the source d
               { left: '$$', right: '$$', display: true },
               { left: '$', right: '$', display: false },
               { left: '\\[', right: '\\]', display: true },
-              { left: '\\(', right: '\\)', display: false }
+              { left: '\\(', right: '\\)', display: false },
             ],
-            throwOnError: false
+            throwOnError: false,
           });
         }
       } catch (e) {
@@ -3071,7 +3513,12 @@ Provide a helpful, accurate answer based on the context above. Cite the source d
     try {
       const stats = await window.vomit.getContextStats();
       if (!stats || stats.model === 'none' || stats.messageCount === 0) {
-        this.terminalContextBar.classList.remove('visible', 'level-ok', 'level-warn', 'level-danger');
+        this.terminalContextBar.classList.remove(
+          'visible',
+          'level-ok',
+          'level-warn',
+          'level-danger',
+        );
         return;
       }
 
@@ -3116,7 +3563,7 @@ Provide a helpful, accurate answer based on the context above. Cite the source d
       currentFilePath: this.state.currentFilePath,
       basePath: this.state.basePath,
       projectRoot: this.state.projectRoot,
-      currentDirectory: this.state.currentDirectory
+      currentDirectory: this.state.currentDirectory,
     });
   }
 
@@ -3128,7 +3575,7 @@ Provide a helpful, accurate answer based on the context above. Cite the source d
       currentFilePath: this.state.currentFilePath,
       basePath: this.state.basePath,
       projectRoot: this.state.projectRoot,
-      currentDirectory: this.state.currentDirectory
+      currentDirectory: this.state.currentDirectory,
     });
   }
 
@@ -3140,7 +3587,7 @@ Provide a helpful, accurate answer based on the context above. Cite the source d
       currentFilePath: this.state.currentFilePath,
       basePath: this.state.basePath,
       projectRoot: this.state.projectRoot,
-      currentDirectory: this.state.currentDirectory
+      currentDirectory: this.state.currentDirectory,
     });
   }
 

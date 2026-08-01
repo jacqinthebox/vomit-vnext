@@ -36,16 +36,34 @@ const pendingOpenFiles = [];
 let launchFilesConsumed = false;
 
 function getLaunchFilePaths(argv) {
-  const supportedExtensions = new Set(['.md', '.markdown', '.pdf', '.drawio', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.bmp', '.ico', '.avif']);
-  const executablePaths = new Set([process.argv[0], process.execPath].filter(Boolean).map(p => path.resolve(p)));
-  return argv.filter(arg => {
+  const supportedExtensions = new Set([
+    '.md',
+    '.markdown',
+    '.pdf',
+    '.drawio',
+    '.png',
+    '.jpg',
+    '.jpeg',
+    '.gif',
+    '.webp',
+    '.svg',
+    '.bmp',
+    '.ico',
+    '.avif',
+  ]);
+  const executablePaths = new Set(
+    [process.argv[0], process.execPath].filter(Boolean).map((p) => path.resolve(p)),
+  );
+  return argv.filter((arg) => {
     if (!arg || arg.startsWith('-')) return false;
     try {
       const resolved = path.resolve(arg);
-      return !executablePaths.has(resolved) &&
+      return (
+        !executablePaths.has(resolved) &&
         supportedExtensions.has(path.extname(arg).toLowerCase()) &&
         fs.existsSync(arg) &&
-        fs.statSync(arg).isFile();
+        fs.statSync(arg).isFile()
+      );
     } catch {
       return false;
     }
@@ -56,7 +74,9 @@ function isSameOrSubPath(childPath, parentPath) {
   const child = path.resolve(childPath);
   const parent = path.resolve(parentPath);
   const relative = path.relative(parent, child);
-  return relative === '' || (!!relative && !relative.startsWith('..') && !path.isAbsolute(relative));
+  return (
+    relative === '' || (!!relative && !relative.startsWith('..') && !path.isAbsolute(relative))
+  );
 }
 
 function openExternalFile(filePath) {
@@ -78,7 +98,13 @@ if (!gotSingleInstanceLock) {
   // Another Vomit (packaged or `npm start`) already owns this profile. Say so
   // before exiting — a silent 0-exit looks like a broken install. One guarded
   // write, not console.log (see EPIPE note in CLAUDE.md).
-  try { process.stdout.write('Vomit is already running — quit the other instance first. This one will exit.\n'); } catch (_) { /* stdout may be closed (e.g. Finder launch) */ }
+  try {
+    process.stdout.write(
+      'Vomit is already running — quit the other instance first. This one will exit.\n',
+    );
+  } catch (_) {
+    /* stdout may be closed (e.g. Finder launch) */
+  }
   app.exit(0);
 } else {
   app.on('second-instance', (_event, argv) => {
@@ -94,32 +120,43 @@ if (!gotSingleInstanceLock) {
 }
 
 // Create services (lazy refs resolve circular deps at call time)
-function createMenu() { menuModule.createMenu(); }
+function createMenu() {
+  menuModule.createMenu();
+}
 
 const windowManager = createWindowManager({
-  state, bus,
-  getSaveFileAs: () => fileService.saveFileAs()
+  state,
+  bus,
+  getSaveFileAs: () => fileService.saveFileAs(),
 });
 
 const fileService = createFileService({ state, bus, configStore });
 
 const presentationService = createPresentationService({
-  state, bus, configStore, windowManager
+  state,
+  bus,
+  configStore,
+  windowManager,
 });
 
 const bucketService = createBucketService({
-  state, bus, configStore, menuModule
+  state,
+  bus,
+  configStore,
+  menuModule,
 });
 
 const terminalService = createTerminalService({
-  state, bus, windowManager
+  state,
+  bus,
+  windowManager,
 });
 
 // Permission broker for agent tool execution — prompts go to both terminal
 // windows via syncTerminalOutput; answers come back over IPC (agent.js).
 const permissionBroker = createPermissionBroker({
   sendOutput: (channel, ...args) => terminalService.syncTerminalOutput(channel, ...args),
-  state
+  state,
 });
 
 // Git awareness: repo status for tree badges, line diffs for the editor
@@ -130,8 +167,22 @@ app.on('will-quit', () => {
   gitService.dispose();
   // Terminal PTYs are children of the app — kill them so a Pi agent session or
   // shell doesn't linger after the window closes.
-  try { if (state.shellProcess) { state.shellProcess.kill(); state.shellProcess = null; } } catch { /* ignore */ }
-  try { if (state.piProcess) { state.piProcess.kill(); state.piProcess = null; } } catch { /* ignore */ }
+  try {
+    if (state.shellProcess) {
+      state.shellProcess.kill();
+      state.shellProcess = null;
+    }
+  } catch {
+    /* ignore */
+  }
+  try {
+    if (state.piProcess) {
+      state.piProcess.kill();
+      state.piProcess = null;
+    }
+  } catch {
+    /* ignore */
+  }
 });
 
 // Register menu module with all action references
@@ -157,7 +208,7 @@ menuModule.register({
     switchBucket: bucketService.switchBucket,
     addBucket: bucketService.addBucket,
     removeBucket: bucketService.removeBucket,
-  }
+  },
 });
 
 // Register IPC handlers
@@ -165,8 +216,21 @@ fileService.registerHandlers(ipcMain);
 presentationService.registerHandlers(ipcMain);
 bucketService.registerHandlers(ipcMain);
 terminalService.registerHandlers(ipcMain);
-aiHandlers.registerHandlers(ipcMain, { state, bus, configStore, terminalService, permissionBroker });
-agentHandlers.registerHandlers(ipcMain, { state, bus, configStore, terminalService, permissionBroker, gitService });
+aiHandlers.registerHandlers(ipcMain, {
+  state,
+  bus,
+  configStore,
+  terminalService,
+  permissionBroker,
+});
+agentHandlers.registerHandlers(ipcMain, {
+  state,
+  bus,
+  configStore,
+  terminalService,
+  permissionBroker,
+  gitService,
+});
 gitService.registerHandlers(ipcMain);
 shellHandlers.registerHandlers(ipcMain, { state, bus, terminalService });
 piHandlers.registerHandlers(ipcMain, { state, bus, terminalService });
@@ -204,15 +268,17 @@ async function checkForUpdates() {
     const options = {
       hostname: 'api.github.com',
       path: '/repos/jacqinthebox/vomit-vnext/releases/latest',
-      headers: { 'User-Agent': 'Vomit-App' }
+      headers: { 'User-Agent': 'Vomit-App' },
     };
 
     const data = await new Promise((resolve, reject) => {
-      https.get(options, (res) => {
-        let body = '';
-        res.on('data', chunk => body += chunk);
-        res.on('end', () => resolve(JSON.parse(body)));
-      }).on('error', reject);
+      https
+        .get(options, (res) => {
+          let body = '';
+          res.on('data', (chunk) => (body += chunk));
+          res.on('end', () => resolve(JSON.parse(body)));
+        })
+        .on('error', reject);
     });
 
     if (data.tag_name) {
@@ -249,7 +315,10 @@ function findFirstValidBucket() {
 
 // Register custom protocol for serving local files (images etc.) in packaged app
 protocol.registerSchemesAsPrivileged([
-  { scheme: 'vomit-file', privileges: { secure: true, supportFetchAPI: true, bypassCSP: false, stream: true } }
+  {
+    scheme: 'vomit-file',
+    privileges: { secure: true, supportFetchAPI: true, bypassCSP: false, stream: true },
+  },
 ]);
 
 // App lifecycle
@@ -282,7 +351,7 @@ app.whenReady().then(async () => {
     // Add as first bucket
     configStore.addBucket({
       name: path.basename(bucketPath),
-      path: bucketPath
+      path: bucketPath,
     });
     configStore.setActiveBucketIndex(0);
     activeBucket = configStore.getActiveBucket();
@@ -327,7 +396,12 @@ app.whenReady().then(async () => {
     // Re-open the current file after a window reload — after open-folder, so
     // the tree stays rooted at the bucket instead of the file's folder.
     if (state.currentFilePath && state.currentContent) {
-      bus.send('load-content', state.currentContent, state.currentFilePath, path.dirname(state.currentFilePath));
+      bus.send(
+        'load-content',
+        state.currentContent,
+        state.currentFilePath,
+        path.dirname(state.currentFilePath),
+      );
     }
 
     for (const filePath of pendingOpenFiles.splice(0)) {
@@ -344,10 +418,13 @@ app.whenReady().then(async () => {
     // Build the wikilink index in the background so [[ autocomplete and the
     // backlinks panel work immediately. Best-effort — never blocks startup.
     setTimeout(() => {
-      wiki.indexBucket(currentBucket.path).then(() => {
-        bus.send('wiki-changed', { type: 'reindex' });
-        bus.sendToTerminal('wiki-changed', { type: 'reindex' });
-      }).catch(() => {});
+      wiki
+        .indexBucket(currentBucket.path)
+        .then(() => {
+          bus.send('wiki-changed', { type: 'reindex' });
+          bus.sendToTerminal('wiki-changed', { type: 'reindex' });
+        })
+        .catch(() => {});
     }, 500);
   });
 

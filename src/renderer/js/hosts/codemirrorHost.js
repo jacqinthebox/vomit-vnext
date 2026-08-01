@@ -14,7 +14,7 @@ class CodemirrorHost {
       tabSize: 2,
       indentWithTabs: false,
       extraKeys: options.extraKeys || {},
-      placeholder: options.placeholder || ''
+      placeholder: options.placeholder || '',
     });
 
     // Highlight [[wikilink]] / [[target|alias]] / [[target#heading]] with the
@@ -30,7 +30,7 @@ class CodemirrorHost {
           if (stream.peek() === '[') break;
         }
         return null;
-      }
+      },
     });
 
     this._lockHorizontalScroll();
@@ -137,7 +137,7 @@ class CodemirrorHost {
       const ch = Math.min(first.head.ch, lineLen);
       const newSelections = [
         { anchor: { line: newLine, ch }, head: { line: newLine, ch } },
-        ...selections
+        ...selections,
       ];
       this.cm.setSelections(newSelections);
     }
@@ -157,7 +157,7 @@ class CodemirrorHost {
       const ch = Math.min(last.head.ch, lineLen);
       const newSelections = [
         ...selections,
-        { anchor: { line: newLine, ch }, head: { line: newLine, ch } }
+        { anchor: { line: newLine, ch }, head: { line: newLine, ch } },
       ];
       this.cm.setSelections(newSelections);
     }
@@ -368,7 +368,7 @@ class CodemirrorHost {
     const line = this.cm.getLine(fenceLine) || '';
     const mark = this.cm.setBookmark(
       { line: fenceLine, ch: line.length },
-      { widget: btn, insertLeft: true }
+      { widget: btn, insertLeft: true },
     );
     this._codeCopyMarks.push(mark);
   }

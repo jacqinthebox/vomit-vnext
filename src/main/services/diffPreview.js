@@ -53,7 +53,7 @@ function buildWriteDiff(displayPath, oldContent, newContent, opts = {}) {
     header: `${displayPath} | +${added} -${removed}`,
     text,
     stats: { added, removed },
-    truncated
+    truncated,
   };
 }
 

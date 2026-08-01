@@ -10,7 +10,6 @@ const { execFileSync } = require('child_process');
  * All git operations use execFileSync to avoid shell injection.
  */
 function registerHandlers(ipcMain, { state, configStore }) {
-
   // Detect git repos (top-level subdirectories with .git)
   ipcMain.handle('pseudo-detect-repos', async (event, bucketPath) => {
     if (!bucketPath || !fs.existsSync(bucketPath)) return [];
@@ -54,7 +53,7 @@ function registerHandlers(ipcMain, { state, configStore }) {
     fs.writeFileSync(
       path.join(bucketPath, 'mapping.json'),
       JSON.stringify(mapping, null, 2),
-      'utf-8'
+      'utf-8',
     );
     return true;
   });
@@ -64,7 +63,7 @@ function registerHandlers(ipcMain, { state, configStore }) {
     fs.writeFileSync(
       path.join(bucketPath, 'project.json'),
       JSON.stringify(projectData, null, 2),
-      'utf-8'
+      'utf-8',
     );
     return true;
   });
@@ -81,11 +80,15 @@ function registerHandlers(ipcMain, { state, configStore }) {
     try {
       execFileSync('git', ['init'], { cwd: repoPath, stdio: 'pipe' });
       execFileSync('git', ['add', '.'], { cwd: repoPath, stdio: 'pipe' });
-      execFileSync('git', ['commit', '-m', 'initial pseudo baseline'], { cwd: repoPath, stdio: 'pipe' });
+      execFileSync('git', ['commit', '-m', 'initial pseudo baseline'], {
+        cwd: repoPath,
+        stdio: 'pipe',
+      });
 
       // Get the commit hash for tracking
       const hash = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repoPath, stdio: 'pipe' })
-        .toString().trim();
+        .toString()
+        .trim();
       return { success: true, baselineHash: hash };
     } catch (err) {
       return { success: false, error: err.message };
@@ -99,42 +102,50 @@ function registerHandlers(ipcMain, { state, configStore }) {
 
       // Committed changes since baseline
       try {
-        const committed = execFileSync(
-          'git', ['diff', '--name-only', baselineHash, 'HEAD'],
-          { cwd: repoPath, stdio: 'pipe' }
-        ).toString().trim();
+        const committed = execFileSync('git', ['diff', '--name-only', baselineHash, 'HEAD'], {
+          cwd: repoPath,
+          stdio: 'pipe',
+        })
+          .toString()
+          .trim();
         if (committed) results.push(...committed.split('\n'));
       } catch {}
 
       // Staged changes
       try {
-        const staged = execFileSync(
-          'git', ['diff', '--cached', '--name-only'],
-          { cwd: repoPath, stdio: 'pipe' }
-        ).toString().trim();
+        const staged = execFileSync('git', ['diff', '--cached', '--name-only'], {
+          cwd: repoPath,
+          stdio: 'pipe',
+        })
+          .toString()
+          .trim();
         if (staged) results.push(...staged.split('\n'));
       } catch {}
 
       // Unstaged changes
       try {
-        const unstaged = execFileSync(
-          'git', ['diff', '--name-only'],
-          { cwd: repoPath, stdio: 'pipe' }
-        ).toString().trim();
+        const unstaged = execFileSync('git', ['diff', '--name-only'], {
+          cwd: repoPath,
+          stdio: 'pipe',
+        })
+          .toString()
+          .trim();
         if (unstaged) results.push(...unstaged.split('\n'));
       } catch {}
 
       // Untracked files
       try {
-        const untracked = execFileSync(
-          'git', ['ls-files', '--others', '--exclude-standard'],
-          { cwd: repoPath, stdio: 'pipe' }
-        ).toString().trim();
+        const untracked = execFileSync('git', ['ls-files', '--others', '--exclude-standard'], {
+          cwd: repoPath,
+          stdio: 'pipe',
+        })
+          .toString()
+          .trim();
         if (untracked) results.push(...untracked.split('\n'));
       } catch {}
 
       // Deduplicate
-      return [...new Set(results.filter(f => f.length > 0))];
+      return [...new Set(results.filter((f) => f.length > 0))];
     } catch (err) {
       return [];
     }
@@ -149,17 +160,72 @@ function registerHandlers(ipcMain, { state, configStore }) {
 
   // Copy a repo's file structure (skipping .git, node_modules, binaries)
   ipcMain.handle('pseudo-copy-structure', async (event, sourcePath, destPath) => {
-    const SKIP_DIRS = new Set(['.git', '.terraform', '.terragrunt-cache', 'node_modules', 'pseudo', 'pseudonymized', 'dist', 'build', 'bin', 'obj', '.next', 'coverage', 'vendor']);
+    const SKIP_DIRS = new Set([
+      '.git',
+      '.terraform',
+      '.terragrunt-cache',
+      'node_modules',
+      'pseudo',
+      'pseudonymized',
+      'dist',
+      'build',
+      'bin',
+      'obj',
+      '.next',
+      'coverage',
+      'vendor',
+    ]);
     const BINARY_EXTENSIONS = new Set([
-      '.png', '.jpg', '.jpeg', '.gif', '.ico', '.svg', '.webp', '.bmp',
-      '.zip', '.tar', '.gz', '.bz2', '.7z', '.rar',
-      '.exe', '.dll', '.so', '.dylib', '.bin', '.o', '.a',
-      '.woff', '.woff2', '.ttf', '.eot', '.otf',
-      '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.pptx',
-      '.mp3', '.mp4', '.wav', '.avi', '.mov', '.mkv',
-      '.db', '.sqlite', '.lock', '.sum',
-      '.pyc', '.pyo', '.class', '.jar', '.war',
-      '.min.js', '.min.css', '.map'
+      '.png',
+      '.jpg',
+      '.jpeg',
+      '.gif',
+      '.ico',
+      '.svg',
+      '.webp',
+      '.bmp',
+      '.zip',
+      '.tar',
+      '.gz',
+      '.bz2',
+      '.7z',
+      '.rar',
+      '.exe',
+      '.dll',
+      '.so',
+      '.dylib',
+      '.bin',
+      '.o',
+      '.a',
+      '.woff',
+      '.woff2',
+      '.ttf',
+      '.eot',
+      '.otf',
+      '.pdf',
+      '.doc',
+      '.docx',
+      '.xls',
+      '.xlsx',
+      '.pptx',
+      '.mp3',
+      '.mp4',
+      '.wav',
+      '.avi',
+      '.mov',
+      '.mkv',
+      '.db',
+      '.sqlite',
+      '.lock',
+      '.sum',
+      '.pyc',
+      '.pyo',
+      '.class',
+      '.jar',
+      '.war',
+      '.min.js',
+      '.min.css',
+      '.map',
     ]);
     let count = 0;
 

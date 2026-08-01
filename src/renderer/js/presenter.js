@@ -1,19 +1,19 @@
 // Presenter View - Simple functional approach (no classes, no 'this' issues)
-(function() {
+(function () {
   // Initialize Mermaid with configurable curve style
   function initMermaid(curve) {
     if (window.mermaid) {
       window.mermaid.initialize({
         startOnLoad: false,
         flowchart: { curve: curve || 'linear' },
-        theme: 'dark'
+        theme: 'dark',
       });
     }
   }
 
   // Load initial setting
   if (window.vomit && window.vomit.getMermaidCurve) {
-    window.vomit.getMermaidCurve().then(curve => initMermaid(curve));
+    window.vomit.getMermaidCurve().then((curve) => initMermaid(curve));
   } else {
     initMermaid('linear');
   }
@@ -40,12 +40,12 @@
 
   function parseSlides(content) {
     const markdown = window.Frontmatter.strip(content || '').trim();
-    const slideTexts = markdown.split(/\n---\n/).filter(s => s.trim());
-    return slideTexts.map(slideText => {
+    const slideTexts = markdown.split(/\n---\n/).filter((s) => s.trim());
+    return slideTexts.map((slideText) => {
       const parts = slideText.split(/\n\?\?\?\n/);
       return {
         content: parts[0].trim(),
-        notes: parts[1] ? parts[1].trim() : ''
+        notes: parts[1] ? parts[1].trim() : '',
       };
     });
   }
@@ -64,25 +64,32 @@
         if (width) style += `width:${width}px;`;
         if (height) style += `height:${height}px;`;
         let resolvedSrc = src;
-        if (basePath && !src.startsWith('http') && !src.startsWith('file://') && !src.startsWith('data:')) {
+        if (
+          basePath &&
+          !src.startsWith('http') &&
+          !src.startsWith('file://') &&
+          !src.startsWith('data:')
+        ) {
           resolvedSrc = `file://${basePath}/${src}`;
         }
         return `<img src="${resolvedSrc}" alt="${alt}" style="${style}">`;
-      }
+      },
     );
 
     // Also handle regular markdown images without size syntax
-    processed = processed.replace(
-      /!\[([^\]]*)\]\(([^)\s]+)\)/g,
-      (match, alt, src) => {
-        if (src.includes('=')) return match;
-        let resolvedSrc = src;
-        if (basePath && !src.startsWith('http') && !src.startsWith('file://') && !src.startsWith('data:')) {
-          resolvedSrc = `file://${basePath}/${src}`;
-        }
-        return `![${alt}](${resolvedSrc})`;
+    processed = processed.replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, (match, alt, src) => {
+      if (src.includes('=')) return match;
+      let resolvedSrc = src;
+      if (
+        basePath &&
+        !src.startsWith('http') &&
+        !src.startsWith('file://') &&
+        !src.startsWith('data:')
+      ) {
+        resolvedSrc = `file://${basePath}/${src}`;
       }
-    );
+      return `![${alt}](${resolvedSrc})`;
+    });
 
     if (window.marked) {
       return window.marked.parse(processed);
@@ -99,7 +106,7 @@
   }
 
   function highlightCode(container) {
-    container.querySelectorAll('pre code').forEach(block => {
+    container.querySelectorAll('pre code').forEach((block) => {
       if (window.hljs) window.hljs.highlightElement(block);
     });
   }
@@ -111,9 +118,9 @@
           { left: '$$', right: '$$', display: true },
           { left: '$', right: '$', display: false },
           { left: '\\[', right: '\\]', display: true },
-          { left: '\\(', right: '\\)', display: false }
+          { left: '\\(', right: '\\)', display: false },
         ],
-        throwOnError: false
+        throwOnError: false,
       });
     }
   }
@@ -170,7 +177,8 @@
     // Next slide
     const nextIndex = currentIndex + 1;
     if (nextIndex >= slides.length) {
-      nextSlideEl.innerHTML = '<p style="color: var(--text-muted); font-style: italic;">End of presentation</p>';
+      nextSlideEl.innerHTML =
+        '<p style="color: var(--text-muted); font-style: italic;">End of presentation</p>';
     } else {
       nextSlideEl.innerHTML = renderMarkdown(slides[nextIndex].content);
       highlightCode(nextSlideEl);
@@ -232,7 +240,7 @@
     if (fontSize) {
       const size = parseInt(fontSize, 10);
       if (!isNaN(size) && size >= 6 && size <= 72) {
-        document.querySelectorAll('.slide-content').forEach(el => {
+        document.querySelectorAll('.slide-content').forEach((el) => {
           el.style.fontSize = `${size}px`;
         });
       }
@@ -252,7 +260,9 @@
   function updateTimer() {
     if (!startTime) return;
     const elapsed = Math.floor((Date.now() - startTime) / 1000);
-    const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
+    const minutes = Math.floor(elapsed / 60)
+      .toString()
+      .padStart(2, '0');
     const seconds = (elapsed % 60).toString().padStart(2, '0');
     elapsedTime.textContent = `${minutes}:${seconds}`;
   }
@@ -263,13 +273,13 @@
   }
 
   // Event listeners
-  window.addEventListener('vomit:load-presentation', e => {
+  window.addEventListener('vomit:load-presentation', (e) => {
     const { content, basePath: bp } = e.detail;
     loadContent(content, bp);
   });
-  window.addEventListener('vomit:update-content', e => loadContent(e.detail));
+  window.addEventListener('vomit:update-content', (e) => loadContent(e.detail));
 
-  window.addEventListener('vomit:navigate-slide', e => {
+  window.addEventListener('vomit:navigate-slide', (e) => {
     const direction = e.detail;
     if (direction === 'next') nextSlide();
     else if (direction === 'prev') prevSlide();
@@ -277,23 +287,27 @@
     else if (direction === 'last') goToSlide(slides.length - 1);
   });
 
-  window.addEventListener('vomit:go-to-slide', e => goToSlide(e.detail));
+  window.addEventListener('vomit:go-to-slide', (e) => goToSlide(e.detail));
 
-  window.addEventListener('vomit:set-theme', e => {
+  window.addEventListener('vomit:set-theme', (e) => {
     document.body.className = `theme-${e.detail} presenter-view`;
   });
 
   // Handle external links
-  document.addEventListener('click', e => {
+  document.addEventListener('click', (e) => {
     const link = e.target.closest('a');
-    if (link && link.href && (link.href.startsWith('http://') || link.href.startsWith('https://'))) {
+    if (
+      link &&
+      link.href &&
+      (link.href.startsWith('http://') || link.href.startsWith('https://'))
+    ) {
       e.preventDefault();
       window.vomit.openExternal(link.href);
     }
   });
 
   // Keyboard controls
-  document.addEventListener('keydown', e => {
+  document.addEventListener('keydown', (e) => {
     switch (e.key) {
       case 'ArrowRight':
       case ' ':
@@ -325,9 +339,15 @@
 
   // Button controls
   document.getElementById('btn-first').addEventListener('click', () => window.vomit.goToSlide(0));
-  document.getElementById('btn-prev').addEventListener('click', () => window.vomit.navigateSlide('prev'));
-  document.getElementById('btn-next').addEventListener('click', () => window.vomit.navigateSlide('next'));
-  document.getElementById('btn-last').addEventListener('click', () => window.vomit.goToSlide(slides.length - 1));
+  document
+    .getElementById('btn-prev')
+    .addEventListener('click', () => window.vomit.navigateSlide('prev'));
+  document
+    .getElementById('btn-next')
+    .addEventListener('click', () => window.vomit.navigateSlide('next'));
+  document
+    .getElementById('btn-last')
+    .addEventListener('click', () => window.vomit.goToSlide(slides.length - 1));
 
   // Start timer
   startTime = Date.now();

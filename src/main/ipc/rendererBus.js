@@ -22,32 +22,54 @@ class RendererBus {
   }
 
   /** @param {import('electron').BrowserWindow|null} win */
-  setMainWindow(win) { this._mainWindow = win; }
+  setMainWindow(win) {
+    this._mainWindow = win;
+  }
   /** @returns {import('electron').BrowserWindow|null} */
-  getMainWindow() { return this._mainWindow; }
+  getMainWindow() {
+    return this._mainWindow;
+  }
 
   /** @param {import('electron').BrowserWindow|null} win */
-  setPresentationWindow(win) { this._presentationWindow = win; }
+  setPresentationWindow(win) {
+    this._presentationWindow = win;
+  }
   /** @returns {import('electron').BrowserWindow|null} */
-  getPresentationWindow() { return this._presentationWindow; }
+  getPresentationWindow() {
+    return this._presentationWindow;
+  }
 
   /** @param {import('electron').BrowserWindow|null} win */
-  setPresenterWindow(win) { this._presenterWindow = win; }
+  setPresenterWindow(win) {
+    this._presenterWindow = win;
+  }
   /** @returns {import('electron').BrowserWindow|null} */
-  getPresenterWindow() { return this._presenterWindow; }
+  getPresenterWindow() {
+    return this._presenterWindow;
+  }
 
   /** @returns {import('electron').BrowserWindow[]} */
-  getEditorWindows() { return this._editorWindows; }
+  getEditorWindows() {
+    return this._editorWindows;
+  }
 
   /** @param {import('electron').BrowserWindow|null} win */
-  setDocumentationWindow(win) { this._documentationWindow = win; }
+  setDocumentationWindow(win) {
+    this._documentationWindow = win;
+  }
   /** @returns {import('electron').BrowserWindow|null} */
-  getDocumentationWindow() { return this._documentationWindow; }
+  getDocumentationWindow() {
+    return this._documentationWindow;
+  }
 
   /** @param {import('electron').BrowserWindow|null} win */
-  setTerminalWindow(win) { this._terminalWindow = win; }
+  setTerminalWindow(win) {
+    this._terminalWindow = win;
+  }
   /** @returns {import('electron').BrowserWindow|null} */
-  getTerminalWindow() { return this._terminalWindow; }
+  getTerminalWindow() {
+    return this._terminalWindow;
+  }
 
   /**
    * Send a message to the main renderer window.

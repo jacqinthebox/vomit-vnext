@@ -178,15 +178,15 @@ Expected: App asks to save, do not save, or cancel.
 
 Test each action on selected text.
 
-| Action | macOS | Windows/Linux |
-|---|---|---|
-| Bold | `Cmd+B` | `Ctrl+B` |
-| Italic | `Cmd+I` | `Ctrl+I` |
-| Link | `Cmd+K` | `Ctrl+K` |
-| Code block | `Cmd+M` | `Ctrl+M` |
-| Format table | `Cmd+Shift+T` | `Ctrl+Shift+T` |
-| Toggle todo | `Cmd+Shift+Enter` | `Ctrl+Shift+Enter` |
-| New slide | `Cmd+Enter` | `Ctrl+Enter` |
+| Action       | macOS             | Windows/Linux      |
+| ------------ | ----------------- | ------------------ |
+| Bold         | `Cmd+B`           | `Ctrl+B`           |
+| Italic       | `Cmd+I`           | `Ctrl+I`           |
+| Link         | `Cmd+K`           | `Ctrl+K`           |
+| Code block   | `Cmd+M`           | `Ctrl+M`           |
+| Format table | `Cmd+Shift+T`     | `Ctrl+Shift+T`     |
+| Toggle todo  | `Cmd+Shift+Enter` | `Ctrl+Shift+Enter` |
+| New slide    | `Cmd+Enter`       | `Ctrl+Enter`       |
 
 Expected: Markdown is inserted or updated correctly.
 
@@ -667,15 +667,15 @@ Expected: File opens in Vomit.
 
 ### 26.4 Windows shortcuts
 
-| Action | Shortcut |
-|---|---|
-| AI terminal | `Ctrl+J` |
-| Preview | `Ctrl+P` |
-| Save | `Ctrl+S` |
-| Search | `Ctrl+Shift+F` |
-| Presentation | `Ctrl+Shift+P` |
-| Presenter view | `Ctrl+Alt+P` |
-| Shortcuts | `Ctrl+/` |
+| Action         | Shortcut       |
+| -------------- | -------------- |
+| AI terminal    | `Ctrl+J`       |
+| Preview        | `Ctrl+P`       |
+| Save           | `Ctrl+S`       |
+| Search         | `Ctrl+Shift+F` |
+| Presentation   | `Ctrl+Shift+P` |
+| Presenter view | `Ctrl+Alt+P`   |
+| Shortcuts      | `Ctrl+/`       |
 
 ## 27. macOS-specific
 
@@ -696,15 +696,15 @@ Expected: File opens.
 
 ### 27.3 macOS shortcuts
 
-| Action | Shortcut |
-|---|---|
-| AI terminal | `Cmd+J` |
-| Preview | `Cmd+P` |
-| Save | `Cmd+S` |
-| Search | `Cmd+Shift+F` |
-| Presentation | `Cmd+Shift+P` |
-| Presenter view | `Cmd+Alt+P` |
-| Shortcuts | `Cmd+/` |
+| Action         | Shortcut      |
+| -------------- | ------------- |
+| AI terminal    | `Cmd+J`       |
+| Preview        | `Cmd+P`       |
+| Save           | `Cmd+S`       |
+| Search         | `Cmd+Shift+F` |
+| Presentation   | `Cmd+Shift+P` |
+| Presenter view | `Cmd+Alt+P`   |
+| Shortcuts      | `Cmd+/`       |
 
 ## 28. Crash/data-loss checks
 

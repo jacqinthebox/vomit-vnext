@@ -1,123 +1,126 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data: file: blob: https://www.plantuml.com;">
-  <title>Documentation</title>
-  <link rel="stylesheet" href="css/styles.css">
-  <link rel="stylesheet" href="css/themes.css">
-  <link rel="stylesheet" href="css/highlight.css">
-  <link rel="stylesheet" href="css/katex.min.css">
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      overflow: hidden;
-    }
-    #documentation-container {
-      width: 100%;
-      height: 100vh;
-      overflow-y: auto;
-      padding: 2rem 3rem;
-      box-sizing: border-box;
-      background: var(--bg-primary);
-      color: var(--text-primary);
-    }
-    #documentation-content {
-      max-width: 900px;
-      margin: 0 auto;
-      line-height: 1.7;
-      font-size: 15px;
-    }
-    #documentation-content h1 {
-      font-size: 2.2em;
-      border-bottom: 1px solid var(--border-color);
-      padding-bottom: 0.5em;
-      margin-top: 0;
-    }
-    #documentation-content h2 {
-      font-size: 1.6em;
-      margin-top: 2em;
-      border-bottom: 1px solid var(--border-color);
-      padding-bottom: 0.3em;
-    }
-    #documentation-content h3 {
-      font-size: 1.3em;
-      margin-top: 1.5em;
-    }
-    #documentation-content code {
-      background: var(--bg-tertiary);
-      padding: 0.2em 0.4em;
-      border-radius: 3px;
-      font-family: 'SF Mono', 'Monaco', 'Menlo', monospace;
-      font-size: 0.9em;
-    }
-    #documentation-content pre {
-      background: var(--bg-tertiary);
-      padding: 1em;
-      border-radius: 6px;
-      overflow-x: auto;
-    }
-    #documentation-content pre code {
-      background: none;
-      padding: 0;
-    }
-    #documentation-content table {
-      border-collapse: collapse;
-      width: 100%;
-      margin: 1em 0;
-    }
-    #documentation-content th,
-    #documentation-content td {
-      border: 1px solid var(--border-color);
-      padding: 0.6em 1em;
-      text-align: left;
-    }
-    #documentation-content th {
-      background: var(--bg-secondary);
-    }
-    #documentation-content blockquote {
-      border-left: 4px solid var(--accent-color);
-      margin: 1em 0;
-      padding-left: 1em;
-      color: var(--text-muted);
-    }
-    #documentation-content a {
-      color: var(--accent-color);
-    }
-    #documentation-content ul,
-    #documentation-content ol {
-      padding-left: 1.5em;
-    }
-    #documentation-content li {
-      margin: 0.3em 0;
-    }
-  </style>
-</head>
-<body class="theme-dark">
-  <div id="documentation-container">
-    <div id="documentation-content"></div>
-  </div>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data: file: blob: https://www.plantuml.com;"
+    />
+    <title>Documentation</title>
+    <link rel="stylesheet" href="css/styles.css" />
+    <link rel="stylesheet" href="css/themes.css" />
+    <link rel="stylesheet" href="css/highlight.css" />
+    <link rel="stylesheet" href="css/katex.min.css" />
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+      }
+      #documentation-container {
+        width: 100%;
+        height: 100vh;
+        overflow-y: auto;
+        padding: 2rem 3rem;
+        box-sizing: border-box;
+        background: var(--bg-primary);
+        color: var(--text-primary);
+      }
+      #documentation-content {
+        max-width: 900px;
+        margin: 0 auto;
+        line-height: 1.7;
+        font-size: 15px;
+      }
+      #documentation-content h1 {
+        font-size: 2.2em;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 0.5em;
+        margin-top: 0;
+      }
+      #documentation-content h2 {
+        font-size: 1.6em;
+        margin-top: 2em;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 0.3em;
+      }
+      #documentation-content h3 {
+        font-size: 1.3em;
+        margin-top: 1.5em;
+      }
+      #documentation-content code {
+        background: var(--bg-tertiary);
+        padding: 0.2em 0.4em;
+        border-radius: 3px;
+        font-family: 'SF Mono', 'Monaco', 'Menlo', monospace;
+        font-size: 0.9em;
+      }
+      #documentation-content pre {
+        background: var(--bg-tertiary);
+        padding: 1em;
+        border-radius: 6px;
+        overflow-x: auto;
+      }
+      #documentation-content pre code {
+        background: none;
+        padding: 0;
+      }
+      #documentation-content table {
+        border-collapse: collapse;
+        width: 100%;
+        margin: 1em 0;
+      }
+      #documentation-content th,
+      #documentation-content td {
+        border: 1px solid var(--border-color);
+        padding: 0.6em 1em;
+        text-align: left;
+      }
+      #documentation-content th {
+        background: var(--bg-secondary);
+      }
+      #documentation-content blockquote {
+        border-left: 4px solid var(--accent-color);
+        margin: 1em 0;
+        padding-left: 1em;
+        color: var(--text-muted);
+      }
+      #documentation-content a {
+        color: var(--accent-color);
+      }
+      #documentation-content ul,
+      #documentation-content ol {
+        padding-left: 1.5em;
+      }
+      #documentation-content li {
+        margin: 0.3em 0;
+      }
+    </style>
+  </head>
+  <body class="theme-dark">
+    <div id="documentation-container">
+      <div id="documentation-content"></div>
+    </div>
 
-  <script src="js/marked.min.js"></script>
-  <script src="js/highlight.min.js"></script>
-  <script src="js/hljs-bash.min.js"></script>
-  <script src="js/hljs-yaml.min.js"></script>
-  <script src="js/hljs-python.min.js"></script>
-  <script src="js/hljs-json.min.js"></script>
-  <script src="js/hljs-typescript.min.js"></script>
-  <script src="js/hljs-go.min.js"></script>
-  <script src="js/hljs-dockerfile.min.js"></script>
-  <script src="js/hljs-sql.min.js"></script>
-  <script src="js/hljs-csharp.min.js"></script>
-  <script src="js/hljs-lua.min.js"></script>
-  <script src="js/hljs-powershell.min.js"></script>
-  <script src="js/highlight-terraform.js"></script>
-  <script src="js/katex.min.js"></script>
-  <script src="js/katex-auto-render.min.js"></script>
-  <script src="js/plantuml-encoder.min.js"></script>
-  <script src="js/emoji.js"></script>
-  <script src="js/documentation.js"></script>
-</body>
+    <script src="js/marked.min.js"></script>
+    <script src="js/highlight.min.js"></script>
+    <script src="js/hljs-bash.min.js"></script>
+    <script src="js/hljs-yaml.min.js"></script>
+    <script src="js/hljs-python.min.js"></script>
+    <script src="js/hljs-json.min.js"></script>
+    <script src="js/hljs-typescript.min.js"></script>
+    <script src="js/hljs-go.min.js"></script>
+    <script src="js/hljs-dockerfile.min.js"></script>
+    <script src="js/hljs-sql.min.js"></script>
+    <script src="js/hljs-csharp.min.js"></script>
+    <script src="js/hljs-lua.min.js"></script>
+    <script src="js/hljs-powershell.min.js"></script>
+    <script src="js/highlight-terraform.js"></script>
+    <script src="js/katex.min.js"></script>
+    <script src="js/katex-auto-render.min.js"></script>
+    <script src="js/plantuml-encoder.min.js"></script>
+    <script src="js/emoji.js"></script>
+    <script src="js/documentation.js"></script>
+  </body>
 </html>

@@ -50,82 +50,142 @@ class SessionState extends EventEmitter {
 
   // --- File state ---
 
-  get currentFilePath() { return this._currentFilePath; }
+  get currentFilePath() {
+    return this._currentFilePath;
+  }
   set currentFilePath(v) {
     const old = this._currentFilePath;
     this._currentFilePath = v;
     if (old !== v) this.emit('change', 'currentFilePath', v, old);
   }
 
-  get currentContent() { return this._currentContent; }
+  get currentContent() {
+    return this._currentContent;
+  }
   set currentContent(v) {
     this._currentContent = v;
   }
 
-  get currentProjectRoot() { return this._currentProjectRoot; }
+  get currentProjectRoot() {
+    return this._currentProjectRoot;
+  }
   set currentProjectRoot(v) {
     this._currentProjectRoot = v;
   }
 
   // --- UI state ---
 
-  get currentTheme() { return this._currentTheme; }
+  get currentTheme() {
+    return this._currentTheme;
+  }
   set currentTheme(v) {
     this._currentTheme = v;
   }
 
-  get autoSaveEnabled() { return this._autoSaveEnabled; }
+  get autoSaveEnabled() {
+    return this._autoSaveEnabled;
+  }
   set autoSaveEnabled(v) {
     this._autoSaveEnabled = v;
   }
 
   // --- File watcher state ---
 
-  get watchedFilePath() { return this._watchedFilePath; }
-  set watchedFilePath(v) { this._watchedFilePath = v; }
+  get watchedFilePath() {
+    return this._watchedFilePath;
+  }
+  set watchedFilePath(v) {
+    this._watchedFilePath = v;
+  }
 
-  get lastKnownMtime() { return this._lastKnownMtime; }
-  set lastKnownMtime(v) { this._lastKnownMtime = v; }
+  get lastKnownMtime() {
+    return this._lastKnownMtime;
+  }
+  set lastKnownMtime(v) {
+    this._lastKnownMtime = v;
+  }
 
   // --- Process state ---
 
-  get ollamaProcess() { return this._ollamaProcess; }
-  set ollamaProcess(v) { this._ollamaProcess = v; }
+  get ollamaProcess() {
+    return this._ollamaProcess;
+  }
+  set ollamaProcess(v) {
+    this._ollamaProcess = v;
+  }
 
-  get ollamaAbortController() { return this._ollamaAbortController; }
-  set ollamaAbortController(v) { this._ollamaAbortController = v; }
+  get ollamaAbortController() {
+    return this._ollamaAbortController;
+  }
+  set ollamaAbortController(v) {
+    this._ollamaAbortController = v;
+  }
 
-  get shellProcess() { return this._shellProcess; }
-  set shellProcess(v) { this._shellProcess = v; }
+  get shellProcess() {
+    return this._shellProcess;
+  }
+  set shellProcess(v) {
+    this._shellProcess = v;
+  }
 
-  get piProcess() { return this._piProcess; }
-  set piProcess(v) { this._piProcess = v; }
+  get piProcess() {
+    return this._piProcess;
+  }
+  set piProcess(v) {
+    this._piProcess = v;
+  }
 
   // --- AI state ---
 
-  get availableAITools() { return this._availableAITools; }
-  set availableAITools(v) { this._availableAITools = v; }
+  get availableAITools() {
+    return this._availableAITools;
+  }
+  set availableAITools(v) {
+    this._availableAITools = v;
+  }
 
-  get agentAborted() { return this._agentAborted; }
-  set agentAborted(v) { this._agentAborted = v; }
+  get agentAborted() {
+    return this._agentAborted;
+  }
+  set agentAborted(v) {
+    this._agentAborted = v;
+  }
 
-  get agentChildProcess() { return this._agentChildProcess; }
-  set agentChildProcess(v) { this._agentChildProcess = v; }
+  get agentChildProcess() {
+    return this._agentChildProcess;
+  }
+  set agentChildProcess(v) {
+    this._agentChildProcess = v;
+  }
 
-  get agentActiveRequest() { return this._agentActiveRequest; }
-  set agentActiveRequest(v) { this._agentActiveRequest = v; }
+  get agentActiveRequest() {
+    return this._agentActiveRequest;
+  }
+  set agentActiveRequest(v) {
+    this._agentActiveRequest = v;
+  }
 
-  get agentSessionAllowlist() { return this._agentSessionAllowlist; }
+  get agentSessionAllowlist() {
+    return this._agentSessionAllowlist;
+  }
 
-  get agentConversationHistory() { return this._agentConversationHistory; }
-  set agentConversationHistory(v) { this._agentConversationHistory = v; }
+  get agentConversationHistory() {
+    return this._agentConversationHistory;
+  }
+  set agentConversationHistory(v) {
+    this._agentConversationHistory = v;
+  }
 
   clearAgentConversationHistory() {
     this._agentConversationHistory = [];
   }
 
-  get chatHistory() { return this._chatHistory; }
-  set chatHistory(v) { this._chatHistory = v; }
+  get chatHistory() {
+    return this._chatHistory;
+  }
+  set chatHistory(v) {
+    this._chatHistory = v;
+  }
 
   clearChatHistory() {
     this._chatHistory = [];
@@ -138,12 +198,16 @@ class SessionState extends EventEmitter {
 
   // --- Terminal state ---
 
-  get isTerminalDetached() { return this._isTerminalDetached; }
+  get isTerminalDetached() {
+    return this._isTerminalDetached;
+  }
   set isTerminalDetached(v) {
     this._isTerminalDetached = v;
   }
 
-  get terminalHeight() { return this._terminalHeight; }
+  get terminalHeight() {
+    return this._terminalHeight;
+  }
   set terminalHeight(v) {
     this._terminalHeight = v;
   }

@@ -43,7 +43,7 @@ function cosineSimilarity(a, b) {
 // embedding models via /v1/embeddings. Returns null when neither is usable.
 function resolveEmbedBackend(state, configStore) {
   const tools = state && state.availableAITools;
-  if (tools && tools.ollama && tools.ollamaModels.some(m => m.includes('nomic-embed-text'))) {
+  if (tools && tools.ollama && tools.ollamaModels.some((m) => m.includes('nomic-embed-text'))) {
     return { kind: 'ollama' };
   }
   if (configStore && configStore.getAIProvider() === 'openai-compatible') {
@@ -53,7 +53,7 @@ function resolveEmbedBackend(state, configStore) {
         kind: 'openai',
         baseUrl: ep.baseUrl,
         apiKey: ep.apiKey || '',
-        model: configStore.getOpenAIEmbedModel()
+        model: configStore.getOpenAIEmbedModel(),
       };
     }
   }
@@ -75,7 +75,7 @@ async function getEmbedding(text, backend) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ model: 'nomic-embed-text', prompt: text }),
-        signal: AbortSignal.timeout(30000)
+        signal: AbortSignal.timeout(30000),
       });
       if (!response.ok) return null;
       const json = await response.json();
@@ -89,7 +89,7 @@ async function getEmbedding(text, backend) {
       method: 'POST',
       headers,
       body: JSON.stringify({ model: backend.model, input: text }),
-      signal: AbortSignal.timeout(30000)
+      signal: AbortSignal.timeout(30000),
     });
     if (!response.ok) return null;
     const json = await response.json();
@@ -151,7 +151,23 @@ function clearRAGDatabase(folderPath) {
 
 // Index all documents in a bucket, or refresh one folder/file within the bucket.
 async function indexFolder(projectRoot, targetPath, progressCallback, backend) {
-  const extensions = ['.md', '.txt', '.js', '.ts', '.py', '.json', '.yaml', '.yml', '.xml', '.html', '.css', '.tf', '.sh', '.tpl', '.pdf'];
+  const extensions = [
+    '.md',
+    '.txt',
+    '.js',
+    '.ts',
+    '.py',
+    '.json',
+    '.yaml',
+    '.yml',
+    '.xml',
+    '.html',
+    '.css',
+    '.tf',
+    '.sh',
+    '.tpl',
+    '.pdf',
+  ];
   // Always store database at bucket scope
   const db = getRAGDatabase(projectRoot);
 
@@ -161,7 +177,9 @@ async function indexFolder(projectRoot, targetPath, progressCallback, backend) {
     targetStat = fs.statSync(targetPath);
   } catch (err) {
     if (err.code === 'ENOENT') {
-      throw new Error(`Path not found: "${targetPath}"\nUse /index without arguments to index the current bucket.`);
+      throw new Error(
+        `Path not found: "${targetPath}"\nUse /index without arguments to index the current bucket.`,
+      );
     }
     throw err;
   }
@@ -179,8 +197,10 @@ async function indexFolder(projectRoot, targetPath, progressCallback, backend) {
     const isFolderRefresh = targetPath !== projectRoot;
     if (isFolderRefresh) {
       const folderPrefix = path.relative(projectRoot, targetPath) + path.sep;
-      db.prepare('DELETE FROM chunks WHERE substr(file_path, 1, ?) = ?')
-        .run(folderPrefix.length, folderPrefix);
+      db.prepare('DELETE FROM chunks WHERE substr(file_path, 1, ?) = ?').run(
+        folderPrefix.length,
+        folderPrefix,
+      );
     } else {
       // Clear entire index when indexing full project
       db.exec('DELETE FROM chunks');
@@ -221,7 +241,7 @@ async function indexFolder(projectRoot, targetPath, progressCallback, backend) {
   let chunksIndexed = 0;
 
   const insertStmt = db.prepare(
-    'INSERT INTO chunks (file_path, chunk_index, content, embedding) VALUES (?, ?, ?, ?)'
+    'INSERT INTO chunks (file_path, chunk_index, content, embedding) VALUES (?, ?, ?, ?)',
   );
 
   for (const file of files) {
@@ -236,7 +256,12 @@ async function indexFolder(projectRoot, targetPath, progressCallback, backend) {
       if (isPdf && content === '(PDF contains no extractable text)') {
         processed++;
         if (progressCallback) {
-          progressCallback({ status: 'indexing', current: processed, total: files.length, file: relativePath });
+          progressCallback({
+            status: 'indexing',
+            current: processed,
+            total: files.length,
+            file: relativePath,
+          });
         }
         continue;
       }
@@ -255,7 +280,12 @@ async function indexFolder(projectRoot, targetPath, progressCallback, backend) {
 
       processed++;
       if (progressCallback) {
-        progressCallback({ status: 'indexing', current: processed, total: files.length, file: relativePath });
+        progressCallback({
+          status: 'indexing',
+          current: processed,
+          total: files.length,
+          file: relativePath,
+        });
       }
     } catch (e) {
       // Skip files that can't be read
@@ -286,10 +316,10 @@ async function searchIndex(query, folderPath, topK = 5, opts = {}) {
   const rows = db.prepare('SELECT file_path, chunk_index, content, embedding FROM chunks').all();
 
   // Calculate similarities
-  const similarities = rows.map(row => ({
+  const similarities = rows.map((row) => ({
     similarity: cosineSimilarity(queryEmbedding, JSON.parse(row.embedding)),
     chunk: row.content,
-    metadata: { file: row.file_path, chunkIndex: row.chunk_index, source: 'similarity' }
+    metadata: { file: row.file_path, chunkIndex: row.chunk_index, source: 'similarity' },
   }));
 
   db.close();
@@ -307,30 +337,33 @@ async function searchIndex(query, folderPath, topK = 5, opts = {}) {
       try {
         const wDb = new Database(wikiDbPath);
         try {
-          const seenFiles = new Set(top.map(t => t.metadata.file));
+          const seenFiles = new Set(top.map((t) => t.metadata.file));
           const neighbourPaths = new Set();
 
           for (const t of top) {
             const absSource = path.resolve(folderPath, t.metadata.file);
             // Outbound: links from this file to resolved targets
-            const outRows = wDb.prepare(
-              'SELECT DISTINCT target_path FROM wikilinks WHERE source_path = ? AND target_path IS NOT NULL'
-            ).all(absSource);
+            const outRows = wDb
+              .prepare(
+                'SELECT DISTINCT target_path FROM wikilinks WHERE source_path = ? AND target_path IS NOT NULL',
+              )
+              .all(absSource);
             for (const r of outRows) {
               const rel = path.relative(folderPath, r.target_path);
               if (!seenFiles.has(rel)) neighbourPaths.add(rel);
             }
             // Inbound: files that link to this file
-            const inRows = wDb.prepare(
-              'SELECT DISTINCT source_path FROM wikilinks WHERE target_path = ?'
-            ).all(absSource);
+            const inRows = wDb
+              .prepare('SELECT DISTINCT source_path FROM wikilinks WHERE target_path = ?')
+              .all(absSource);
             for (const r of inRows) {
               const rel = path.relative(folderPath, r.source_path);
               if (!seenFiles.has(rel)) neighbourPaths.add(rel);
             }
           }
 
-          const maxExtra = typeof opts.maxNeighbourChunks === 'number' ? opts.maxNeighbourChunks : 3;
+          const maxExtra =
+            typeof opts.maxNeighbourChunks === 'number' ? opts.maxNeighbourChunks : 3;
           if (neighbourPaths.size > 0 && maxExtra > 0) {
             // For each neighbour, pick its single best-scoring chunk.
             const byFile = new Map();
@@ -344,10 +377,10 @@ async function searchIndex(query, folderPath, topK = 5, opts = {}) {
             const extras = [...byFile.values()]
               .sort((a, b) => b.similarity - a.similarity)
               .slice(0, maxExtra)
-              .map(e => ({
+              .map((e) => ({
                 similarity: e.similarity,
                 chunk: e.chunk,
-                metadata: { ...e.metadata, source: 'wikilink' }
+                metadata: { ...e.metadata, source: 'wikilink' },
               }));
             top.push(...extras);
           }
@@ -388,9 +421,10 @@ function registerHandlers(ipcMain, { state, bus, configStore }) {
         // Every embedding request failed — a wrong model name or a stopped
         // server would otherwise masquerade as a successful empty index.
         return {
-          error: backend.kind === 'openai'
-            ? `Embedding requests to ${backend.baseUrl} failed for every chunk. Check that the server is running and that the embedding model "${backend.model}" matches one it has downloaded (AI menu → Set Embeddings Model…).`
-            : 'Embedding requests to Ollama failed for every chunk. Check that Ollama is running and nomic-embed-text is pulled.'
+          error:
+            backend.kind === 'openai'
+              ? `Embedding requests to ${backend.baseUrl} failed for every chunk. Check that the server is running and that the embedding model "${backend.model}" matches one it has downloaded (AI menu → Set Embeddings Model…).`
+              : 'Embedding requests to Ollama failed for every chunk. Check that Ollama is running and nomic-embed-text is pulled.',
         };
       }
       return { success: true, indexed: result.chunksIndexed, files: result.filesProcessed };
@@ -422,11 +456,11 @@ function registerHandlers(ipcMain, { state, bus, configStore }) {
         return { success: false, error: results.error };
       }
       // Format chunks for renderer
-      const chunks = results.map(r => ({
+      const chunks = results.map((r) => ({
         file: r.metadata.file,
         content: r.chunk,
         similarity: r.similarity,
-        source: r.metadata.source || 'similarity'
+        source: r.metadata.source || 'similarity',
       }));
       return { success: true, chunks };
     } catch (e) {
@@ -445,5 +479,5 @@ module.exports = {
   clearRAGDatabase,
   indexFolder,
   searchIndex,
-  registerHandlers
+  registerHandlers,
 };

@@ -79,7 +79,8 @@ class TagExplorerManager {
 
     const chevron = document.createElement('span');
     chevron.className = 'chevron';
-    chevron.innerHTML = '<svg viewBox="0 0 16 16" fill="currentColor"><path d="M6 4l4 4-4 4"/></svg>';
+    chevron.innerHTML =
+      '<svg viewBox="0 0 16 16" fill="currentColor"><path d="M6 4l4 4-4 4"/></svg>';
     if (this.expandedTags.has(tag.name)) {
       chevron.classList.add('expanded');
     }
@@ -132,11 +133,12 @@ class TagExplorerManager {
   }
 
   _updateResizeHandle() {
-    const anySidebarVisible = this.state.isFileTreeVisible ||
-                               this.state.isOutlineVisible ||
-                               this.state.isSearchVisible ||
-                               this.state.isTagExplorerVisible ||
-                               this.state.isTodoExplorerVisible;
+    const anySidebarVisible =
+      this.state.isFileTreeVisible ||
+      this.state.isOutlineVisible ||
+      this.state.isSearchVisible ||
+      this.state.isTagExplorerVisible ||
+      this.state.isTodoExplorerVisible;
     this.sidebarResize.classList.toggle('hidden', !anySidebarVisible);
   }
 }

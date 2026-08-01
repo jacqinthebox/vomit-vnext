@@ -8,7 +8,9 @@ const path = require('path');
 const { extractImageRefs, collectPromptImages } = require('../src/main/services/agentTools');
 
 test('extracts markdown image links', () => {
-  const refs = extractImageRefs('Intro\n![screenshot](images/shot.png)\n![with title](pics/a.jpg "cap")');
+  const refs = extractImageRefs(
+    'Intro\n![screenshot](images/shot.png)\n![with title](pics/a.jpg "cap")',
+  );
   assert.deepStrictEqual(refs, ['images/shot.png', 'pics/a.jpg']);
 });
 
@@ -60,7 +62,7 @@ test('collectPromptImages decodes percent-encoded paths and honors the cap', () 
 
     const many = collectPromptImages(
       Array.from({ length: 6 }, (_, i) => `![](i${i}.png)`).join(' '),
-      [dir]
+      [dir],
     );
     assert.strictEqual(many.images.length, 4); // MAX_PROMPT_IMAGES
   } finally {
@@ -94,7 +96,7 @@ test('collectPromptImages honors an encoder returning {data, mime}', () => {
   try {
     fs.writeFileSync(path.join(dir, 'c.png'), Buffer.from([0x89]));
     const { images, mimes } = collectPromptImages('![](c.png)', [dir], {
-      encoder: () => ({ data: 'ZmFrZQ==', mime: 'image/jpeg' })
+      encoder: () => ({ data: 'ZmFrZQ==', mime: 'image/jpeg' }),
     });
     assert.deepStrictEqual(images, ['ZmFrZQ==']);
     assert.strictEqual(mimes[0], 'image/jpeg');

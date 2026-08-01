@@ -1,6 +1,6 @@
 // Terminal Window — Standalone detached terminal
 
-(function() {
+(function () {
   'use strict';
 
   // Simple state for detached terminal
@@ -13,7 +13,7 @@
     basePath: null,
     projectRoot: null,
     currentDirectory: null,
-    currentFilePath: null
+    currentFilePath: null,
   };
 
   // Picker state for command autocomplete
@@ -48,7 +48,7 @@
     terminalState.activeTerminalTab = tabName;
 
     // Update tab buttons
-    terminalTabs.forEach(tab => {
+    terminalTabs.forEach((tab) => {
       tab.classList.toggle('active', tab.dataset.terminal === tabName);
     });
 
@@ -106,7 +106,7 @@
       brightBlue: '#3b8eea',
       brightMagenta: '#d670d6',
       brightCyan: '#29b8db',
-      brightWhite: '#e5e5e5'
+      brightWhite: '#e5e5e5',
     };
   }
 
@@ -118,7 +118,7 @@
       fontSize: 13,
       fontFamily: 'Menlo, Monaco, "Courier New", monospace',
       theme: getXtermTheme(),
-      scrollback: 10000
+      scrollback: 10000,
     });
 
     xtermFitAddon = new FitAddon.FitAddon();
@@ -187,7 +187,7 @@
 
     // Hint mode: exact command name followed by a trailing space (after Tab completion)
     if (inputValue.endsWith(' ') && trimmedLower.startsWith('/')) {
-      const exact = COMMAND_REGISTRY.find(c => c.name.toLowerCase() === trimmedLower);
+      const exact = COMMAND_REGISTRY.find((c) => c.name.toLowerCase() === trimmedLower);
       if (exact && exact.args !== 'none') {
         filtered = [exact];
       } else {
@@ -196,7 +196,7 @@
       }
     } else {
       filtered = [...COMMAND_REGISTRY]
-        .filter(c => c.name.toLowerCase().startsWith(lower))
+        .filter((c) => c.name.toLowerCase().startsWith(lower))
         .sort((a, b) => a.name.localeCompare(b.name));
     }
 
@@ -223,8 +223,8 @@
 
   function renderPicker() {
     const { items, selectedIndex } = pickerState;
-    const maxLen = Math.max(...items.map(c => c.name.length));
-    const maxHintLen = Math.max(0, ...items.map(c => (c.argsHint || '').length));
+    const maxLen = Math.max(...items.map((c) => c.name.length));
+    const maxHintLen = Math.max(0, ...items.map((c) => (c.argsHint || '').length));
     const showArgs = maxHintLen > 0;
 
     if (!pickerState.blockEl) {
@@ -234,15 +234,19 @@
       pickerState.blockEl = el;
     }
 
-    pickerState.blockEl.innerHTML = items.map((c, i) => {
-      const isSelected = i === selectedIndex;
-      const marker = isSelected ? '▸' : ' ';
-      const name = c.name.padEnd(maxLen);
-      const argsStr = showArgs ? `  ${(c.argsHint || '').padEnd(maxHintLen)}` : '';
-      const cls = isSelected ? 'terminal-line system terminal-picker-selected' : 'terminal-line system';
-      const text = ` ${marker} ${name}${argsStr}  —  ${c.description}`;
-      return `<div class="${cls}" style="white-space:pre">${escapeHtml(text)}</div>`;
-    }).join('');
+    pickerState.blockEl.innerHTML = items
+      .map((c, i) => {
+        const isSelected = i === selectedIndex;
+        const marker = isSelected ? '▸' : ' ';
+        const name = c.name.padEnd(maxLen);
+        const argsStr = showArgs ? `  ${(c.argsHint || '').padEnd(maxHintLen)}` : '';
+        const cls = isSelected
+          ? 'terminal-line system terminal-picker-selected'
+          : 'terminal-line system';
+        const text = ` ${marker} ${name}${argsStr}  —  ${c.description}`;
+        return `<div class="${cls}" style="white-space:pre">${escapeHtml(text)}</div>`;
+      })
+      .join('');
 
     // Scroll the selected row into view rather than always jumping to bottom
     const selectedEl = pickerState.blockEl.querySelector('.terminal-picker-selected');
@@ -267,16 +271,19 @@
     const renderer = new marked.Renderer();
 
     // Custom code block renderer with syntax highlighting
-    renderer.code = function(tokenOrCode, language) {
-      const code = typeof tokenOrCode === 'object' && tokenOrCode !== null
-        ? tokenOrCode.text || ''
-        : String(tokenOrCode || '');
-      const lang = typeof tokenOrCode === 'object' && tokenOrCode !== null
-        ? tokenOrCode.lang
-        : language;
+    renderer.code = function (tokenOrCode, language) {
+      const code =
+        typeof tokenOrCode === 'object' && tokenOrCode !== null
+          ? tokenOrCode.text || ''
+          : String(tokenOrCode || '');
+      const lang =
+        typeof tokenOrCode === 'object' && tokenOrCode !== null ? tokenOrCode.lang : language;
       if (lang && window.hljs.getLanguage(lang)) {
         try {
-          const highlighted = window.hljs.highlight(code, { language: lang, ignoreIllegals: true }).value;
+          const highlighted = window.hljs.highlight(code, {
+            language: lang,
+            ignoreIllegals: true,
+          }).value;
           return `<pre><code class="hljs language-${escapeHtml(lang)}">${highlighted}</code></pre>`;
         } catch (e) {
           // Fallback to auto-detect
@@ -287,15 +294,16 @@
     };
 
     // Escape HTML in text to prevent XSS
-    renderer.html = function(html) {
+    renderer.html = function (html) {
       const text = typeof html === 'object' && html !== null ? html.text || '' : String(html || '');
       return escapeHtml(text);
     };
 
-    renderer.codespan = function(tokenOrCode) {
-      const code = typeof tokenOrCode === 'object' && tokenOrCode !== null
-        ? tokenOrCode.text || ''
-        : String(tokenOrCode || '');
+    renderer.codespan = function (tokenOrCode) {
+      const code =
+        typeof tokenOrCode === 'object' && tokenOrCode !== null
+          ? tokenOrCode.text || ''
+          : String(tokenOrCode || '');
       return `<code>${escapeHtml(code)}</code>`;
     };
 
@@ -307,11 +315,11 @@
 
     terminalMarkedOptions = {
       renderer: renderer,
-      breaks: false,      // Don't convert \n to <br> — markdown handles spacing
-      gfm: true,          // GitHub Flavored Markdown
-      headerIds: false,   // Don't generate header IDs
-      mangle: false,      // Don't mangle email addresses
-      sanitize: false     // Allow HTML (AI responses are from trusted local source)
+      breaks: false, // Don't convert \n to <br> — markdown handles spacing
+      gfm: true, // GitHub Flavored Markdown
+      headerIds: false, // Don't generate header IDs
+      mangle: false, // Don't mangle email addresses
+      sanitize: false, // Allow HTML (AI responses are from trusted local source)
     };
   }
 
@@ -395,9 +403,9 @@
             { left: '$$', right: '$$', display: true },
             { left: '$', right: '$', display: false },
             { left: '\\[', right: '\\]', display: true },
-            { left: '\\(', right: '\\)', display: false }
+            { left: '\\(', right: '\\)', display: false },
           ],
-          throwOnError: false
+          throwOnError: false,
         });
       }
     } catch (e) {
@@ -428,7 +436,7 @@
   function showAvailableCommands() {
     const { COMMAND_REGISTRY } = window.TerminalCommands;
     appendTerminalOutput('Available commands:', 'system');
-    COMMAND_REGISTRY.forEach(c => {
+    COMMAND_REGISTRY.forEach((c) => {
       const args = c.argsHint ? ` ${c.argsHint}` : '';
       appendTerminalOutput(`  ${c.name}${args}  —  ${c.description}`, 'system');
     });
@@ -498,7 +506,7 @@
     '/pseudo-text',
     '/pseudo-text-ai',
     '/pseudo-depseudo-text',
-    '/pseudo-depseudo'
+    '/pseudo-depseudo',
   ]);
 
   function persistHistory() {
@@ -541,16 +549,21 @@
     appendTerminalOutput(`❯ ${prompt}`, 'input');
     window.vomit.syncTerminalInput(prompt);
 
-    const folder = (terminalState.currentDirectory && terminalState.currentDirectory !== terminalState.projectRoot)
-      ? terminalState.currentDirectory
-      : (terminalState.basePath || cwd);
+    const folder =
+      terminalState.currentDirectory && terminalState.currentDirectory !== terminalState.projectRoot
+        ? terminalState.currentDirectory
+        : terminalState.basePath || cwd;
     const parts = [`Current folder: ${folder}`];
     try {
       const editorData = await window.vomit.getEditorContent();
       if (editorData && editorData.content && editorData.content.trim()) {
-        parts.push(`Here is the document currently open in the editor:\n---\n${editorData.content}\n---`);
+        parts.push(
+          `Here is the document currently open in the editor:\n---\n${editorData.content}\n---`,
+        );
       }
-    } catch { /* no editor content — folder context only */ }
+    } catch {
+      /* no editor content — folder context only */
+    }
     const finalCommand = `${parts.join('\n\n')}\n\nUser request: ${prompt}`;
 
     terminalState.isClaudeRunning = true;
@@ -573,15 +586,24 @@
       subpath
         ? `Refreshing ${subpath} in the bucket RAG index...`
         : 'Indexing current bucket for RAG...',
-      'system'
+      'system',
     );
-    appendTerminalOutput('Embeddings need nomic-embed-text: via Ollama (ollama pull nomic-embed-text) or the active OpenAI-compatible endpoint (e.g. LM Studio)', 'system');
+    appendTerminalOutput(
+      'Embeddings need nomic-embed-text: via Ollama (ollama pull nomic-embed-text) or the active OpenAI-compatible endpoint (e.g. LM Studio)',
+      'system',
+    );
 
     try {
       const result = await window.vomit.ragIndex(projectRoot, targetPath);
       if (result.success) {
-        appendTerminalOutput(`✓ Bucket index updated! ${result.indexed} chunks from ${result.files} files.`, 'output');
-        appendTerminalOutput('Use /rag <query> to search the current bucket with context.', 'system');
+        appendTerminalOutput(
+          `✓ Bucket index updated! ${result.indexed} chunks from ${result.files} files.`,
+          'output',
+        );
+        appendTerminalOutput(
+          'Use /rag <query> to search the current bucket with context.',
+          'system',
+        );
       } else {
         appendTerminalOutput(`✗ Indexing failed: ${result.error}`, 'error');
       }
@@ -601,17 +623,27 @@
         return;
       }
 
-      const removed = clearResult.deleted > 0
-        ? `Removed ${clearResult.deleted} database file${clearResult.deleted === 1 ? '' : 's'}.`
-        : 'No existing RAG database found.';
+      const removed =
+        clearResult.deleted > 0
+          ? `Removed ${clearResult.deleted} database file${clearResult.deleted === 1 ? '' : 's'}.`
+          : 'No existing RAG database found.';
       appendTerminalOutput(removed, 'system');
       appendTerminalOutput('Rebuilding full bucket index...', 'system');
-      appendTerminalOutput('Embeddings need nomic-embed-text: via Ollama (ollama pull nomic-embed-text) or the active OpenAI-compatible endpoint (e.g. LM Studio)', 'system');
+      appendTerminalOutput(
+        'Embeddings need nomic-embed-text: via Ollama (ollama pull nomic-embed-text) or the active OpenAI-compatible endpoint (e.g. LM Studio)',
+        'system',
+      );
 
       const result = await window.vomit.ragIndex(cwd, cwd);
       if (result.success) {
-        appendTerminalOutput(`✓ Reindex complete! ${result.indexed} chunks from ${result.files} files.`, 'output');
-        appendTerminalOutput('Use /rag <query> to search the current bucket with fresh context.', 'system');
+        appendTerminalOutput(
+          `✓ Reindex complete! ${result.indexed} chunks from ${result.files} files.`,
+          'output',
+        );
+        appendTerminalOutput(
+          'Use /rag <query> to search the current bucket with fresh context.',
+          'system',
+        );
       } else {
         appendTerminalOutput(`✗ Reindex failed: ${result.error}`, 'error');
       }
@@ -705,7 +737,10 @@
 
       if (!results.success) {
         if (results.error === 'not_indexed') {
-          appendTerminalOutput('No bucket index found. Run /index first to index the current bucket.', 'error');
+          appendTerminalOutput(
+            'No bucket index found. Run /index first to index the current bucket.',
+            'error',
+          );
         } else {
           appendTerminalOutput(`Search failed: ${results.error}`, 'error');
         }
@@ -732,7 +767,10 @@
       }
       const sources = [...fileStats.values()].sort((a, b) => b.best - a.best);
 
-      appendTerminalOutput(`Found ${results.chunks.length} relevant chunks across ${sources.length} document(s):`, 'system');
+      appendTerminalOutput(
+        `Found ${results.chunks.length} relevant chunks across ${sources.length} document(s):`,
+        'system',
+      );
       for (const s of sources) {
         const rel = ragDisplayPath(s.file, cwd);
         const pct = Math.round((s.best || 0) * 100);
@@ -746,10 +784,9 @@
       // answer's "(source: notes.md)" citations into clickable links.
       ragLinkTargets = sources.map((s) => ({
         file: s.file,
-        labels: [...new Set([
-          ragDisplayPath(s.file, cwd),
-          window.PathUtils.basename(s.file),
-        ])].filter(Boolean),
+        labels: [
+          ...new Set([ragDisplayPath(s.file, cwd), window.PathUtils.basename(s.file)]),
+        ].filter(Boolean),
       }));
 
       const contextParts = results.chunks.map((chunk) => {
@@ -785,12 +822,10 @@ Provide a helpful, accurate answer based on the context above. Cite the source d
     try {
       const result = await window.vomit.wikiIndex(cwd);
       if (result.success) {
-        const broken = result.brokenLinks > 0
-          ? ` (${result.brokenLinks} broken)`
-          : '';
+        const broken = result.brokenLinks > 0 ? ` (${result.brokenLinks} broken)` : '';
         appendTerminalOutput(
           `✓ Wiki index built: ${result.linksIndexed} links across ${result.filesProcessed} notes${broken}.`,
-          'output'
+          'output',
         );
       } else {
         appendTerminalOutput(`✗ Wiki index failed: ${result.error}`, 'error');
@@ -831,7 +866,7 @@ Provide a helpful, accurate answer based on the context above. Cite the source d
       indexFolderForRAG,
       reindexRAG,
       searchWithRAG,
-      reindexWiki
+      reindexWiki,
     };
 
     if (parsed && EDITOR_COMMANDS.has(parsed.name)) {
@@ -861,7 +896,10 @@ Provide a helpful, accurate answer based on the context above. Cite the source d
     // doc + folder context (parity with the main TerminalManager).
     const cwd = terminalState.projectRoot || terminalState.currentDirectory;
     if (!cwd) {
-      appendTerminalOutput('Error: No project folder open. Add or select a bucket from the Buckets menu first.', 'error');
+      appendTerminalOutput(
+        'Error: No project folder open. Add or select a bucket from the Buckets menu first.',
+        'error',
+      );
       return;
     }
     await executeDefaultCommand(command, cwd);
@@ -947,7 +985,7 @@ Provide a helpful, accurate answer based on the context above. Cite the source d
       } else {
         appendTerminalOutput(
           `⚠ Allow ${detail.toolName}? ${detail.summary}\n[y = yes / n = no / a = always this session]`,
-          'system'
+          'system',
         );
       }
       terminalInput.focus();
@@ -966,7 +1004,10 @@ Provide a helpful, accurate answer based on the context above. Cite the source d
       const progress = e.detail;
       if (!progress) return;
       if (progress.status === 'indexing') {
-        appendTerminalOutput(`Indexing: ${progress.file} (${progress.current}/${progress.total})`, 'system');
+        appendTerminalOutput(
+          `Indexing: ${progress.file} (${progress.current}/${progress.total})`,
+          'system',
+        );
       } else if (progress.status === 'done') {
         appendTerminalOutput(`✓ Indexed ${progress.total} files successfully!`, 'output');
       } else if (progress.status === 'error') {
@@ -1020,7 +1061,7 @@ Provide a helpful, accurate answer based on the context above. Cite the source d
     });
 
     // Tab switching
-    terminalTabs.forEach(tab => {
+    terminalTabs.forEach((tab) => {
       tab.addEventListener('click', () => {
         switchTerminalTab(tab.dataset.terminal);
       });
@@ -1039,9 +1080,14 @@ Provide a helpful, accurate answer based on the context above. Cite the source d
     // Terminal input - keyboard shortcuts
     terminalInput.addEventListener('keydown', (e) => {
       // Single-keypress answers for agent permission prompts (empty input).
-      if (pendingPermissionId && terminalInput.value === '' &&
-          !e.metaKey && !e.ctrlKey && !e.altKey &&
-          ['a', 'r', 's', 'y', 'n'].includes((e.key || '').toLowerCase())) {
+      if (
+        pendingPermissionId &&
+        terminalInput.value === '' &&
+        !e.metaKey &&
+        !e.ctrlKey &&
+        !e.altKey &&
+        ['a', 'r', 's', 'y', 'n'].includes((e.key || '').toLowerCase())
+      ) {
         e.preventDefault();
         const key = e.key.toLowerCase();
         appendTerminalOutput(`❯ ${key}`, 'input');
@@ -1101,7 +1147,8 @@ Provide a helpful, accurate answer based on the context above. Cite the source d
           pickerMoveSelection(-1);
         } else if (terminalState.terminalHistoryIndex > 0) {
           terminalState.terminalHistoryIndex--;
-          terminalInput.value = terminalState.terminalHistory[terminalState.terminalHistoryIndex] || '';
+          terminalInput.value =
+            terminalState.terminalHistory[terminalState.terminalHistoryIndex] || '';
         }
       } else if (e.key === 'ArrowDown') {
         e.preventDefault();
@@ -1109,7 +1156,8 @@ Provide a helpful, accurate answer based on the context above. Cite the source d
           pickerMoveSelection(1);
         } else if (terminalState.terminalHistoryIndex < terminalState.terminalHistory.length - 1) {
           terminalState.terminalHistoryIndex++;
-          terminalInput.value = terminalState.terminalHistory[terminalState.terminalHistoryIndex] || '';
+          terminalInput.value =
+            terminalState.terminalHistory[terminalState.terminalHistoryIndex] || '';
         } else {
           terminalState.terminalHistoryIndex = terminalState.terminalHistory.length;
           terminalInput.value = '';
@@ -1205,5 +1253,4 @@ Provide a helpful, accurate answer based on the context above. Cite the source d
     updateContextBar();
     showWelcomeBanner();
   })();
-
 })();

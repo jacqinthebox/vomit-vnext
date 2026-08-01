@@ -1,28 +1,27 @@
 # Vomit
 
-*[Claude Code](https://claude.com/claude-code) crushes React. This app is fully vibe-coded.*
+_[Claude Code](https://claude.com/claude-code) crushes React. This app is fully vibe-coded._
 
 An opinionated, keyboard-centric markdown editor for presentations and notes with **local AI support** (privacy first). Your data never leaves your machine.
 
 <img src="screenshot.png" alt="Vomit Screenshot" width="600">
 
-
 ## Why Vomit?
 
-| Feature | PowerPoint | Obsidian | Marp | Vomit |
-|---------|:----------:|:--------:|:----:|:-----:|
-| Markdown native | ❌ | ✅ | ✅ | ✅ |
-| Live preview | ✅ | ✅ | ✅ | ✅ |
-| Presenter view with notes | ✅ | ❌ | ✅ | ✅ |
-| Timer | ✅ | ❌ | ✅ | ✅ |
-| Next slide preview | ✅ | ❌ | ✅ | ✅ |
-| Standalone app | ✅ | ✅ | ❌ | ✅ |
-| PlantUML diagrams | ❌ | Plugin | ✅ | ✅ |
-| LaTeX math | ❌ | Plugin | ✅ | ✅ |
-| Code syntax highlighting | ❌ | ✅ | ✅ | ✅ |
-| **Local AI (privacy first)** | ❌ | Plugin | ❌ | ✅ |
-| **RAG over your docs** | ❌ | Plugin | ❌ | ✅ |
-| **Pseudonymization** | ❌ | ❌ | ❌ | ✅ |
+| Feature                      | PowerPoint | Obsidian | Marp | Vomit |
+| ---------------------------- | :--------: | :------: | :--: | :---: |
+| Markdown native              |     ❌     |    ✅    |  ✅  |  ✅   |
+| Live preview                 |     ✅     |    ✅    |  ✅  |  ✅   |
+| Presenter view with notes    |     ✅     |    ❌    |  ✅  |  ✅   |
+| Timer                        |     ✅     |    ❌    |  ✅  |  ✅   |
+| Next slide preview           |     ✅     |    ❌    |  ✅  |  ✅   |
+| Standalone app               |     ✅     |    ✅    |  ❌  |  ✅   |
+| PlantUML diagrams            |     ❌     |  Plugin  |  ✅  |  ✅   |
+| LaTeX math                   |     ❌     |  Plugin  |  ✅  |  ✅   |
+| Code syntax highlighting     |     ❌     |    ✅    |  ✅  |  ✅   |
+| **Local AI (privacy first)** |     ❌     |  Plugin  |  ❌  |  ✅   |
+| **RAG over your docs**       |     ❌     |  Plugin  |  ❌  |  ✅   |
+| **Pseudonymization**         |     ❌     |    ❌    |  ❌  |  ✅   |
 
 ## Platform Support
 
@@ -155,23 +154,23 @@ Paste images directly with Cmd+V. They are saved to an `images/` folder next to 
 Resize images with this syntax:
 
 ```markdown
-![alt text](image.png =400x)      # width 400px
-![alt text](image.png =x300)      # height 300px
-![alt text](image.png =400x300)   # both
+![alt text](image.png =400x) # width 400px
+![alt text](image.png =x300) # height 300px
+![alt text](image.png =400x300) # both
 ```
 
 ### PlantUML Diagrams
 
 Create diagrams using PlantUML syntax in fenced code blocks:
 
-~~~markdown
+````markdown
 ```plantuml
 @startuml
 Alice -> Bob: Hello
 Bob --> Alice: Hi there!
 @enduml
 ```
-~~~
+````
 
 Diagrams are rendered via the PlantUML server. Supports sequence diagrams, class diagrams, flowcharts, and more. See [PlantUML documentation](https://plantuml.com/) for syntax.
 
@@ -199,11 +198,13 @@ Vomit includes a built-in AI terminal that talks to **two kinds of local provide
 All AI processing happens locally — your data never leaves your machine.
 
 **Setup (Ollama):**
+
 1. Install Ollama from https://ollama.ai
 2. Pull a model: `ollama pull qwen2.5:14b` (recommended for best results)
 3. Press `Cmd+J` or select a model from the **AI** menu
 
 **Setup (OpenAI-compatible, e.g. MLX):**
+
 1. Start your local server, for example:
    ```bash
    pip install mlx-lm
@@ -234,17 +235,18 @@ Type `/` in the AI terminal to open an inline command picker. Navigate with `↑
 **Default mode:** typing plain text (no slash) runs the agent (tools + shared history) primed with the **open document** and the **current folder** — "summarize this doc" or "what's in this folder" just work. The current folder is the file-tree selection when one is set, otherwise the open doc's folder, otherwise the bucket root.
 
 **Special commands:**
+
 - `/doc <prompt>` - Include the current document in your prompt
 - `/presentation <topic>` - Generate a presentation with slides and speaker notes
-- **Pseudonymization** — commands are named by *scope*, and the engine defaults to a fast offline scan (add `--ai` for the smarter AI-assisted pass):
+- **Pseudonymization** — commands are named by _scope_, and the engine defaults to a fast offline scan (add `--ai` for the smarter AI-assisted pass):
 - `/pseudo` `[--ai]` `[--customer "Name[=Replacement]"]` - Pseudonymize the **current document**. Fast/offline by default; `--ai` uses the AI to also catch prose entities like names and companies.
 - `/pseudo-selection` `[--ai]` - Pseudonymize the **selected editor text** (or whole document if nothing is selected) and print the result inline in the terminal to copy — nothing is written to disk.
 - `/pseudo-repo` `[folder]` `[--all]` `[--ai]` `[--customer "Name[=Replacement]"]` - Pseudonymize **repos/folders in the bucket** into `pseudo/<name>/` with a git baseline. With no folder it auto-detects top-level git repos; add `--all` to process **every** top-level folder (git or not); name a `folder` to target just one. Handles Terraform/IaC, Azure DevOps, Python/.NET config, Kubernetes, Docker, and common secrets while preserving structural API fields and Helm template syntax. `--ai` adds a hybrid AI pass for prose docs, HLDs, and legal/advisory text.
 - `/pseudo-map` - Show the current entity mapping.
 - `/pseudo-restore` `[repo-name]` - Restore original data. Name a pseudo repo folder to reverse it, or omit the argument to restore the current document/selection using the session mapping.
-- **Forcing customer names** - The deterministic scanner only detects *structured* data (emails, IPs, GUIDs, resource fields, domains…), so a bare customer/company/person name in free text isn't caught automatically. Pass one or more `--customer "Name"` (alias `--name`) flags to force those names into the mapping so they are **always** replaced, even offline. To choose the replacement yourself, use `--customer "Name=Replacement"` (e.g. `--customer "Lidl=GroceryShop"`); without `=` an auto `Customer-NNN` token is used. Works on `/pseudo`, `/pseudo-repo` (and legacy aliases). Example: `/pseudo-repo my-repo --customer "Acme Corp=Globex" --customer Contoso`. Customer names are matched **case-insensitively** with word boundaries (e.g. `lidl`, `LIDL` and `Lidl.` all match; `Lidlish` is left intact).
+- **Forcing customer names** - The deterministic scanner only detects _structured_ data (emails, IPs, GUIDs, resource fields, domains…), so a bare customer/company/person name in free text isn't caught automatically. Pass one or more `--customer "Name"` (alias `--name`) flags to force those names into the mapping so they are **always** replaced, even offline. To choose the replacement yourself, use `--customer "Name=Replacement"` (e.g. `--customer "Lidl=GroceryShop"`); without `=` an auto `Customer-NNN` token is used. Works on `/pseudo`, `/pseudo-repo` (and legacy aliases). Example: `/pseudo-repo my-repo --customer "Acme Corp=Globex" --customer Contoso`. Customer names are matched **case-insensitively** with word boundaries (e.g. `lidl`, `LIDL` and `Lidl.` all match; `Lidlish` is left intact).
 - Pseudonymization processes text-based files such as `.md`, `.markdown`, `.txt`, `.adoc`, `.rst`, YAML/JSON, IaC, config, and source files; binary documents such as `.docx`, `.pdf`, `.xlsx`, and `.pptx` are skipped.
-- *Legacy aliases* (`/pseudo-deterministic`, `/pseudo-ai`, `/pseudo-run`, `/pseudo-text`, `/pseudo-text-ai`, `/pseudo-depseudo`, `/pseudo-depseudo-text`) still work but are hidden from the command picker.
+- _Legacy aliases_ (`/pseudo-deterministic`, `/pseudo-ai`, `/pseudo-run`, `/pseudo-text`, `/pseudo-text-ai`, `/pseudo-depseudo`, `/pseudo-depseudo-text`) still work but are hidden from the command picker.
 - `/index` - Index the current bucket for RAG search
 - `/index <folder>` - Refresh only a specific folder inside the current bucket
 - `/reindex` - Clear and rebuild the current bucket's RAG index
@@ -284,7 +286,7 @@ By default, read-only tools (file reads, searches, listings, web lookups, and re
 [y = yes / n = no / a = always this session]
 ```
 
-Answer `y` to allow once, `n` (or Escape) to deny — the model is told and adjusts its approach — or `a` to allow that command (by its first word, e.g. all `npm …`) or tool for the rest of the session. A single keypress answers when the input line is empty. Unanswered prompts deny automatically after 2 minutes. Change the behavior via **AI menu → Agent Permissions**: *Auto-allow read-only tools* (default), *Always ask*, or *Never ask (unrestricted)*.
+Answer `y` to allow once, `n` (or Escape) to deny — the model is told and adjusts its approach — or `a` to allow that command (by its first word, e.g. all `npm …`) or tool for the rest of the session. A single keypress answers when the input line is empty. Unanswered prompts deny automatically after 2 minutes. Change the behavior via **AI menu → Agent Permissions**: _Auto-allow read-only tools_ (default), _Always ask_, or _Never ask (unrestricted)_.
 
 **Diff preview for file writes:** when the agent wants to write or edit a file, the prompt shows the exact change as a colored unified diff with a `path | +n -m` header (repo-relative when the folder is a git repo), and the keys become `[a]pprove / [r]eject / [s] = always this session`. Rejecting tells the model "User rejected this edit" so it can adapt. Toggle via **AI menu → Diff Preview for File Writes** (on by default; off falls back to the plain prompt above).
 
@@ -333,7 +335,7 @@ The AI menu shows all your installed Ollama models - just click one to switch.
 
 ### Pi terminal (external agent harness)
 
-The terminal panel has three tabs — **Pi**, **Vomit AI**, and **Shell**. Pi runs [Pi](https://pi.dev), a minimal, provider-agnostic coding-agent harness, in its own PTY started automatically in the current bucket. Pi is a stronger fit than the built-in Vomit AI terminal for multi-step *code* work, while the Vomit AI tab stays best for document-native tasks (`/doc`, `/rag`, `/presentation`, pseudonymization) that reach into the open editor.
+The terminal panel has three tabs — **Pi**, **Vomit AI**, and **Shell**. Pi runs [Pi](https://pi.dev), a minimal, provider-agnostic coding-agent harness, in its own PTY started automatically in the current bucket. Pi is a stronger fit than the built-in Vomit AI terminal for multi-step _code_ work, while the Vomit AI tab stays best for document-native tasks (`/doc`, `/rag`, `/presentation`, pseudonymization) that reach into the open editor.
 
 `Cmd+J` (**Toggle Terminal**) opens the **Pi** tab when Pi is installed, and falls back to the **Vomit AI** tab when it isn't — so you're never dropped onto an install-hint screen. Either way all three tabs are one click apart.
 
@@ -344,10 +346,10 @@ The terminal panel has three tabs — **Pi**, **Vomit AI**, and **Shell**. Pi ru
 
 **Point Pi at your local models.** Pi reads its providers from a `models.json` file — create it if it doesn't exist. The file location is the same relative path on every OS:
 
-| OS | Path |
-|----|------|
-| macOS / Linux | `~/.pi/agent/models.json` |
-| Windows | `%USERPROFILE%\.pi\agent\models.json` (e.g. `C:\Users\you\.pi\agent\models.json`) |
+| OS            | Path                                                                              |
+| ------------- | --------------------------------------------------------------------------------- |
+| macOS / Linux | `~/.pi/agent/models.json`                                                         |
+| Windows       | `%USERPROFILE%\.pi\agent\models.json` (e.g. `C:\Users\you\.pi\agent\models.json`) |
 
 The config itself is identical across platforms — it just points at a local HTTP endpoint. A minimal Ollama example (only `id` is required per model):
 
@@ -380,15 +382,14 @@ For an OpenAI-compatible server (vLLM, LM Studio, MLX's `mlx_lm.server`, llama.c
       "baseUrl": "http://127.0.0.1:8000/v1",
       "api": "openai-completions",
       "apiKey": "dummy",
-      "models": [
-        { "id": "mlx-community/Qwen3-Coder-Next-4bit", "name": "Qwen3 Coder (MLX)" }
-      ]
+      "models": [{ "id": "mlx-community/Qwen3-Coder-Next-4bit", "name": "Qwen3 Coder (MLX)" }]
     }
   }
 }
 ```
 
 Notes:
+
 - `apiKey` is a required placeholder for keyless local servers — Ollama/vLLM ignore the value but Pi expects the field.
 - `compat.supportsDeveloperRole: false` (and `supportsReasoningEffort: false`) makes Pi send a plain `system` message instead of the `developer` role that many OpenAI-compatible servers reject. Set it at the provider level (all models) or per model.
 - Pi reloads `models.json` every time you open its `/model` picker — no restart needed. Supported `api` values: `openai-completions`, `openai-responses`, `anthropic-messages`, `google-generative-ai`.
@@ -401,32 +402,32 @@ Press **Cmd+/** to view all shortcuts in the app. See [SHORTCUTS.md](SHORTCUTS.m
 
 ### Quick Reference
 
-| Category | Shortcut | Action |
-|----------|----------|--------|
-| **File** | Cmd+N | New file |
-| | Cmd+O | Open file |
-| | Cmd+S | Save |
-| **View** | Cmd+P | Toggle preview |
-| | Cmd+E | Toggle file explorer |
-| | Cmd+Alt+O | Toggle right outline |
-| | Cmd+Shift+H | Toggle tag explorer |
-| | Cmd+L | Toggle line numbers |
-| | Cmd+/ | Show all shortcuts |
-| **Format** | Cmd+B | Bold |
-| | Cmd+I | Italic |
-| | Cmd+K | Insert link |
-| | Cmd+M | Code block |
-| | Cmd+Shift+Enter | Toggle todo |
-| **Multi-Cursor** | Option, Option, then Option+↑/↓ | Add cursor above/below |
-| | Escape | Clear extra cursors |
-| **Code** | Ctrl+J | Autocomplete |
-| **Explorer** | ↑↓ | Navigate files |
-| | ←→ | Navigate folders |
-| | Drag & Drop | Move files/folders |
-| **Present** | Cmd+Shift+P | Start presentation |
-| | Cmd+Alt+P | With presenter view |
-| | L | Laser pointer |
-| **AI** | Cmd+J | Toggle terminal (Pi / Vomit AI / Shell) |
+| Category         | Shortcut                        | Action                                  |
+| ---------------- | ------------------------------- | --------------------------------------- |
+| **File**         | Cmd+N                           | New file                                |
+|                  | Cmd+O                           | Open file                               |
+|                  | Cmd+S                           | Save                                    |
+| **View**         | Cmd+P                           | Toggle preview                          |
+|                  | Cmd+E                           | Toggle file explorer                    |
+|                  | Cmd+Alt+O                       | Toggle right outline                    |
+|                  | Cmd+Shift+H                     | Toggle tag explorer                     |
+|                  | Cmd+L                           | Toggle line numbers                     |
+|                  | Cmd+/                           | Show all shortcuts                      |
+| **Format**       | Cmd+B                           | Bold                                    |
+|                  | Cmd+I                           | Italic                                  |
+|                  | Cmd+K                           | Insert link                             |
+|                  | Cmd+M                           | Code block                              |
+|                  | Cmd+Shift+Enter                 | Toggle todo                             |
+| **Multi-Cursor** | Option, Option, then Option+↑/↓ | Add cursor above/below                  |
+|                  | Escape                          | Clear extra cursors                     |
+| **Code**         | Ctrl+J                          | Autocomplete                            |
+| **Explorer**     | ↑↓                              | Navigate files                          |
+|                  | ←→                              | Navigate folders                        |
+|                  | Drag & Drop                     | Move files/folders                      |
+| **Present**      | Cmd+Shift+P                     | Start presentation                      |
+|                  | Cmd+Alt+P                       | With presenter view                     |
+|                  | L                               | Laser pointer                           |
+| **AI**           | Cmd+J                           | Toggle terminal (Pi / Vomit AI / Shell) |
 
 ## Tech Stack
 

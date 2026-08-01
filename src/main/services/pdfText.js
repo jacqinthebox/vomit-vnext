@@ -25,7 +25,7 @@ async function extractPdfText(filePath) {
   const loadingTask = getDocument({
     data,
     disableFontFace: true,
-    useSystemFonts: true
+    useSystemFonts: true,
   });
   const pdf = await loadingTask.promise;
 
@@ -35,7 +35,7 @@ async function extractPdfText(filePath) {
       const page = await pdf.getPage(pageNumber);
       const content = await page.getTextContent();
       const pageText = content.items
-        .map(item => (typeof item.str === 'string' ? item.str : ''))
+        .map((item) => (typeof item.str === 'string' ? item.str : ''))
         .filter(Boolean)
         .join(' ');
       pages.push(`--- Page ${pageNumber} ---\n${normalizeExtractedPdfText(pageText)}`);

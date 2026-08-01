@@ -9,7 +9,7 @@ function makeBroker() {
   const state = { agentSessionAllowlist: new Set() };
   const broker = createPermissionBroker({
     sendOutput: (channel, payload) => sent.push({ channel, payload }),
-    state
+    state,
   });
   return { broker, state, sent };
 }
@@ -24,7 +24,12 @@ function answerLast(broker, sent, answer) {
   return req.payload;
 }
 
-const DIFF = { header: 'x.md | +1 -0', text: '@@ -0,0 +1 @@\n+hi', stats: { added: 1, removed: 0 }, truncated: false };
+const DIFF = {
+  header: 'x.md | +1 -0',
+  text: '@@ -0,0 +1 @@\n+hi',
+  stats: { added: 1, removed: 0 },
+  truncated: false,
+};
 
 test('plain prompt: y allows, n denies, a allows and populates the allowlist', async () => {
   const { broker, state, sent } = makeBroker();
@@ -99,7 +104,12 @@ test('abortAll denies pending diff prompts (abort → reject)', async () => {
 
 test('mode never skips prompts entirely', async () => {
   const { broker, sent } = makeBroker();
-  const verdict = await broker.gate('write_file', { path: 'x.md' }, { getAgentPermissionMode: () => 'never' }, { diff: DIFF });
+  const verdict = await broker.gate(
+    'write_file',
+    { path: 'x.md' },
+    { getAgentPermissionMode: () => 'never' },
+    { diff: DIFF },
+  );
   assert.strictEqual(verdict, 'allow');
   assert.strictEqual(sent.length, 0);
 });

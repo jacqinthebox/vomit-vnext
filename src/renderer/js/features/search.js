@@ -4,8 +4,8 @@ class SearchManager {
   constructor({ state, host, dom }) {
     this.state = state;
     this.host = host;
-    this.dom = dom;  // { searchInput, searchResults, sidebarSearch, sidebarFiles, sidebarOutline, fileTree, outlineList, previewPane }
-    this.currentQuery = '';  // Track current search query for highlighting
+    this.dom = dom; // { searchInput, searchResults, sidebarSearch, sidebarFiles, sidebarOutline, fileTree, outlineList, previewPane }
+    this.currentQuery = ''; // Track current search query for highlighting
   }
 
   setup() {
@@ -22,7 +22,10 @@ class SearchManager {
 
       if (e.key === 'ArrowDown') {
         e.preventDefault();
-        this.state.selectedSearchIndex = Math.min(this.state.selectedSearchIndex + 1, items.length - 1);
+        this.state.selectedSearchIndex = Math.min(
+          this.state.selectedSearchIndex + 1,
+          items.length - 1,
+        );
         this.updateSearchSelection(items);
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
@@ -78,7 +81,7 @@ class SearchManager {
       // Select the match to highlight it
       this.host.setSelection(
         { line: lineIndex, ch: matchStart },
-        { line: lineIndex, ch: matchEnd }
+        { line: lineIndex, ch: matchEnd },
       );
       // Scroll the editor to show the match
       this.host.scrollIntoView({ line: lineIndex, ch: matchStart });
@@ -106,12 +109,13 @@ class SearchManager {
   async performSearch() {
     const query = this.dom.searchInput.value.trim();
     if (!query || query.length < 2) {
-      this.dom.searchResults.innerHTML = '<div class="search-no-results">Type at least 2 characters to search</div>';
+      this.dom.searchResults.innerHTML =
+        '<div class="search-no-results">Type at least 2 characters to search</div>';
       this.currentQuery = '';
       return;
     }
 
-    this.currentQuery = query;  // Store for highlighting
+    this.currentQuery = query; // Store for highlighting
 
     // Use projectRoot for search (covers entire project), fall back to currentDirectory
     let searchDir = this.state.projectRoot || this.state.currentDirectory;
@@ -120,7 +124,8 @@ class SearchManager {
     }
 
     if (!searchDir) {
-      this.dom.searchResults.innerHTML = '<div class="search-no-results">Open a file to search in its directory</div>';
+      this.dom.searchResults.innerHTML =
+        '<div class="search-no-results">Open a file to search in its directory</div>';
       return;
     }
 
@@ -136,41 +141,46 @@ class SearchManager {
       return;
     }
 
-    const html = results.map(file => {
-      const matchesHtml = file.matches.map(match => {
-        const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const highlightedText = match.text.replace(
-          new RegExp(`(${escapedQuery})`, 'gi'),
-          '<span class="match">$1</span>'
-        );
-        return `<div class="search-result-item" data-path="${file.path}" data-line="${match.line}">
+    const html = results
+      .map((file) => {
+        const matchesHtml = file.matches
+          .map((match) => {
+            const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const highlightedText = match.text.replace(
+              new RegExp(`(${escapedQuery})`, 'gi'),
+              '<span class="match">$1</span>',
+            );
+            return `<div class="search-result-item" data-path="${file.path}" data-line="${match.line}">
           <span class="line-number">${match.line}:</span>${highlightedText}
         </div>`;
-      }).join('');
+          })
+          .join('');
 
-      return `<div class="search-result-file">${file.file}</div>${matchesHtml}`;
-    }).join('');
+        return `<div class="search-result-file">${file.file}</div>${matchesHtml}`;
+      })
+      .join('');
 
     this.dom.searchResults.innerHTML = html;
 
     // Add click handlers
-    this.dom.searchResults.querySelectorAll('.search-result-item').forEach(el => {
+    this.dom.searchResults.querySelectorAll('.search-result-item').forEach((el) => {
       el.addEventListener('click', () => {
         const filePath = el.dataset.path;
         const line = parseInt(el.dataset.line, 10);
         window.vomit.openFile(filePath);
         this.state.pendingLineJump = line;
-        this.state.pendingSearchQuery = this.currentQuery;  // Store for highlighting
+        this.state.pendingSearchQuery = this.currentQuery; // Store for highlighting
       });
     });
   }
 
   togglePaneFocus() {
-    const anySidebarOpen = this.state.isFileTreeVisible ||
-                           this.state.isOutlineVisible ||
-                           this.state.isSearchVisible ||
-                           this.state.isTagExplorerVisible ||
-                           this.state.isTodoExplorerVisible;
+    const anySidebarOpen =
+      this.state.isFileTreeVisible ||
+      this.state.isOutlineVisible ||
+      this.state.isSearchVisible ||
+      this.state.isTagExplorerVisible ||
+      this.state.isTodoExplorerVisible;
     const isPreviewOnly = this.state.viewMode === 'preview';
 
     if (!anySidebarOpen) {
@@ -203,7 +213,12 @@ class SearchManager {
 
   // Internal helper — keeps resize handle in sync
   _updateResizeHandle() {
-    const anySidebarVisible = this.state.isFileTreeVisible || this.state.isOutlineVisible || this.state.isSearchVisible || this.state.isTagExplorerVisible || this.state.isTodoExplorerVisible;
+    const anySidebarVisible =
+      this.state.isFileTreeVisible ||
+      this.state.isOutlineVisible ||
+      this.state.isSearchVisible ||
+      this.state.isTagExplorerVisible ||
+      this.state.isTodoExplorerVisible;
     const handle = document.getElementById('sidebar-resize');
     if (handle) handle.classList.toggle('hidden', !anySidebarVisible);
   }

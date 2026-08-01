@@ -3,7 +3,9 @@ const { contextBridge, ipcRenderer } = require('electron');
 // Dispatch custom DOM events instead of using callbacks
 // This keeps the event handling entirely in the renderer context
 ipcRenderer.on('load-content', (event, content, filePath, basePath) => {
-  window.dispatchEvent(new CustomEvent('vomit:load-content', { detail: { content, filePath, basePath } }));
+  window.dispatchEvent(
+    new CustomEvent('vomit:load-content', { detail: { content, filePath, basePath } }),
+  );
 });
 
 ipcRenderer.on('request-content', () => {
@@ -63,7 +65,9 @@ ipcRenderer.on('show-shortcuts', () => {
 });
 
 ipcRenderer.on('show-documentation', (event, content, filePath) => {
-  window.dispatchEvent(new CustomEvent('vomit:show-documentation', { detail: { content, filePath } }));
+  window.dispatchEvent(
+    new CustomEvent('vomit:show-documentation', { detail: { content, filePath } }),
+  );
 });
 
 // Documentation window events
@@ -96,7 +100,9 @@ ipcRenderer.on('format-command', (event, command) => {
 });
 
 ipcRenderer.on('load-presentation', (event, content, basePath) => {
-  window.dispatchEvent(new CustomEvent('vomit:load-presentation', { detail: { content, basePath } }));
+  window.dispatchEvent(
+    new CustomEvent('vomit:load-presentation', { detail: { content, basePath } }),
+  );
 });
 
 ipcRenderer.on('update-content', (event, content) => {
@@ -343,7 +349,8 @@ contextBridge.exposeInMainWorld('vomit', {
   startPresentationWithPresenter: () => ipcRenderer.send('start-presentation-with-presenter'),
   navigateSlide: (direction) => ipcRenderer.send('navigate-slide', direction),
   goToSlide: (index) => ipcRenderer.send('go-to-slide', index),
-  saveImage: (imageData, suggestedName) => ipcRenderer.invoke('save-image', imageData, suggestedName),
+  saveImage: (imageData, suggestedName) =>
+    ipcRenderer.invoke('save-image', imageData, suggestedName),
   showUnsavedChangesDialog: (filename) => ipcRenderer.invoke('show-unsaved-dialog', filename),
   requestSave: () => ipcRenderer.invoke('request-save'),
   reloadFile: (filePath) => ipcRenderer.invoke('reload-file', filePath),
@@ -372,7 +379,8 @@ contextBridge.exposeInMainWorld('vomit', {
   // Agent mode with tool calling
   agentExecute: (prompt, cwd, opts) => ipcRenderer.invoke('agent-execute', prompt, cwd, opts),
   agentClearHistory: () => ipcRenderer.invoke('agent-clear-history'),
-  agentPermissionResponse: (id, answer) => ipcRenderer.invoke('agent-permission-response', { id, answer }),
+  agentPermissionResponse: (id, answer) =>
+    ipcRenderer.invoke('agent-permission-response', { id, answer }),
   // Git awareness
   gitRepoInfo: () => ipcRenderer.invoke('git-repo-info'),
   gitStatus: () => ipcRenderer.invoke('git-status'),
@@ -390,11 +398,14 @@ contextBridge.exposeInMainWorld('vomit', {
   pseudoDetectRepos: (bucketPath) => ipcRenderer.invoke('pseudo-detect-repos', bucketPath),
   pseudoHasMapping: (bucketPath) => ipcRenderer.invoke('pseudo-has-mapping', bucketPath),
   pseudoReadMapping: (bucketPath) => ipcRenderer.invoke('pseudo-read-mapping', bucketPath),
-  pseudoSaveMapping: (bucketPath, mapping) => ipcRenderer.invoke('pseudo-save-mapping', bucketPath, mapping),
-  pseudoSaveProject: (bucketPath, data) => ipcRenderer.invoke('pseudo-save-project', bucketPath, data),
+  pseudoSaveMapping: (bucketPath, mapping) =>
+    ipcRenderer.invoke('pseudo-save-mapping', bucketPath, mapping),
+  pseudoSaveProject: (bucketPath, data) =>
+    ipcRenderer.invoke('pseudo-save-project', bucketPath, data),
   pseudoReadProject: (bucketPath) => ipcRenderer.invoke('pseudo-read-project', bucketPath),
   pseudoGitInit: (repoPath) => ipcRenderer.invoke('pseudo-git-init', repoPath),
-  pseudoGitChangedFiles: (repoPath, hash) => ipcRenderer.invoke('pseudo-git-changed-files', repoPath, hash),
+  pseudoGitChangedFiles: (repoPath, hash) =>
+    ipcRenderer.invoke('pseudo-git-changed-files', repoPath, hash),
   pseudoCopyStructure: (src, dest) => ipcRenderer.invoke('pseudo-copy-structure', src, dest),
   pseudoRemoveDir: (dirPath) => ipcRenderer.invoke('pseudo-remove-dir', dirPath),
   // RAG methods
@@ -405,9 +416,12 @@ contextBridge.exposeInMainWorld('vomit', {
   wikiIndex: (bucketRoot) => ipcRenderer.invoke('wiki-index', bucketRoot),
   okfExport: (bucketRoot) => ipcRenderer.invoke('okf-export', bucketRoot),
   wikiClear: (bucketRoot) => ipcRenderer.invoke('wiki-clear', bucketRoot),
-  wikiIndexFile: (bucketRoot, filePath) => ipcRenderer.send('wiki-index-file', bucketRoot, filePath),
-  wikiBacklinks: (bucketRoot, targetPath) => ipcRenderer.invoke('wiki-backlinks', bucketRoot, targetPath),
-  wikiResolve: (bucketRoot, target, sourcePath) => ipcRenderer.invoke('wiki-resolve', bucketRoot, target, sourcePath),
+  wikiIndexFile: (bucketRoot, filePath) =>
+    ipcRenderer.send('wiki-index-file', bucketRoot, filePath),
+  wikiBacklinks: (bucketRoot, targetPath) =>
+    ipcRenderer.invoke('wiki-backlinks', bucketRoot, targetPath),
+  wikiResolve: (bucketRoot, target, sourcePath) =>
+    ipcRenderer.invoke('wiki-resolve', bucketRoot, target, sourcePath),
   wikiListNotes: (bucketRoot) => ipcRenderer.invoke('wiki-list-notes', bucketRoot),
   wikiGraph: (bucketRoot) => ipcRenderer.invoke('wiki-graph', bucketRoot),
   // Shell terminal methods
@@ -443,5 +457,5 @@ contextBridge.exposeInMainWorld('vomit', {
   executeInMainTerminal: (command) => ipcRenderer.send('execute-in-main-terminal', command),
   getEditorContent: () => ipcRenderer.invoke('get-editor-content'),
   // App info
-  getAppVersion: () => ipcRenderer.invoke('get-app-version')
+  getAppVersion: () => ipcRenderer.invoke('get-app-version'),
 });

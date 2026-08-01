@@ -11,7 +11,9 @@ class TreeState extends EventTarget {
   // Root path
   // ─────────────────────────────────────────────────────────────
 
-  get rootPath() { return this.#rootPath; }
+  get rootPath() {
+    return this.#rootPath;
+  }
 
   setRoot(path) {
     const old = this.#rootPath;
@@ -59,30 +61,38 @@ class TreeState extends EventTarget {
   // Focus state (keyboard navigation position)
   // ─────────────────────────────────────────────────────────────
 
-  get focusedPath() { return this.#focusedPath; }
+  get focusedPath() {
+    return this.#focusedPath;
+  }
 
   set focusedPath(path) {
     const old = this.#focusedPath;
     if (old === path) return; // No-op if same
     this.#focusedPath = path;
-    this.dispatchEvent(new CustomEvent('focusChanged', {
-      detail: { old, new: path }
-    }));
+    this.dispatchEvent(
+      new CustomEvent('focusChanged', {
+        detail: { old, new: path },
+      }),
+    );
   }
 
   // ─────────────────────────────────────────────────────────────
   // Selection state (active file)
   // ─────────────────────────────────────────────────────────────
 
-  get selectedPath() { return this.#selectedPath; }
+  get selectedPath() {
+    return this.#selectedPath;
+  }
 
   set selectedPath(path) {
     const old = this.#selectedPath;
     if (old === path) return; // No-op if same
     this.#selectedPath = path;
-    this.dispatchEvent(new CustomEvent('selectionChanged', {
-      detail: { old, new: path }
-    }));
+    this.dispatchEvent(
+      new CustomEvent('selectionChanged', {
+        detail: { old, new: path },
+      }),
+    );
   }
 
   // ─────────────────────────────────────────────────────────────

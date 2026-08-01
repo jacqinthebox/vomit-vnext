@@ -11,19 +11,21 @@ const { killChildProcess } = require('../../services/agentTools');
 // Find executable path
 function findExecutable(name) {
   // Check common locations directly (packaged apps have limited PATH)
-  const executableName = process.platform === 'win32' && !name.endsWith('.exe') ? `${name}.exe` : name;
-  const commonPaths = process.platform === 'win32'
-    ? [
-        path.join(process.env.LOCALAPPDATA || '', 'Programs', 'Ollama', executableName),
-        path.join(process.env.ProgramFiles || '', 'Ollama', executableName),
-        path.join(process.env['ProgramFiles(x86)'] || '', 'Ollama', executableName)
-      ]
-    : [
-        `/opt/homebrew/bin/${name}`,  // Apple Silicon homebrew
-        `/usr/local/bin/${name}`,      // Intel homebrew / Linux
-        `/usr/bin/${name}`,            // System
-        path.join(process.env.HOME || '', '.local', 'bin', name) // User local
-      ];
+  const executableName =
+    process.platform === 'win32' && !name.endsWith('.exe') ? `${name}.exe` : name;
+  const commonPaths =
+    process.platform === 'win32'
+      ? [
+          path.join(process.env.LOCALAPPDATA || '', 'Programs', 'Ollama', executableName),
+          path.join(process.env.ProgramFiles || '', 'Ollama', executableName),
+          path.join(process.env['ProgramFiles(x86)'] || '', 'Ollama', executableName),
+        ]
+      : [
+          `/opt/homebrew/bin/${name}`, // Apple Silicon homebrew
+          `/usr/local/bin/${name}`, // Intel homebrew / Linux
+          `/usr/bin/${name}`, // System
+          path.join(process.env.HOME || '', '.local', 'bin', name), // User local
+        ];
 
   for (const p of commonPaths) {
     if (fs.existsSync(p)) {
@@ -34,7 +36,12 @@ function findExecutable(name) {
   // Fallback to platform executable lookup without shell quoting.
   try {
     const lookup = process.platform === 'win32' ? 'where.exe' : 'which';
-    const result = execFileSync(lookup, [executableName], { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }).trim().split(/\r?\n/)[0];
+    const result = execFileSync(lookup, [executableName], {
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    })
+      .trim()
+      .split(/\r?\n/)[0];
     return result || null;
   } catch (e) {
     return null;
@@ -45,7 +52,11 @@ function findExecutable(name) {
 function getOllamaModels(ollamaPath) {
   if (!ollamaPath) return [];
   try {
-    const result = execFileSync(ollamaPath, ['list'], { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'], timeout: 5000 });
+    const result = execFileSync(ollamaPath, ['list'], {
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+      timeout: 5000,
+    });
     const lines = result.trim().split(/\r?\n/);
     // Skip header line, parse model names
     const models = [];
@@ -90,21 +101,28 @@ function registerHandlers(ipcMain, { state, bus, configStore, terminalService, p
     if (cfg.provider === 'ollama') {
       const execPath = state.availableAITools.ollama;
       if (!execPath) {
-        terminalService.syncTerminalOutput('claude-error', 'Ollama is not installed. Install it from https://ollama.ai\n');
+        terminalService.syncTerminalOutput(
+          'claude-error',
+          'Ollama is not installed. Install it from https://ollama.ai\n',
+        );
         terminalService.syncTerminalOutput('claude-done', 1);
         return 1;
       }
       if (state.availableAITools.ollamaModels.length === 0) {
-        terminalService.syncTerminalOutput('claude-error', `No Ollama models found. Run: ollama pull llama3.2\n`);
+        terminalService.syncTerminalOutput(
+          'claude-error',
+          `No Ollama models found. Run: ollama pull llama3.2\n`,
+        );
         terminalService.syncTerminalOutput('claude-done', 1);
         return 1;
       }
     }
 
     if (!cfg.model) {
-      const hint = cfg.provider === 'openai-compatible'
-        ? 'Configure it via AI menu → Configure OpenAI-Compatible Endpoint…'
-        : 'Select one from the AI menu.';
+      const hint =
+        cfg.provider === 'openai-compatible'
+          ? 'Configure it via AI menu → Configure OpenAI-Compatible Endpoint…'
+          : 'Select one from the AI menu.';
       terminalService.syncTerminalOutput('claude-error', `No AI model selected. ${hint}\n`);
       terminalService.syncTerminalOutput('claude-done', 1);
       return 1;
@@ -120,16 +138,20 @@ function registerHandlers(ipcMain, { state, bus, configStore, terminalService, p
       abort: () => {
         aborted = true;
         if (activeReq) activeReq.destroy();
-        if (state.chatHistory.length > 0 && state.chatHistory[state.chatHistory.length - 1].role === 'user') {
+        if (
+          state.chatHistory.length > 0 &&
+          state.chatHistory[state.chatHistory.length - 1].role === 'user'
+        ) {
           state.chatHistory.pop();
         }
-      }
+      },
     };
 
     try {
-      const numCtx = cfg.provider === aiProviders.PROVIDER_OLLAMA
-        ? await modelInfo.getEffectiveContextLimit(configStore)
-        : undefined;
+      const numCtx =
+        cfg.provider === aiProviders.PROVIDER_OLLAMA
+          ? await modelInfo.getEffectiveContextLimit(configStore)
+          : undefined;
       const assistant = await aiProviders.streamChat({
         provider: cfg.provider,
         baseUrl: cfg.baseUrl,
@@ -142,10 +164,16 @@ function registerHandlers(ipcMain, { state, bus, configStore, terminalService, p
         onContent: (chunk, isReasoning) => {
           // Reasoning goes out on its own channel so write modes never
           // stream chain-of-thought into the document.
-          if (!aborted) terminalService.syncTerminalOutput(isReasoning ? 'claude-thinking' : 'claude-output', chunk);
+          if (!aborted)
+            terminalService.syncTerminalOutput(
+              isReasoning ? 'claude-thinking' : 'claude-output',
+              chunk,
+            );
         },
         isAborted: () => aborted,
-        onRequest: (req) => { activeReq = req; }
+        onRequest: (req) => {
+          activeReq = req;
+        },
       });
 
       if (!aborted && assistant.content) {
@@ -176,7 +204,11 @@ function registerHandlers(ipcMain, { state, bus, configStore, terminalService, p
     // kill any running shell command, and deny pending permission prompts.
     state.agentAborted = true;
     if (state.agentActiveRequest) {
-      try { state.agentActiveRequest.destroy(); } catch (_) { /* already closed */ }
+      try {
+        state.agentActiveRequest.destroy();
+      } catch (_) {
+        /* already closed */
+      }
       state.agentActiveRequest = null;
     }
     if (state.agentChildProcess) {
@@ -194,7 +226,7 @@ function registerHandlers(ipcMain, { state, bus, configStore, terminalService, p
   ipcMain.handle('get-ai-provider', () => {
     return {
       provider: configStore.getAIProvider(),
-      model: configStore.getActiveModel()
+      model: configStore.getActiveModel(),
     };
   });
 
@@ -207,19 +239,20 @@ function registerHandlers(ipcMain, { state, bus, configStore, terminalService, p
       openaiApiKey: configStore.getOpenAIApiKey(),
       openaiModel: configStore.getOpenAIModel(),
       openaiEndpoints: configStore.getOpenAIEndpoints(),
-      activeOpenaiEndpointIndex: configStore.getActiveOpenAIEndpointIndex()
+      activeOpenaiEndpointIndex: configStore.getActiveOpenAIEndpointIndex(),
     };
   });
 
   ipcMain.handle('set-ai-provider-config', (event, cfg) => {
     if (cfg && typeof cfg.provider === 'string') configStore.setAIProvider(cfg.provider);
-    if (cfg && typeof cfg.openaiBaseUrl === 'string') configStore.setOpenAIBaseUrl(cfg.openaiBaseUrl);
+    if (cfg && typeof cfg.openaiBaseUrl === 'string')
+      configStore.setOpenAIBaseUrl(cfg.openaiBaseUrl);
     if (cfg && typeof cfg.openaiApiKey === 'string') configStore.setOpenAIApiKey(cfg.openaiApiKey);
     if (cfg && typeof cfg.openaiModel === 'string') configStore.setOpenAIModel(cfg.openaiModel);
 
     const next = {
       provider: configStore.getAIProvider(),
-      model: configStore.getActiveModel()
+      model: configStore.getActiveModel(),
     };
     state.clearAIConversationHistory();
     bus.send('context-stats-updated');

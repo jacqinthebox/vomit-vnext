@@ -15,7 +15,7 @@ const {
   estimateTokens,
   trimHistoryToTokenBudget,
   applyEdit,
-  collectPromptImages
+  collectPromptImages,
 } = require('../../services/agentTools');
 const { buildWriteDiff } = require('../../services/diffPreview');
 
@@ -46,9 +46,10 @@ function encodePromptImage(filePath) {
     if (img.isEmpty()) return null;
     const { width, height } = img.getSize();
     if (Math.max(width, height) > IMAGE_MAX_DIMENSION) {
-      img = width >= height
-        ? img.resize({ width: IMAGE_MAX_DIMENSION })
-        : img.resize({ height: IMAGE_MAX_DIMENSION });
+      img =
+        width >= height
+          ? img.resize({ width: IMAGE_MAX_DIMENSION })
+          : img.resize({ height: IMAGE_MAX_DIMENSION });
     }
     return { data: img.toJPEG(80).toString('base64'), mime: 'image/jpeg' };
   } catch (_) {
@@ -61,7 +62,10 @@ function encodePromptImage(filePath) {
  * @param {import('electron').IpcMain} ipcMain
  * @param {{ state: import('../../services/sessionState').SessionState, bus: import('../rendererBus').RendererBus, configStore: typeof import('../../services/configStore'), terminalService: ReturnType<import('./terminal').createTerminalService>, permissionBroker: ReturnType<import('../../services/agentPermissions').createPermissionBroker>, gitService?: ReturnType<import('./git').createGitService> }} deps
  */
-function registerHandlers(ipcMain, { state, bus, configStore, terminalService, permissionBroker, gitService }) {
+function registerHandlers(
+  ipcMain,
+  { state, bus, configStore, terminalService, permissionBroker, gitService },
+) {
   // Broadcast helper — sends to both the main window and the detached terminal
   // window so that streamed agent output shows up wherever the user is looking.
   const sendOutput = terminalService
@@ -80,7 +84,7 @@ function registerHandlers(ipcMain, { state, bus, configStore, terminalService, p
       messageCount: history.length,
       estimatedTokens,
       contextLimit,
-      usagePercent: Math.round((estimatedTokens / contextLimit) * 100)
+      usagePercent: Math.round((estimatedTokens / contextLimit) * 100),
     };
   });
 
@@ -105,9 +109,10 @@ function registerHandlers(ipcMain, { state, bus, configStore, terminalService, p
       }
     }
     if (!cfg.model) {
-      const hint = cfg.provider === 'openai-compatible'
-        ? 'Configure it via AI menu → Configure OpenAI-Compatible Endpoint…'
-        : 'Select one from the AI menu.';
+      const hint =
+        cfg.provider === 'openai-compatible'
+          ? 'Configure it via AI menu → Configure OpenAI-Compatible Endpoint…'
+          : 'Select one from the AI menu.';
       sendOutput('claude-error', `No AI model selected. ${hint}\n`);
       sendOutput('claude-done', 1);
       return false;
@@ -126,23 +131,26 @@ function registerHandlers(ipcMain, { state, bus, configStore, terminalService, p
    */
   async function streamChatWithRetry(cfg, messages, contentOutput, { tools = agentTools } = {}) {
     let contentStarted = false;
-    const doStream = () => aiProviders.streamChat({
-      provider: cfg.provider,
-      baseUrl: cfg.baseUrl,
-      apiKey: cfg.apiKey,
-      model: cfg.model,
-      maxTokens: cfg.maxTokens,
-      disableThinking: cfg.disableThinking,
-      numCtx: cfg.numCtx,
-      messages,
-      tools,
-      onContent: (chunk, isReasoning) => {
-        contentStarted = true;
-        contentOutput(isReasoning ? 'claude-thinking' : 'claude-output', chunk);
-      },
-      isAborted: () => state.agentAborted,
-      onRequest: (req) => { state.agentActiveRequest = req; }
-    });
+    const doStream = () =>
+      aiProviders.streamChat({
+        provider: cfg.provider,
+        baseUrl: cfg.baseUrl,
+        apiKey: cfg.apiKey,
+        model: cfg.model,
+        maxTokens: cfg.maxTokens,
+        disableThinking: cfg.disableThinking,
+        numCtx: cfg.numCtx,
+        messages,
+        tools,
+        onContent: (chunk, isReasoning) => {
+          contentStarted = true;
+          contentOutput(isReasoning ? 'claude-thinking' : 'claude-output', chunk);
+        },
+        isAborted: () => state.agentAborted,
+        onRequest: (req) => {
+          state.agentActiveRequest = req;
+        },
+      });
 
     try {
       return await doStream();
@@ -184,7 +192,7 @@ function registerHandlers(ipcMain, { state, bus, configStore, terminalService, p
           oldContent,
           String(toolArgs.old_string != null ? toolArgs.old_string : ''),
           String(toolArgs.new_string != null ? toolArgs.new_string : ''),
-          toolArgs.replace_all === true || toolArgs.replace_all === 'true'
+          toolArgs.replace_all === true || toolArgs.replace_all === 'true',
         );
         if (!result.ok) return null;
         newContent = result.content;
@@ -230,12 +238,20 @@ function registerHandlers(ipcMain, { state, bus, configStore, terminalService, p
 
       // Diff-before-write: show the exact change instead of a bare prompt.
       let diffInfo = null;
-      if ((toolName === 'write_file' || toolName === 'edit_file') && configStore.getAgentDiffGate()) {
+      if (
+        (toolName === 'write_file' || toolName === 'edit_file') &&
+        configStore.getAgentDiffGate()
+      ) {
         diffInfo = await computeWriteDiff(toolName, toolArgs, workingDir);
       }
 
       let toolResult;
-      const verdict = await permissionBroker.gate(toolName, toolArgs, configStore, diffInfo ? { diff: diffInfo } : {});
+      const verdict = await permissionBroker.gate(
+        toolName,
+        toolArgs,
+        configStore,
+        diffInfo ? { diff: diffInfo } : {},
+      );
       if (state.agentAborted) break;
 
       if (verdict !== 'allow') {
@@ -245,14 +261,19 @@ function registerHandlers(ipcMain, { state, bus, configStore, terminalService, p
         toolResult = await executeAgentTool(toolName, toolArgs, workingDir, { configStore, state });
 
         // Show result (truncated if too long)
-        const displayResult = toolResult.length > 2000
-          ? toolResult.substring(0, 2000) + '\n... (truncated)'
-          : toolResult;
+        const displayResult =
+          toolResult.length > 2000
+            ? toolResult.substring(0, 2000) + '\n... (truncated)'
+            : toolResult;
         sendOutput('claude-output', `${displayResult}\n`);
 
         // Agent writes bypass the write-file IPC handler (agentTools hits fs
         // directly), so nudge the git UI from here.
-        if (gitService && (toolName === 'write_file' || toolName === 'edit_file') && !toolResult.startsWith('Error')) {
+        if (
+          gitService &&
+          (toolName === 'write_file' || toolName === 'edit_file') &&
+          !toolResult.startsWith('Error')
+        ) {
           gitService.notifyExternalChange();
         }
       }
@@ -260,13 +281,15 @@ function registerHandlers(ipcMain, { state, bus, configStore, terminalService, p
       // Tool result for the current loop, capped so one big read/cat can't
       // blow the context window. OpenAI-compatible providers require a
       // tool_call_id; aiProviders handles that.
-      messages.push(aiProviders.formatToolResultMessage(cfg.provider, toolCall, truncateForModel(toolResult)));
+      messages.push(
+        aiProviders.formatToolResultMessage(cfg.provider, toolCall, truncateForModel(toolResult)),
+      );
 
       if (persistHistory) {
         // Save flattened tool call and result to conversation history
         state.agentConversationHistory.push({
           role: 'assistant',
-          content: `[Used ${toolName}: ${JSON.stringify(toolArgs)}]\n\nResult:\n${toolResult.substring(0, 1000)}${toolResult.length > 1000 ? '...' : ''}`
+          content: `[Used ${toolName}: ${JSON.stringify(toolArgs)}]\n\nResult:\n${toolResult.substring(0, 1000)}${toolResult.length > 1000 ? '...' : ''}`,
         });
       }
     }
@@ -296,20 +319,22 @@ function registerHandlers(ipcMain, { state, bus, configStore, terminalService, p
 
     // Build messages array - include conversation history for context
     const today = new Date().toISOString().split('T')[0];
-    const systemMessage = noTools ? {
-      role: 'system',
-      content: `You are a helpful assistant. Answer the user directly in GitHub-Flavored Markdown. Today's date is ${today}. You have access to conversation history, so you can answer follow-up questions about previous results.`
-    } : {
-      role: 'system',
-      content: `You are a helpful assistant with access to tools. Use tools to help the user accomplish tasks. The current working directory is: ${workingDir}. Today's date is ${today}.
+    const systemMessage = noTools
+      ? {
+          role: 'system',
+          content: `You are a helpful assistant. Answer the user directly in GitHub-Flavored Markdown. Today's date is ${today}. You have access to conversation history, so you can answer follow-up questions about previous results.`,
+        }
+      : {
+          role: 'system',
+          content: `You are a helpful assistant with access to tools. Use tools to help the user accomplish tasks. The current working directory is: ${workingDir}. Today's date is ${today}.
 
 When you need to run commands, read files, write files, or list directories, use the appropriate tool.
 Use edit_file for targeted changes to existing files instead of rewriting whole files with write_file. Use search_files to find where something lives in a project.
 When the user asks about a PDF or provides a .pdf path, use read_pdf or read_file to extract the document text directly. Do not look for pdftotext, Python PDF libraries, or other external PDF utilities first.
 When the user asks you to search the internet, look up current information, find recent news, or uses words like "zoek", "search", "latest", "recent", or "news", ALWAYS use the tavily_search tool — do not answer from memory. Use fetch_url to read a specific page when you already know its URL.
 Some tool calls require the user's permission; if one is denied, do not retry it verbatim — adjust your approach or ask the user.
-After using tools, provide a summary of what you did. You have access to conversation history, so you can answer follow-up questions about previous results.`
-    };
+After using tools, provide a summary of what you did. You have access to conversation history, so you can answer follow-up questions about previous results.`,
+        };
 
     // Trim history to the model's context budget BEFORE building messages so
     // an over-budget history (e.g. after a model switch) can't blow the request.
@@ -324,22 +349,32 @@ After using tools, provide a summary of what you did. You have access to convers
     const sysTokens = estimateTokens([systemMessage]);
     const promptTokens = estimateTokens([{ content: prompt }]);
     let promptForModel = prompt;
-    let available = contextLimit - sysTokens - RESPONSE_HEADROOM_TOKENS - estimateTokens(state.agentConversationHistory);
+    let available =
+      contextLimit -
+      sysTokens -
+      RESPONSE_HEADROOM_TOKENS -
+      estimateTokens(state.agentConversationHistory);
     if (promptTokens > available) {
       const minPromptTokens = Math.floor(contextLimit * 0.25);
       if (available < minPromptTokens) {
         state.agentConversationHistory = trimHistoryToTokenBudget(
           state.agentConversationHistory,
-          Math.max(0, contextLimit - sysTokens - RESPONSE_HEADROOM_TOKENS - minPromptTokens)
+          Math.max(0, contextLimit - sysTokens - RESPONSE_HEADROOM_TOKENS - minPromptTokens),
         );
         available = minPromptTokens;
       }
       if (promptTokens > available) {
         promptForModel = truncateForModel(prompt, available * 4);
-        sendOutput('claude-status', `(prompt truncated to fit the ${contextLimit}-token context window — for whole-document questions try /rag, or raise it via AI menu → Set Ollama Context Size…)`);
+        sendOutput(
+          'claude-status',
+          `(prompt truncated to fit the ${contextLimit}-token context window — for whole-document questions try /rag, or raise it via AI menu → Set Ollama Context Size…)`,
+        );
       }
     }
-    state.agentConversationHistory = trimHistoryToTokenBudget(state.agentConversationHistory, historyBudget);
+    state.agentConversationHistory = trimHistoryToTokenBudget(
+      state.agentConversationHistory,
+      historyBudget,
+    );
 
     // Vision: if the prompt (or embedded document) references images, attach
     // them to the outgoing user message so multimodal models can see them.
@@ -350,17 +385,26 @@ After using tools, provide a summary of what you did. You have access to convers
     // truncation can't cut away the references; the message text is the capped
     // version.
     let userMessage = { role: 'user', content: promptForModel };
-    if (cfg.provider === aiProviders.PROVIDER_OLLAMA || cfg.provider === aiProviders.PROVIDER_OPENAI) {
+    if (
+      cfg.provider === aiProviders.PROVIDER_OLLAMA ||
+      cfg.provider === aiProviders.PROVIDER_OPENAI
+    ) {
       const baseDirs = [
         state.currentFilePath ? path.dirname(state.currentFilePath) : null,
-        workingDir
+        workingDir,
       ];
-      const { images, names, mimes } = collectPromptImages(prompt, baseDirs, { encoder: encodePromptImage });
+      const { images, names, mimes } = collectPromptImages(prompt, baseDirs, {
+        encoder: encodePromptImage,
+      });
       if (images.length > 0) {
-        userMessage = cfg.provider === aiProviders.PROVIDER_OLLAMA
-          ? { role: 'user', content: promptForModel, images }
-          : { role: 'user', content: promptForModel, images, imageMimes: mimes };
-        sendOutput('claude-status', `(attached ${images.length} image${images.length === 1 ? '' : 's'}: ${names.join(', ')})`);
+        userMessage =
+          cfg.provider === aiProviders.PROVIDER_OLLAMA
+            ? { role: 'user', content: promptForModel, images }
+            : { role: 'user', content: promptForModel, images, imageMimes: mimes };
+        sendOutput(
+          'claude-status',
+          `(attached ${images.length} image${images.length === 1 ? '' : 's'}: ${names.join(', ')})`,
+        );
       }
     }
 
@@ -379,7 +423,9 @@ After using tools, provide a summary of what you did. You have access to convers
         iterations++;
 
         // Stream a chat completion from whichever provider is active.
-        const assistantMessage = await streamChatWithRetry(cfg, messages, sendOutput, { tools: noTools ? null : agentTools });
+        const assistantMessage = await streamChatWithRetry(cfg, messages, sendOutput, {
+          tools: noTools ? null : agentTools,
+        });
 
         if (!assistantMessage) {
           throw new Error('No response from model');
@@ -392,7 +438,7 @@ After using tools, provide a summary of what you did. You have access to convers
         // Native tool calls, falling back to JSON-in-text for models without
         // native tool calling. In /chat mode no tools were offered, so any
         // JSON in the reply is just content — never execute it.
-        let toolCalls = noTools ? [] : (assistantMessage.tool_calls || []);
+        let toolCalls = noTools ? [] : assistantMessage.tool_calls || [];
         if (!noTools && toolCalls.length === 0 && assistantMessage.content) {
           toolCalls = parseFallbackToolCalls(assistantMessage.content, TOOL_NAMES);
         }
@@ -404,7 +450,7 @@ After using tools, provide a summary of what you did. You have access to convers
           if (assistantMessage.content) {
             state.agentConversationHistory.push({
               role: 'assistant',
-              content: assistantMessage.content
+              content: assistantMessage.content,
             });
           }
           break;
@@ -416,7 +462,10 @@ After using tools, provide a summary of what you did. You have access to convers
       }
 
       // Keep history within the token budget for the next turn.
-      state.agentConversationHistory = trimHistoryToTokenBudget(state.agentConversationHistory, historyBudget);
+      state.agentConversationHistory = trimHistoryToTokenBudget(
+        state.agentConversationHistory,
+        historyBudget,
+      );
 
       // Notify renderer to update context stats
       bus.send('context-stats-updated');

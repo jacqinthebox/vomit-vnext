@@ -17,6 +17,7 @@ Vomit uses "buckets" - dedicated folders to store your notes and presentations. 
 - PDF, draw.io, and image files open directly in Vomit's preview viewer
 
 **Managing buckets:**
+
 - **Buckets > Add Bucket...** - Add a new folder as a bucket
 - **Buckets > [bucket name]** - Switch to that bucket
 - **Buckets > Remove...** - Remove the active bucket from the list (files are not deleted)
@@ -95,55 +96,55 @@ Notes only you can see while presenting
 
 ### File Operations
 
-| Shortcut | Action |
-|----------|--------|
-| Cmd+N | New file |
-| Cmd+O | Open file |
-| Cmd+S | Save |
-| Cmd+Shift+S | Save as |
-| Cmd+W | Close tab |
+| Shortcut    | Action    |
+| ----------- | --------- |
+| Cmd+N       | New file  |
+| Cmd+O       | Open file |
+| Cmd+S       | Save      |
+| Cmd+Shift+S | Save as   |
+| Cmd+W       | Close tab |
 
 ### View
 
-| Shortcut | Action |
-|----------|--------|
-| Cmd+P | Toggle preview |
-| Cmd+E | Toggle file explorer |
+| Shortcut    | Action                        |
+| ----------- | ----------------------------- |
+| Cmd+P       | Toggle preview                |
+| Cmd+E       | Toggle file explorer          |
 | Cmd+Shift+O | Toggle outline (left sidebar) |
-| Cmd+Alt+O | Toggle right outline |
-| Cmd+Shift+F | Search in files |
-| Cmd+L | Toggle line numbers |
-| Cmd+/ | Show all shortcuts |
-| Cmd+. | Command palette |
+| Cmd+Alt+O   | Toggle right outline          |
+| Cmd+Shift+F | Search in files               |
+| Cmd+L       | Toggle line numbers           |
+| Cmd+/       | Show all shortcuts            |
+| Cmd+.       | Command palette               |
 
 ### Formatting
 
-| Shortcut | Action |
-|----------|--------|
-| Cmd+B | Bold |
-| Cmd+I | Italic |
-| Cmd+` | Inline code |
-| Cmd+K | Insert link |
-| Cmd+Shift+T | Format table |
+| Shortcut        | Action                            |
+| --------------- | --------------------------------- |
+| Cmd+B           | Bold                              |
+| Cmd+I           | Italic                            |
+| Cmd+`           | Inline code                       |
+| Cmd+K           | Insert link                       |
+| Cmd+Shift+T     | Format table                      |
 | Cmd+Shift+Enter | Toggle todo line / selected lines |
-| Cmd+Enter | Insert new slide |
+| Cmd+Enter       | Insert new slide                  |
 
 ### Tabs
 
-| Shortcut | Action |
-|----------|--------|
-| Cmd+T | New tab |
-| Cmd+W | Close tab |
-| Cmd+Shift+] | Next tab |
-| Cmd+Shift+[ | Previous tab |
-| Cmd+1-8 | Go to tab 1-8 |
+| Shortcut    | Action        |
+| ----------- | ------------- |
+| Cmd+T       | New tab       |
+| Cmd+W       | Close tab     |
+| Cmd+Shift+] | Next tab      |
+| Cmd+Shift+[ | Previous tab  |
+| Cmd+1-8     | Go to tab 1-8 |
 
 ### AI Terminal (macOS/Linux only)
 
-| Shortcut | Action |
-|----------|--------|
-| Cmd+J | Toggle AI terminal |
-| Cmd+` | Toggle shell terminal |
+| Shortcut | Action                |
+| -------- | --------------------- |
+| Cmd+J    | Toggle AI terminal    |
+| Cmd+`    | Toggle shell terminal |
 
 ---
 
@@ -186,29 +187,29 @@ All processing happens locally — your data never leaves your machine.
 
 ### AI Commands
 
-| Command | Description |
-|---------|-------------|
-| `/doc <prompt>` | Include current document in your prompt |
-| `/write <prompt>` | Insert AI response at cursor position |
-| `/write-new <prompt>` | Create a new file with AI response |
-| `/rewrite <prompt>` | Replace selection with AI response |
-| `/append <prompt>` | Add AI response at end of document |
-| `/pseudo` `[--ai]` `[--customer "Name"]` | Pseudonymize the current document (fast/offline by default; `--ai` for the AI-assisted scan) |
-| `/pseudo-selection` `[--ai]` | Pseudonymize selected editor text; result printed in terminal (nothing written to disk) |
-| `/pseudo-repo` `[folder]` `[--all]` `[--ai]` `[--customer "Name"]` | Pseudonymize repos/folders in the bucket. No folder = auto-detect git repos; `--all` = every top-level folder; name a folder to target one |
-| `/pseudo-map` | Show the current entity mapping |
-| `/pseudo-restore` `[repo-name]` | Restore original data (a pseudo repo folder if named, otherwise the current document) |
-| `--customer "Name"` (flag) | Force a customer/company/person name into the mapping so it is always replaced, even in the deterministic scan. Repeatable; alias `--name`; case-insensitive with word boundaries. Use `--customer "Name=Replacement"` to choose the replacement (e.g. `Lidl=GroceryShop`). Works with `/pseudo` and `/pseudo-repo`. Example: `/pseudo-repo my-repo --customer "Lidl=GroceryShop"` |
-| Supported pseudo files | Text-based files such as `.md`, `.markdown`, `.txt`, `.adoc`, `.rst`, YAML/JSON, IaC, config, and source files; binary documents such as `.docx`, `.pdf`, `.xlsx`, and `.pptx` are skipped |
-| Legacy aliases | `/pseudo-deterministic`, `/pseudo-ai`, `/pseudo-run`, `/pseudo-text`, `/pseudo-text-ai`, `/pseudo-depseudo`, `/pseudo-depseudo-text` still work but are hidden from the picker |
-| `/index` | Index the current bucket for RAG search |
-| `/index <folder>` | Refresh a specific folder inside the current bucket index |
-| `/reindex` | Clear and rebuild the current bucket's RAG index |
-| `/rag <query>` | Search the current bucket index and ask AI with context |
-| `/presentation <topic>` | Generate a presentation with slides and speaker notes |
-| `/agent <prompt>` | Agentic mode with tools (bash, file read/write, web search) |
-| `/new` | Start a new conversation and clear AI history |
-| `/help` | Show all available terminal commands |
+| Command                                                            | Description                                                                                                                                                                                                                                                                                                                                                                        |
+| ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/doc <prompt>`                                                    | Include current document in your prompt                                                                                                                                                                                                                                                                                                                                            |
+| `/write <prompt>`                                                  | Insert AI response at cursor position                                                                                                                                                                                                                                                                                                                                              |
+| `/write-new <prompt>`                                              | Create a new file with AI response                                                                                                                                                                                                                                                                                                                                                 |
+| `/rewrite <prompt>`                                                | Replace selection with AI response                                                                                                                                                                                                                                                                                                                                                 |
+| `/append <prompt>`                                                 | Add AI response at end of document                                                                                                                                                                                                                                                                                                                                                 |
+| `/pseudo` `[--ai]` `[--customer "Name"]`                           | Pseudonymize the current document (fast/offline by default; `--ai` for the AI-assisted scan)                                                                                                                                                                                                                                                                                       |
+| `/pseudo-selection` `[--ai]`                                       | Pseudonymize selected editor text; result printed in terminal (nothing written to disk)                                                                                                                                                                                                                                                                                            |
+| `/pseudo-repo` `[folder]` `[--all]` `[--ai]` `[--customer "Name"]` | Pseudonymize repos/folders in the bucket. No folder = auto-detect git repos; `--all` = every top-level folder; name a folder to target one                                                                                                                                                                                                                                         |
+| `/pseudo-map`                                                      | Show the current entity mapping                                                                                                                                                                                                                                                                                                                                                    |
+| `/pseudo-restore` `[repo-name]`                                    | Restore original data (a pseudo repo folder if named, otherwise the current document)                                                                                                                                                                                                                                                                                              |
+| `--customer "Name"` (flag)                                         | Force a customer/company/person name into the mapping so it is always replaced, even in the deterministic scan. Repeatable; alias `--name`; case-insensitive with word boundaries. Use `--customer "Name=Replacement"` to choose the replacement (e.g. `Lidl=GroceryShop`). Works with `/pseudo` and `/pseudo-repo`. Example: `/pseudo-repo my-repo --customer "Lidl=GroceryShop"` |
+| Supported pseudo files                                             | Text-based files such as `.md`, `.markdown`, `.txt`, `.adoc`, `.rst`, YAML/JSON, IaC, config, and source files; binary documents such as `.docx`, `.pdf`, `.xlsx`, and `.pptx` are skipped                                                                                                                                                                                         |
+| Legacy aliases                                                     | `/pseudo-deterministic`, `/pseudo-ai`, `/pseudo-run`, `/pseudo-text`, `/pseudo-text-ai`, `/pseudo-depseudo`, `/pseudo-depseudo-text` still work but are hidden from the picker                                                                                                                                                                                                     |
+| `/index`                                                           | Index the current bucket for RAG search                                                                                                                                                                                                                                                                                                                                            |
+| `/index <folder>`                                                  | Refresh a specific folder inside the current bucket index                                                                                                                                                                                                                                                                                                                          |
+| `/reindex`                                                         | Clear and rebuild the current bucket's RAG index                                                                                                                                                                                                                                                                                                                                   |
+| `/rag <query>`                                                     | Search the current bucket index and ask AI with context                                                                                                                                                                                                                                                                                                                            |
+| `/presentation <topic>`                                            | Generate a presentation with slides and speaker notes                                                                                                                                                                                                                                                                                                                              |
+| `/agent <prompt>`                                                  | Agentic mode with tools (bash, file read/write, web search)                                                                                                                                                                                                                                                                                                                        |
+| `/new`                                                             | Start a new conversation and clear AI history                                                                                                                                                                                                                                                                                                                                      |
+| `/help`                                                            | Show all available terminal commands                                                                                                                                                                                                                                                                                                                                               |
 
 ### RAG (Retrieval Augmented Generation)
 
@@ -246,6 +247,7 @@ Use `/agent` for agentic AI with tool calling - the AI can run commands, read/wr
 ```
 
 **Available tools:**
+
 - `bash` - Run any shell command
 - `read_file` - Read file contents
 - `write_file` - Create or overwrite files
@@ -269,9 +271,9 @@ Paste images directly with **Cmd+V**. They are saved to an `images/` folder.
 Resize images with this syntax:
 
 ```markdown
-![alt](image.png =400x)      # width 400px
-![alt](image.png =x300)      # height 300px
-![alt](image.png =400x300)   # both
+![alt](image.png =400x) # width 400px
+![alt](image.png =x300) # height 300px
+![alt](image.png =400x300) # both
 ```
 
 ### LaTeX Math
@@ -285,14 +287,14 @@ Use KaTeX syntax for math formulas:
 
 Create diagrams in fenced code blocks:
 
-~~~markdown
+````markdown
 ```plantuml
 @startuml
 Alice -> Bob: Hello
 Bob --> Alice: Hi!
 @enduml
 ```
-~~~
+````
 
 ### Emoji Shortcodes
 
@@ -306,12 +308,12 @@ Use GitHub/Slack-style shortcodes:
 
 Syntax highlighting for many languages:
 
-~~~markdown
+````markdown
 ```python
 def hello():
     print("Hello, World!")
 ```
-~~~
+````
 
 ---
 
@@ -332,11 +334,11 @@ Change themes from the **View** menu:
 
 Vomit supports PyCharm-style multi-cursor editing. Double-tap **Option**, then press **Option+Up** or **Option+Down**. Empty lines are skipped when adding cursors.
 
-| Shortcut | Action |
-|----------|--------|
-| Option, Option, then Option+↑ | Add cursor above |
-| Option, Option, then Option+↓ | Add cursor below |
-| Escape | Clear all extra cursors |
+| Shortcut                      | Action                  |
+| ----------------------------- | ----------------------- |
+| Option, Option, then Option+↑ | Add cursor above        |
+| Option, Option, then Option+↓ | Add cursor below        |
+| Escape                        | Clear all extra cursors |
 
 This allows you to edit multiple lines simultaneously - great for renaming variables or adding/removing text on multiple lines at once.
 
@@ -354,13 +356,13 @@ You can drag files and folders in the file tree to reorganize them:
 
 ### Keyboard Navigation
 
-| Shortcut | Action |
-|----------|--------|
-| ↑ / ↓ | Navigate between files |
-| → | Expand folder / Enter |
-| ← | Collapse folder / Go to parent |
-| Enter | Open file or toggle folder |
-| Escape | Return focus to editor |
+| Shortcut | Action                         |
+| -------- | ------------------------------ |
+| ↑ / ↓    | Navigate between files         |
+| →        | Expand folder / Enter          |
+| ←        | Collapse folder / Go to parent |
+| Enter    | Open file or toggle folder     |
+| Escape   | Return focus to editor         |
 
 ---
 

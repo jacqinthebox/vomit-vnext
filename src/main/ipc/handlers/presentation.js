@@ -12,7 +12,6 @@ const mainDir = path.join(__dirname, '..', '..');
  * @param {{ state: import('../../services/sessionState').SessionState, bus: import('../rendererBus').RendererBus, configStore: typeof import('../../services/configStore'), windowManager: ReturnType<import('../../services/windowManager').createWindowManager> }} deps
  */
 function createPresentationService({ state, bus, configStore, windowManager }) {
-
   function startPresentation() {
     if (!bus.getPresentationWindow()) {
       windowManager.createPresentationWindow();
@@ -92,7 +91,7 @@ function createPresentationService({ state, bus, configStore, windowManager }) {
       dialog.showMessageBox(bus.getMainWindow(), {
         type: 'warning',
         title: 'No Content',
-        message: 'Nothing to export. Please open or create a presentation first.'
+        message: 'Nothing to export. Please open or create a presentation first.',
       });
       return;
     }
@@ -105,7 +104,7 @@ function createPresentationService({ state, bus, configStore, windowManager }) {
     const result = await dialog.showSaveDialog(bus.getMainWindow(), {
       title: 'Export to PDF',
       defaultPath: defaultName,
-      filters: [{ name: 'PDF Files', extensions: ['pdf'] }]
+      filters: [{ name: 'PDF Files', extensions: ['pdf'] }],
     });
 
     if (result.canceled || !result.filePath) return;
@@ -118,8 +117,8 @@ function createPresentationService({ state, bus, configStore, windowManager }) {
       webPreferences: {
         preload: path.join(mainDir, 'preload.js'),
         contextIsolation: true,
-        nodeIntegration: false
-      }
+        nodeIntegration: false,
+      },
     });
 
     pdfWindow.loadFile(path.join(mainDir, '../renderer/pdf-export.html'));
@@ -131,14 +130,14 @@ function createPresentationService({ state, bus, configStore, windowManager }) {
       pdfWindow.webContents.send('render-for-pdf', state.currentContent, basePath);
 
       // Wait for rendering to complete
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
       try {
         const pdfData = await pdfWindow.webContents.printToPDF({
           printBackground: true,
           landscape: true,
           pageSize: 'A4',
-          margins: { top: 0, bottom: 0, left: 0, right: 0 }
+          margins: { top: 0, bottom: 0, left: 0, right: 0 },
         });
 
         fs.writeFileSync(result.filePath, pdfData);
@@ -146,7 +145,7 @@ function createPresentationService({ state, bus, configStore, windowManager }) {
         dialog.showMessageBox(bus.getMainWindow(), {
           type: 'info',
           title: 'Export Complete',
-          message: `PDF exported successfully to:\n${result.filePath}`
+          message: `PDF exported successfully to:\n${result.filePath}`,
         });
       } catch (err) {
         dialog.showErrorBox('Export Failed', `Failed to export PDF: ${err.message}`);
@@ -207,9 +206,14 @@ function createPresentationService({ state, bus, configStore, windowManager }) {
   }
 
   return {
-    startPresentation, startPresentationWithPresenter, endPresentation,
-    sendFormatCommand, exportToPDF, setTheme, showHelp,
-    registerHandlers
+    startPresentation,
+    startPresentationWithPresenter,
+    endPresentation,
+    sendFormatCommand,
+    exportToPDF,
+    setTheme,
+    showHelp,
+    registerHandlers,
   };
 }
 

@@ -39,14 +39,14 @@ function getActiveProviderConfig(configStore) {
       apiKey: configStore.getOpenAIApiKey(),
       model: configStore.getOpenAIModel() || '',
       maxTokens: configStore.getOpenAIMaxTokens(),
-      disableThinking: configStore.getOpenAIDisableThinking()
+      disableThinking: configStore.getOpenAIDisableThinking(),
     };
   }
   return {
     provider,
     baseUrl: OLLAMA_DEFAULT_URL,
     apiKey: '',
-    model: configStore.getOllamaModel() || ''
+    model: configStore.getOllamaModel() || '',
   };
 }
 
@@ -90,7 +90,7 @@ function buildRequestOptions(urlObj, method, headers) {
     port: urlObj.port || (urlObj.protocol === 'https:' ? 443 : 80),
     path: urlObj.pathname + urlObj.search,
     method,
-    headers
+    headers,
   };
 }
 
@@ -121,20 +121,15 @@ function formatOllamaApiError(statusCode, body) {
   const details = parseErrorBody(body);
   const lower = details.toLowerCase();
   if (lower.includes('llama-server binary not found')) {
-    const repairSteps = process.platform === 'darwin'
-      ? [
-          'brew reinstall ollama',
-          'brew services restart ollama'
-        ]
-      : process.platform === 'win32'
-        ? [
-            'Repair or reinstall Ollama from https://ollama.com/download',
-            'Restart the Ollama app'
-          ]
-        : [
-            'Reinstall Ollama from https://ollama.com/download',
-            'Restart the Ollama service'
-          ];
+    const repairSteps =
+      process.platform === 'darwin'
+        ? ['brew reinstall ollama', 'brew services restart ollama']
+        : process.platform === 'win32'
+          ? [
+              'Repair or reinstall Ollama from https://ollama.com/download',
+              'Restart the Ollama app',
+            ]
+          : ['Reinstall Ollama from https://ollama.com/download', 'Restart the Ollama service'];
     return [
       'Ollama is installed but cannot start models because its llama-server helper is missing.',
       'Repair the local Ollama install with:',
@@ -143,7 +138,7 @@ function formatOllamaApiError(statusCode, body) {
       '',
       'Then run: ollama list',
       '',
-      `Details: ${details}`
+      `Details: ${details}`,
     ].join('\n');
   }
 
@@ -206,8 +201,18 @@ function buildOllamaMetrics({ model, startedAt, firstTokenAt, stats }) {
     }
   }
   if (ttftMs == null && firstTokenAt) ttftMs = firstTokenAt - startedAt;
-  const tokensPerSec = (genTokens != null && totalMs > 0) ? genTokens / (totalMs / 1000) : null;
-  return { provider: 'ollama', model, promptTokens, genTokens, tokensPerSec, decodeTps, ttftMs, totalMs, estimated: false };
+  const tokensPerSec = genTokens != null && totalMs > 0 ? genTokens / (totalMs / 1000) : null;
+  return {
+    provider: 'ollama',
+    model,
+    promptTokens,
+    genTokens,
+    tokensPerSec,
+    decodeTps,
+    ttftMs,
+    totalMs,
+    estimated: false,
+  };
 }
 
 // Build a metrics object for OpenAI-compatible servers (e.g. mlx_lm.server).
@@ -226,14 +231,35 @@ function buildOpenAIMetrics({ model, startedAt, firstTokenAt, usage, content }) 
   const tokensPerSec = totalMs > 0 ? genTokens / (totalMs / 1000) : null;
 
   const decodeMs = firstTokenAt ? endAt - firstTokenAt : null;
-  const streamed = decodeMs != null && decodeMs > 300 && decodeMs > totalMs * 0.25 && genTokens >= 16;
+  const streamed =
+    decodeMs != null && decodeMs > 300 && decodeMs > totalMs * 0.25 && genTokens >= 16;
   const decodeTps = streamed ? genTokens / (decodeMs / 1000) : null;
   const ttftMs = streamed ? firstTokenAt - startedAt : null;
 
-  return { provider: 'openai', model, promptTokens, genTokens, tokensPerSec, decodeTps, ttftMs, totalMs, estimated: !reported };
+  return {
+    provider: 'openai',
+    model,
+    promptTokens,
+    genTokens,
+    tokensPerSec,
+    decodeTps,
+    ttftMs,
+    totalMs,
+    estimated: !reported,
+  };
 }
 
-function streamOllamaChat({ baseUrl, model, messages, tools, onContent, isAborted, onRequest, timeoutMs, numCtx }) {
+function streamOllamaChat({
+  baseUrl,
+  model,
+  messages,
+  tools,
+  onContent,
+  isAborted,
+  onRequest,
+  timeoutMs,
+  numCtx,
+}) {
   return new Promise((resolve, reject) => {
     const startedAt = Date.now();
     const url = new URL('/api/chat', baseUrl || OLLAMA_DEFAULT_URL);
@@ -244,13 +270,13 @@ function streamOllamaChat({ baseUrl, model, messages, tools, onContent, isAborte
       stream: true,
       // Ollama serves num_ctx=4096 by default regardless of the model's
       // maximum — request the effective window explicitly.
-      options: (typeof numCtx === 'number' && numCtx > 0) ? { num_ctx: numCtx } : undefined
+      options: typeof numCtx === 'number' && numCtx > 0 ? { num_ctx: numCtx } : undefined,
     });
 
     const req = pickHttpModule(url).request(
       buildRequestOptions(url, 'POST', {
         'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(body)
+        'Content-Length': Buffer.byteLength(body),
       }),
       (res) => {
         if (res.statusCode !== 200) {
@@ -259,9 +285,17 @@ function streamOllamaChat({ baseUrl, model, messages, tools, onContent, isAborte
           res.on('end', () => {
             const lower = errBody.toLowerCase();
             if (res.statusCode === 400 && (lower.includes('context') || lower.includes('exceed'))) {
-              reject(new Error(`Prompt too large for the model's context window. Shorten the document or images, or raise it via AI menu → Set Ollama Context Size….\n\nDetails: ${errBody}`));
+              reject(
+                new Error(
+                  `Prompt too large for the model's context window. Shorten the document or images, or raise it via AI menu → Set Ollama Context Size….\n\nDetails: ${errBody}`,
+                ),
+              );
             } else if (res.statusCode === 400 && lower.includes('tool')) {
-              reject(new Error(`Model may not support tool calling. Try llama3.2, llama3.1, mistral, or qwen2.5.\n\nDetails: ${errBody}`));
+              reject(
+                new Error(
+                  `Model may not support tool calling. Try llama3.2, llama3.1, mistral, or qwen2.5.\n\nDetails: ${errBody}`,
+                ),
+              );
             } else {
               reject(new Error(formatOllamaApiError(res.statusCode, errBody)));
             }
@@ -314,14 +348,19 @@ function streamOllamaChat({ baseUrl, model, messages, tools, onContent, isAborte
             role: 'assistant',
             content,
             tool_calls: toolCalls || undefined,
-            metrics: buildOllamaMetrics({ model, startedAt, firstTokenAt, stats: finalStats })
+            metrics: buildOllamaMetrics({ model, startedAt, firstTokenAt, stats: finalStats }),
           });
         });
-      }
+      },
     );
 
     req.on('error', (err) => {
-      reject(connectionError(`Connection error: ${err.message}\nMake sure Ollama is running: ollama serve`, err));
+      reject(
+        connectionError(
+          `Connection error: ${err.message}\nMake sure Ollama is running: ollama serve`,
+          err,
+        ),
+      );
     });
 
     armIdleTimeout(req, timeoutMs);
@@ -331,13 +370,29 @@ function streamOllamaChat({ baseUrl, model, messages, tools, onContent, isAborte
   });
 }
 
-function streamOpenAIChat({ baseUrl, apiKey, model, messages, tools, onContent, isAborted, onRequest, timeoutMs, maxTokens, disableThinking }) {
+function streamOpenAIChat({
+  baseUrl,
+  apiKey,
+  model,
+  messages,
+  tools,
+  onContent,
+  isAborted,
+  onRequest,
+  timeoutMs,
+  maxTokens,
+  disableThinking,
+}) {
   return new Promise((resolve, reject) => {
     const startedAt = Date.now();
     let firstTokenAt = null;
     let usage = null;
     if (!baseUrl) {
-      reject(new Error('OpenAI-compatible base URL is not configured. Set it via AI menu → Configure OpenAI-Compatible Endpoint…'));
+      reject(
+        new Error(
+          'OpenAI-compatible base URL is not configured. Set it via AI menu → Configure OpenAI-Compatible Endpoint…',
+        ),
+      );
       return;
     }
 
@@ -356,11 +411,11 @@ function streamOpenAIChat({ baseUrl, apiKey, model, messages, tools, onContent, 
       // (notably mlx_lm.server, default 512) honour, which can starve the
       // model before it ever emits real output. Allow a generous budget,
       // configurable via AI menu → Set Max Output Tokens….
-      max_tokens: (typeof maxTokens === 'number' && maxTokens > 0) ? maxTokens : 4096,
+      max_tokens: typeof maxTokens === 'number' && maxTokens > 0 ? maxTokens : 4096,
       // Ask the server to include token usage in the final stream chunk so we
       // can report exact tokens/sec (mlx_lm.server and most OpenAI-compatible
       // servers honour this; we fall back to an estimate if it's absent).
-      stream_options: { include_usage: true }
+      stream_options: { include_usage: true },
     };
     if (tools && tools.length) payload.tools = tools;
     // vLLM forwards chat_template_kwargs into the Jinja chat template — the
@@ -372,7 +427,7 @@ function streamOpenAIChat({ baseUrl, apiKey, model, messages, tools, onContent, 
     const headers = {
       'Content-Type': 'application/json',
       'Content-Length': Buffer.byteLength(body),
-      'Accept': 'text/event-stream'
+      Accept: 'text/event-stream',
     };
     if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
 
@@ -416,8 +471,12 @@ function streamOpenAIChat({ baseUrl, apiKey, model, messages, tools, onContent, 
           const delta = choice.delta || {};
           // vLLM emits delta.reasoning; DeepSeek-style servers emit
           // delta.reasoning_content — accept both.
-          const reasoningDelta = typeof delta.reasoning === 'string' ? delta.reasoning
-            : (typeof delta.reasoning_content === 'string' ? delta.reasoning_content : '');
+          const reasoningDelta =
+            typeof delta.reasoning === 'string'
+              ? delta.reasoning
+              : typeof delta.reasoning_content === 'string'
+                ? delta.reasoning_content
+                : '';
           if (reasoningDelta.length) {
             if (firstTokenAt === null) firstTokenAt = Date.now();
             if (!inReasoning) {
@@ -447,7 +506,8 @@ function streamOpenAIChat({ baseUrl, apiKey, model, messages, tools, onContent, 
               if (tc.id) acc.id = tc.id;
               if (tc.function) {
                 if (tc.function.name) acc.name += tc.function.name;
-                if (typeof tc.function.arguments === 'string') acc.arguments += tc.function.arguments;
+                if (typeof tc.function.arguments === 'string')
+                  acc.arguments += tc.function.arguments;
               }
             }
           }
@@ -482,12 +542,15 @@ function streamOpenAIChat({ baseUrl, apiKey, model, messages, tools, onContent, 
           if (!acc.name) continue;
           let parsedArgs = {};
           if (acc.arguments) {
-            try { parsedArgs = JSON.parse(acc.arguments); }
-            catch (_) { parsedArgs = { _raw: acc.arguments }; }
+            try {
+              parsedArgs = JSON.parse(acc.arguments);
+            } catch (_) {
+              parsedArgs = { _raw: acc.arguments };
+            }
           }
           toolCalls.push({
             id: acc.id,
-            function: { name: acc.name, arguments: parsedArgs }
+            function: { name: acc.name, arguments: parsedArgs },
           });
         }
 
@@ -495,13 +558,18 @@ function streamOpenAIChat({ baseUrl, apiKey, model, messages, tools, onContent, 
           role: 'assistant',
           content,
           tool_calls: toolCalls.length ? toolCalls : undefined,
-          metrics: buildOpenAIMetrics({ model, startedAt, firstTokenAt, usage, content })
+          metrics: buildOpenAIMetrics({ model, startedAt, firstTokenAt, usage, content }),
         });
       });
     });
 
     req.on('error', (err) => {
-      reject(connectionError(`Connection error to ${baseUrl}: ${err.message}\nMake sure your OpenAI-compatible server is running.`, err));
+      reject(
+        connectionError(
+          `Connection error to ${baseUrl}: ${err.message}\nMake sure your OpenAI-compatible server is running.`,
+          err,
+        ),
+      );
     });
 
     armIdleTimeout(req, timeoutMs);
@@ -526,18 +594,19 @@ function toOpenAIMessage(msg) {
         type: 'function',
         function: {
           name: tc.function?.name,
-          arguments: typeof tc.function?.arguments === 'string'
-            ? tc.function.arguments
-            : JSON.stringify(tc.function?.arguments || {})
-        }
-      }))
+          arguments:
+            typeof tc.function?.arguments === 'string'
+              ? tc.function.arguments
+              : JSON.stringify(tc.function?.arguments || {}),
+        },
+      })),
     };
   }
   if (msg.role === 'tool') {
     return {
       role: 'tool',
       tool_call_id: msg.tool_call_id || 'call_0',
-      content: contentToText(msg.content)
+      content: contentToText(msg.content),
     };
   }
   // Vision: turn attached images into OpenAI multimodal content parts. Ollama
@@ -552,7 +621,7 @@ function toOpenAIMessage(msg) {
     msg.images.forEach((b64, i) => {
       parts.push({
         type: 'image_url',
-        image_url: { url: `data:${mimes[i] || 'image/png'};base64,${b64}` }
+        image_url: { url: `data:${mimes[i] || 'image/png'};base64,${b64}` },
       });
     });
     return { role: msg.role, content: parts };
@@ -572,7 +641,7 @@ function formatToolResultMessage(provider, toolCall, content) {
     return {
       role: 'tool',
       tool_call_id: toolCall && toolCall.id ? toolCall.id : 'call_0',
-      content: contentToText(content)
+      content: contentToText(content),
     };
   }
   return { role: 'tool', content: contentToText(content) };
@@ -596,21 +665,23 @@ function testOllama(cfg) {
   return new Promise((resolve) => {
     try {
       const url = new URL('/api/tags', cfg.baseUrl || OLLAMA_DEFAULT_URL);
-      const req = pickHttpModule(url).request(
-        buildRequestOptions(url, 'GET', {}),
-        (res) => {
-          let body = '';
-          res.on('data', (c) => (body += c));
-          res.on('end', () => {
-            if (res.statusCode === 200) {
-              resolve({ ok: true, message: `Ollama reachable at ${url.origin}` });
-            } else {
-              resolve({ ok: false, message: `Ollama responded with HTTP ${res.statusCode}: ${body.slice(0, 200)}` });
-            }
-          });
-        }
+      const req = pickHttpModule(url).request(buildRequestOptions(url, 'GET', {}), (res) => {
+        let body = '';
+        res.on('data', (c) => (body += c));
+        res.on('end', () => {
+          if (res.statusCode === 200) {
+            resolve({ ok: true, message: `Ollama reachable at ${url.origin}` });
+          } else {
+            resolve({
+              ok: false,
+              message: `Ollama responded with HTTP ${res.statusCode}: ${body.slice(0, 200)}`,
+            });
+          }
+        });
+      });
+      req.on('error', (err) =>
+        resolve({ ok: false, message: `Cannot reach Ollama: ${err.message}` }),
       );
-      req.on('error', (err) => resolve({ ok: false, message: `Cannot reach Ollama: ${err.message}` }));
       req.end();
     } catch (err) {
       resolve({ ok: false, message: `Invalid configuration: ${err.message}` });
@@ -629,21 +700,23 @@ function testOpenAI(cfg) {
       const url = new URL(trimmed + '/models');
       const headers = {};
       if (cfg.apiKey) headers['Authorization'] = `Bearer ${cfg.apiKey}`;
-      const req = pickHttpModule(url).request(
-        buildRequestOptions(url, 'GET', headers),
-        (res) => {
-          let body = '';
-          res.on('data', (c) => (body += c));
-          res.on('end', () => {
-            if (res.statusCode === 200) {
-              resolve({ ok: true, message: `OpenAI-compatible endpoint reachable at ${trimmed}` });
-            } else {
-              resolve({ ok: false, message: `Endpoint responded with HTTP ${res.statusCode}: ${body.slice(0, 200)}` });
-            }
-          });
-        }
+      const req = pickHttpModule(url).request(buildRequestOptions(url, 'GET', headers), (res) => {
+        let body = '';
+        res.on('data', (c) => (body += c));
+        res.on('end', () => {
+          if (res.statusCode === 200) {
+            resolve({ ok: true, message: `OpenAI-compatible endpoint reachable at ${trimmed}` });
+          } else {
+            resolve({
+              ok: false,
+              message: `Endpoint responded with HTTP ${res.statusCode}: ${body.slice(0, 200)}`,
+            });
+          }
+        });
+      });
+      req.on('error', (err) =>
+        resolve({ ok: false, message: `Cannot reach endpoint: ${err.message}` }),
       );
-      req.on('error', (err) => resolve({ ok: false, message: `Cannot reach endpoint: ${err.message}` }));
       req.end();
     } catch (err) {
       resolve({ ok: false, message: `Invalid configuration: ${err.message}` });
@@ -659,5 +732,5 @@ module.exports = {
   formatToolResultMessage,
   formatOllamaApiError,
   toOpenAIMessage,
-  testConnection
+  testConnection,
 };

@@ -42,8 +42,8 @@ class Editor {
         sidebarTodos: this.sidebarTodos,
         fileTree: this.fileTree,
         outlineList: this.outlineList,
-        previewPane: this.previewPane
-      }
+        previewPane: this.previewPane,
+      },
     });
     this.previewManager = new PreviewManager({
       state: this.state,
@@ -58,18 +58,18 @@ class Editor {
         outlineList: this.outlineList,
         rightOutline: this.rightOutline,
         rightOutlineList: this.rightOutlineList,
-        rightSidebarResize: this.rightSidebarResize
-      }
+        rightSidebarResize: this.rightSidebarResize,
+      },
     });
     this.backlinksManager = new BacklinksManager({
       state: this.state,
       host: this.host,
       dom: {
-        rightOutline: this.rightOutline
-      }
+        rightOutline: this.rightOutline,
+      },
     });
     this.wikiGraphManager = new WikiGraphManager({
-      state: this.state
+      state: this.state,
     });
     this.terminalManager = new TerminalManager({
       state: this.state,
@@ -89,11 +89,11 @@ class Editor {
         shellTerminalContent: document.getElementById('shell-terminal-content'),
         shellTerminalContainer: document.getElementById('shell-terminal-container'),
         piTerminalContent: document.getElementById('pi-terminal-content'),
-        piTerminalContainer: document.getElementById('pi-terminal-container')
+        piTerminalContainer: document.getElementById('pi-terminal-container'),
       },
       getTabManager: () => this.tabManager,
       getPreviewManager: () => this.previewManager,
-      getFileTreeManager: () => this.fileTreeManager
+      getFileTreeManager: () => this.fileTreeManager,
     });
     this.fileTreeManager = new FileTreeManager({
       state: this.state,
@@ -105,14 +105,14 @@ class Editor {
         sidebarTags: this.sidebarTags,
         sidebarTodos: this.sidebarTodos,
         fileTree: this.fileTree,
-        sidebarResize: this.sidebarResize
+        sidebarResize: this.sidebarResize,
       },
       getTabManager: () => this.tabManager,
-      getPreviewManager: () => this.previewManager
+      getPreviewManager: () => this.previewManager,
     });
     this.gitBadgesManager = new GitBadgesManager({
       treeView: this.fileTreeManager.treeView,
-      dataModel: this.fileTreeManager.dataModel
+      dataModel: this.fileTreeManager.dataModel,
     });
     this.tagExplorerManager = new TagExplorerManager({
       state: this.state,
@@ -123,8 +123,8 @@ class Editor {
         sidebarSearch: this.sidebarSearch,
         sidebarTodos: this.sidebarTodos,
         sidebarResize: this.sidebarResize,
-        tagList: document.getElementById('tag-list')
-      }
+        tagList: document.getElementById('tag-list'),
+      },
     });
     this.todoExplorerManager = new TodoExplorerManager({
       state: this.state,
@@ -135,8 +135,8 @@ class Editor {
         sidebarSearch: this.sidebarSearch,
         sidebarTags: this.sidebarTags,
         sidebarResize: this.sidebarResize,
-        todoList: document.getElementById('todo-list')
-      }
+        todoList: document.getElementById('todo-list'),
+      },
     });
     this.settingsManager = new SettingsManager({
       state: this.state,
@@ -149,11 +149,11 @@ class Editor {
         sidebarTags: this.sidebarTags,
         sidebarTodos: this.sidebarTodos,
         rightSidebarResize: this.rightSidebarResize,
-        rightOutline: this.rightOutline
+        rightOutline: this.rightOutline,
       },
       getPreviewManager: () => this.previewManager,
       getSearchManager: () => this.searchManager,
-      getTabManager: () => this.tabManager
+      getTabManager: () => this.tabManager,
     });
     this.commandPalette = new CommandPaletteManager({
       host: this.host,
@@ -169,11 +169,11 @@ class Editor {
         terminalManager: this.terminalManager,
         wikiGraphManager: this.wikiGraphManager,
         getValue: () => this.getValue(),
-      })
+      }),
     });
     this.inlineImages = new InlineImageManager({
       state: this.state,
-      host: this.host
+      host: this.host,
     });
     this.inlineImages.setup();
 
@@ -247,7 +247,7 @@ class Editor {
     // Initialize CodeMirror via host
     this.host = new CodemirrorHost(this.editorContainer, {
       extraKeys: {
-        'Tab': (cm) => {
+        Tab: (cm) => {
           cm.replaceSelection('  ');
         },
         'Cmd-B': () => this.formatting.wrapSelection('**', '**'),
@@ -266,11 +266,12 @@ class Editor {
         'Shift-Ctrl-Enter': () => this.formatting.toggleTodoLine(),
         'Alt-Z': () => this.formatting.toggleLineWrapping(),
         'Ctrl-J': (cm) => this.showHints(cm),
-        'Ctrl-Space': (cm) => this.showHints(cm)
+        'Ctrl-Space': (cm) => this.showHints(cm),
       },
-      placeholder: '# Start writing your presentation...\n\nUse --- on its own line to separate slides.\n\nAdd speaker notes after ??? on a slide.'
+      placeholder:
+        '# Start writing your presentation...\n\nUse --- on its own line to separate slides.\n\nAdd speaker notes after ??? on a slide.',
     });
-    this.cm = this.host.cm;  // Backward compat alias
+    this.cm = this.host.cm; // Backward compat alias
 
     // Git change indicators in the editor gutter (inert outside a git repo)
     this.gitGutterManager = new GitGutterManager({ host: this.host, state: this.state });
@@ -412,7 +413,11 @@ class Editor {
     const bucketRoot = this.state.projectRoot || this.state.currentDirectory;
     if (!bucketRoot) return;
     try {
-      const result = await window.vomit.wikiResolve(bucketRoot, target, this.state.currentFilePath || null);
+      const result = await window.vomit.wikiResolve(
+        bucketRoot,
+        target,
+        this.state.currentFilePath || null,
+      );
       if (result && result.success && result.path) {
         window.vomit.openFile(result.path);
         return;
@@ -430,9 +435,7 @@ class Editor {
     if (!cleaned) return;
 
     const sanitized = cleaned.replace(/[\\:*?"<>]/g, '').trim();
-    const willCreate = window.confirm(
-      `"${sanitized}" does not exist yet.\nCreate it now?`
-    );
+    const willCreate = window.confirm(`"${sanitized}" does not exist yet.\nCreate it now?`);
     if (!willCreate) return;
 
     // Place the new note next to the current file when possible, else at the
@@ -460,8 +463,9 @@ class Editor {
 
   _attachWikilinkAutocomplete() {
     if (!window.VomitWikilinkHint) return;
-    window.VomitWikilinkHint.attachWikilinkHint(this.cm, () =>
-      this.state.projectRoot || this.state.currentDirectory
+    window.VomitWikilinkHint.attachWikilinkHint(
+      this.cm,
+      () => this.state.projectRoot || this.state.currentDirectory,
     );
   }
 
@@ -472,7 +476,7 @@ class Editor {
 
     // Build a map of link text → URL
     const linkMap = new Map();
-    temp.querySelectorAll('a[href]').forEach(a => {
+    temp.querySelectorAll('a[href]').forEach((a) => {
       const text = a.textContent.trim();
       const href = a.getAttribute('href');
       if (text && href) {
@@ -503,7 +507,7 @@ class Editor {
   showHints(cm) {
     cm.showHint({
       hint: CodeMirror.hint.custom,
-      completeSingle: false
+      completeSingle: false,
     });
   }
 
@@ -532,7 +536,7 @@ class Editor {
                     const matchEnd = matchStart + query.length;
                     this.host.setSelection(
                       { line: lineIndex, ch: matchStart },
-                      { line: lineIndex, ch: matchEnd }
+                      { line: lineIndex, ch: matchEnd },
                     );
                     this.host.scrollIntoView({ line: lineIndex, ch: matchStart });
                   } else {
@@ -609,7 +613,7 @@ class Editor {
                 const matchEnd = matchStart + query.length;
                 this.host.setSelection(
                   { line: lineIndex, ch: matchStart },
-                  { line: lineIndex, ch: matchEnd }
+                  { line: lineIndex, ch: matchEnd },
                 );
                 this.host.scrollIntoView({ line: lineIndex, ch: matchStart });
               } else {
@@ -754,9 +758,11 @@ class Editor {
       }
 
       // Refresh the most specific changed folder, or fall back to root
-      const normalRoot = projectRoot ? window.PathUtils.normalize(projectRoot).replace(/\/$/, '') : null;
-      const isInsideProject = normalRoot && changedPath &&
-        window.PathUtils.isSubPath(changedPath, normalRoot);
+      const normalRoot = projectRoot
+        ? window.PathUtils.normalize(projectRoot).replace(/\/$/, '')
+        : null;
+      const isInsideProject =
+        normalRoot && changedPath && window.PathUtils.isSubPath(changedPath, normalRoot);
       const target = isInsideProject ? changedPath : projectRoot;
 
       if (target) {
@@ -768,9 +774,7 @@ class Editor {
 
     window.addEventListener('vomit:sort-order-changed', (e) => {
       this.fileTreeManager.dataModel.sortOrder = e.detail;
-      this.fileTreeManager.openFolder(
-        this.state.projectRoot || this.state.currentDirectory
-      );
+      this.fileTreeManager.openFolder(this.state.projectRoot || this.state.currentDirectory);
     });
 
     window.addEventListener('vomit:new-folder', () => {
@@ -814,23 +818,57 @@ class Editor {
     window.addEventListener('vomit:format-command', (e) => {
       const command = e.detail;
       switch (command) {
-        case 'bold': this.formatting.wrapSelection('**', '**'); break;
-        case 'italic': this.formatting.wrapSelection('*', '*'); break;
-        case 'code': this.formatting.wrapSelection('`', '`'); break;
-        case 'codeBlock': this.formatting.wrapCodeBlock(); break;
-        case 'link': this.formatting.insertLink(); break;
-        case 'table': this.formatting.insertTable(); break;
-        case 'formatTable': this.formatting.formatTable(); break;
-        case 'h1': this.formatting.insertAtLineStart('# '); break;
-        case 'h2': this.formatting.insertAtLineStart('## '); break;
-        case 'h3': this.formatting.insertAtLineStart('### '); break;
-        case 'bullet': this.formatting.insertAtLineStart('- '); break;
-        case 'numbered': this.formatting.insertAtLineStart('1. '); break;
-        case 'quote': this.formatting.insertAtLineStart('> '); break;
-        case 'hr': this.formatting.insertText('\n---\n'); break;
-        case 'slide': this.formatting.insertSlide(); break;
-        case 'todo': this.formatting.toggleTodoLine(); break;
-        case 'dateHeading': this.formatting.insertDateHeading(); break;
+        case 'bold':
+          this.formatting.wrapSelection('**', '**');
+          break;
+        case 'italic':
+          this.formatting.wrapSelection('*', '*');
+          break;
+        case 'code':
+          this.formatting.wrapSelection('`', '`');
+          break;
+        case 'codeBlock':
+          this.formatting.wrapCodeBlock();
+          break;
+        case 'link':
+          this.formatting.insertLink();
+          break;
+        case 'table':
+          this.formatting.insertTable();
+          break;
+        case 'formatTable':
+          this.formatting.formatTable();
+          break;
+        case 'h1':
+          this.formatting.insertAtLineStart('# ');
+          break;
+        case 'h2':
+          this.formatting.insertAtLineStart('## ');
+          break;
+        case 'h3':
+          this.formatting.insertAtLineStart('### ');
+          break;
+        case 'bullet':
+          this.formatting.insertAtLineStart('- ');
+          break;
+        case 'numbered':
+          this.formatting.insertAtLineStart('1. ');
+          break;
+        case 'quote':
+          this.formatting.insertAtLineStart('> ');
+          break;
+        case 'hr':
+          this.formatting.insertText('\n---\n');
+          break;
+        case 'slide':
+          this.formatting.insertSlide();
+          break;
+        case 'todo':
+          this.formatting.toggleTodoLine();
+          break;
+        case 'dateHeading':
+          this.formatting.insertDateHeading();
+          break;
       }
     });
 
@@ -890,7 +928,6 @@ class Editor {
       const { current, latest } = e.detail;
       this.showToast(`Update available: v${latest} (current: v${current})`, 'info', 8000);
     });
-
   }
 
   showToast(message, type = 'info', duration = 3000) {
@@ -946,7 +983,7 @@ class Editor {
 
       document.body.appendChild(modal);
 
-      modal.querySelectorAll('.dialog-btn').forEach(btn => {
+      modal.querySelectorAll('.dialog-btn').forEach((btn) => {
         btn.addEventListener('click', () => {
           modal.remove();
           resolve(btn.dataset.action);
@@ -1053,7 +1090,6 @@ class Editor {
       }
     });
   }
-
 }
 
 // Initialize

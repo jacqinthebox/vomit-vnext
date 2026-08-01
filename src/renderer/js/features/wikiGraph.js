@@ -37,7 +37,9 @@ class WikiGraphManager {
     window.addEventListener('vomit:toggle-wiki-graph', () => this.toggle());
     this.hideOrphansToggle?.addEventListener('change', () => {
       this.hideOrphans = !!this.hideOrphansToggle.checked;
-      try { localStorage.setItem('vomit.wikiGraph.hideOrphans', this.hideOrphans ? '1' : '0'); } catch {}
+      try {
+        localStorage.setItem('vomit.wikiGraph.hideOrphans', this.hideOrphans ? '1' : '0');
+      } catch {}
       if (!this.modal.classList.contains('hidden')) this._render();
     });
   }
@@ -63,7 +65,10 @@ class WikiGraphManager {
 
     // Drag from header — but ignore drags that start on buttons / inputs.
     let dragging = false;
-    let startX = 0, startY = 0, startLeft = 0, startTop = 0;
+    let startX = 0,
+      startY = 0,
+      startLeft = 0,
+      startTop = 0;
 
     this.header.addEventListener('mousedown', (e) => {
       if (e.button !== 0) return;
@@ -130,7 +135,7 @@ class WikiGraphManager {
     try {
       const data = {
         w: this.panel.offsetWidth,
-        h: this.panel.offsetHeight
+        h: this.panel.offsetHeight,
       };
       if (this.modal.classList.contains('is-floating')) {
         data.x = parseFloat(this.panel.style.left) || 0;
@@ -147,7 +152,9 @@ class WikiGraphManager {
     this.panel.style.top = '';
     this.panel.style.width = '';
     this.panel.style.height = '';
-    try { localStorage.removeItem('vomit.wikiGraph.geometry'); } catch {}
+    try {
+      localStorage.removeItem('vomit.wikiGraph.geometry');
+    } catch {}
     // Trigger redraw so vis-network re-fits.
     if (this.network) this.network.redraw();
   }
@@ -204,29 +211,27 @@ class WikiGraphManager {
       connected.add(e.target);
     }
     const orphanCount = rawNodes.reduce((n, x) => n + (connected.has(x.id) ? 0 : 1), 0);
-    const filteredNodes = this.hideOrphans
-      ? rawNodes.filter(n => connected.has(n.id))
-      : rawNodes;
-    const visibleIds = new Set(filteredNodes.map(n => n.id));
+    const filteredNodes = this.hideOrphans ? rawNodes.filter((n) => connected.has(n.id)) : rawNodes;
+    const visibleIds = new Set(filteredNodes.map((n) => n.id));
     const filteredEdges = this.hideOrphans
-      ? rawEdges.filter(e => visibleIds.has(e.source) && visibleIds.has(e.target))
+      ? rawEdges.filter((e) => visibleIds.has(e.source) && visibleIds.has(e.target))
       : rawEdges;
 
-    const nodes = filteredNodes.map(n => ({
+    const nodes = filteredNodes.map((n) => ({
       id: n.id,
       label: n.title || n.basename,
-      title: n.id // hover tooltip = absolute path
+      title: n.id, // hover tooltip = absolute path
     }));
-    const edges = filteredEdges.map(e => ({
+    const edges = filteredEdges.map((e) => ({
       from: e.source,
       to: e.target,
-      arrows: 'to'
+      arrows: 'to',
     }));
 
     // Highlight the currently-open file.
     const active = this.state.currentFilePath;
     if (active) {
-      const activeNode = nodes.find(n => n.id === active);
+      const activeNode = nodes.find((n) => n.id === active);
       if (activeNode) {
         activeNode.color = { background: '#ffce46', border: '#e0a800' };
         // Label is drawn on the dark canvas background — keep it readable.
@@ -234,18 +239,20 @@ class WikiGraphManager {
       }
     }
 
-    const orphanNote = this.hideOrphans && orphanCount > 0
-      ? ` · ${orphanCount} orphan${orphanCount === 1 ? '' : 's'} hidden`
-      : '';
+    const orphanNote =
+      this.hideOrphans && orphanCount > 0
+        ? ` · ${orphanCount} orphan${orphanCount === 1 ? '' : 's'} hidden`
+        : '';
     this.stats.textContent = `${nodes.length} notes · ${edges.length} links${orphanNote}`;
 
-    const accent = getComputedStyle(document.body).getPropertyValue('--accent-color').trim() || '#4a90d9';
+    const accent =
+      getComputedStyle(document.body).getPropertyValue('--accent-color').trim() || '#4a90d9';
     const muted = getComputedStyle(document.body).getPropertyValue('--text-muted').trim() || '#888';
     const bg = getComputedStyle(document.body).getPropertyValue('--bg-secondary').trim() || '#222';
 
     const data = {
       nodes: new vis.DataSet(nodes),
-      edges: new vis.DataSet(edges)
+      edges: new vis.DataSet(edges),
     };
     const options = {
       autoResize: true,
@@ -253,19 +260,23 @@ class WikiGraphManager {
       nodes: {
         shape: 'dot',
         size: 12,
-        color: { background: accent, border: accent, highlight: { background: '#ffce46', border: '#e0a800' } },
-        font: { color: muted, size: 12, face: 'sans-serif' }
+        color: {
+          background: accent,
+          border: accent,
+          highlight: { background: '#ffce46', border: '#e0a800' },
+        },
+        font: { color: muted, size: 12, face: 'sans-serif' },
       },
       edges: {
         color: { color: muted, opacity: 0.5 },
         smooth: { type: 'continuous' },
-        arrows: { to: { enabled: true, scaleFactor: 0.5 } }
+        arrows: { to: { enabled: true, scaleFactor: 0.5 } },
       },
       physics: {
         enabled: true,
         stabilization: { iterations: 150 },
-        barnesHut: { gravitationalConstant: -3000, springLength: 95, springConstant: 0.04 }
-      }
+        barnesHut: { gravitationalConstant: -3000, springLength: 95, springConstant: 0.04 },
+      },
     };
 
     if (this.network) this.network.destroy();

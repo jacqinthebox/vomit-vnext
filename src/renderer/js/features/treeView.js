@@ -6,7 +6,7 @@ class TreeView {
   #container;
   #dataModel;
   #state;
-  #elements = new Map();  // path -> DOM element
+  #elements = new Map(); // path -> DOM element
   #childContainers = new Map(); // path -> children container element
 
   // SVG for chevron
@@ -155,7 +155,7 @@ class TreeView {
 
     // Find correct position (sorted)
     const siblings = Array.from(container.querySelectorAll(':scope > .file-item'));
-    const insertBefore = siblings.find(sibling => {
+    const insertBefore = siblings.find((sibling) => {
       const siblingPath = sibling.dataset.path;
       const siblingNode = this.#dataModel.getNode(siblingPath);
       if (!siblingNode) return false;
@@ -257,7 +257,7 @@ class TreeView {
         if (container) {
           // Find correct position (sorted)
           const siblings = Array.from(container.querySelectorAll(':scope > .file-item'));
-          const insertBefore = siblings.find(sibling => {
+          const insertBefore = siblings.find((sibling) => {
             const siblingPath = sibling.dataset.path;
             const siblingNode = this.#dataModel.getNode(siblingPath);
             if (!siblingNode) return false;
@@ -314,7 +314,7 @@ class TreeView {
     }
 
     // Clear all direct children (file-items AND orphaned tree-children containers)
-    Array.from(container.children).forEach(child => {
+    Array.from(container.children).forEach((child) => {
       if (child.classList.contains('file-item')) {
         this.#elements.delete(child.dataset.path);
       }
@@ -333,7 +333,11 @@ class TreeView {
       this.#elements.set(child.path, el);
 
       // If this child is expanded and has loaded children, render them too
-      if (child.isDirectory && this.#state.isExpanded(child.path) && this.#dataModel.hasChildren(child.path)) {
+      if (
+        child.isDirectory &&
+        this.#state.isExpanded(child.path) &&
+        this.#dataModel.hasChildren(child.path)
+      ) {
         this.#renderChildrenOf(child.path);
       }
     }
@@ -456,7 +460,7 @@ class TreeView {
     if (!childContainer) return;
 
     const allItems = childContainer.querySelectorAll('.file-item');
-    allItems.forEach(item => {
+    allItems.forEach((item) => {
       const path = item.dataset.path;
       this.#elements.delete(path);
       this.#childContainers.delete(path);

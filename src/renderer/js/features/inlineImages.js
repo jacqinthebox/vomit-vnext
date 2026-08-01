@@ -84,7 +84,12 @@ class InlineImageManager {
   parseImageLine(lineContent) {
     let match = lineContent.match(this.imagePatternSized);
     if (match) {
-      return { alt: match[1], src: match[2], width: match[3] ? parseInt(match[3], 10) : null, height: match[4] ? parseInt(match[4], 10) : null };
+      return {
+        alt: match[1],
+        src: match[2],
+        width: match[3] ? parseInt(match[3], 10) : null,
+        height: match[4] ? parseInt(match[4], 10) : null,
+      };
     }
     match = lineContent.match(this.imagePatternSimple);
     if (match) {
@@ -94,7 +99,12 @@ class InlineImageManager {
   }
 
   resolveImagePath(src) {
-    if (src.startsWith('http') || src.startsWith('file://') || src.startsWith('vomit-file://') || src.startsWith('data:')) {
+    if (
+      src.startsWith('http') ||
+      src.startsWith('file://') ||
+      src.startsWith('vomit-file://') ||
+      src.startsWith('data:')
+    ) {
       return src;
     }
     const basePath = this.state.basePath;
@@ -128,7 +138,10 @@ class InlineImageManager {
     img.src = src;
 
     const widget = this.host.addLineWidget(lineNumber, container, {
-      coverGutter: false, noHScroll: true, above: false, handleMouseEvents: true
+      coverGutter: false,
+      noHScroll: true,
+      above: false,
+      handleMouseEvents: true,
     });
     this.widgets.set(lineNumber, { widget, hash, type: 'image' });
   }
@@ -174,7 +187,7 @@ class InlineImageManager {
       katex.render(latex, container, {
         displayMode: true,
         throwOnError: false,
-        errorColor: '#ef4444'
+        errorColor: '#ef4444',
       });
     } catch (err) {
       container.classList.add('error');
@@ -182,7 +195,10 @@ class InlineImageManager {
     }
 
     const widget = this.host.addLineWidget(lineNumber, container, {
-      coverGutter: false, noHScroll: true, above: false, handleMouseEvents: true
+      coverGutter: false,
+      noHScroll: true,
+      above: false,
+      handleMouseEvents: true,
     });
     this.widgets.set(lineNumber, { widget, hash, type: 'latex' });
   }
@@ -243,7 +259,10 @@ class InlineImageManager {
     container.appendChild(mermaidDiv);
 
     const widget = this.host.addLineWidget(lineNumber, container, {
-      coverGutter: false, noHScroll: true, above: false, handleMouseEvents: true
+      coverGutter: false,
+      noHScroll: true,
+      above: false,
+      handleMouseEvents: true,
     });
     this.widgets.set(lineNumber, { widget, hash, type: 'mermaid' });
 
@@ -264,7 +283,8 @@ class InlineImageManager {
     this.constrainWidgetToEditor(container);
 
     // plantumlEncoder is a global from plantuml-encoder.min.js
-    const encoder = window.plantumlEncoder || (typeof plantumlEncoder !== 'undefined' ? plantumlEncoder : null);
+    const encoder =
+      window.plantumlEncoder || (typeof plantumlEncoder !== 'undefined' ? plantumlEncoder : null);
 
     if (!encoder) {
       container.classList.add('error');
@@ -295,7 +315,10 @@ class InlineImageManager {
     }
 
     const widget = this.host.addLineWidget(lineNumber, container, {
-      coverGutter: false, noHScroll: true, above: false, handleMouseEvents: true
+      coverGutter: false,
+      noHScroll: true,
+      above: false,
+      handleMouseEvents: true,
     });
     this.widgets.set(lineNumber, { widget, hash, type: 'plantuml' });
   }
@@ -305,7 +328,7 @@ class InlineImageManager {
     let hash = 0;
     for (let i = 0; i < content.length; i++) {
       const char = content.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
+      hash = (hash << 5) - hash + char;
       hash = hash & hash;
     }
     return hash.toString(36);

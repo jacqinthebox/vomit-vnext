@@ -15,7 +15,7 @@ const COMMAND_REGISTRY = [
       ctx.clearTerminal();
       ctx.appendTerminalOutput('New conversation started.', 'system');
       ctx.updateContextBar();
-    }
+    },
   },
   {
     name: '/clear',
@@ -29,7 +29,7 @@ const COMMAND_REGISTRY = [
       ctx.clearTerminal();
       ctx.appendTerminalOutput('Conversation cleared.', 'system');
       ctx.updateContextBar();
-    }
+    },
   },
   // ---- Pseudonymization -------------------------------------------------
   // Commands are named by SCOPE: /pseudo (current document), /pseudo-selection
@@ -39,18 +39,20 @@ const COMMAND_REGISTRY = [
   // aliases further down so existing muscle memory and scripts keep working.
   {
     name: '/pseudo-selection',
-    description: 'Pseudonymize the selection (whole doc if none). Prints to the terminal only, disk untouched. --ai = smart scan',
+    description:
+      'Pseudonymize the selection (whole doc if none). Prints to the terminal only, disk untouched. --ai = smart scan',
     args: 'optional',
     argsHint: '[--ai]',
     requiresCwd: true,
     async handler(args, ctx, cwd) {
       const { ai } = ctx.parsePseudoArgs(args);
       await ctx.pseudonymizeSelection(cwd, ai ? 'ai' : 'deterministic');
-    }
+    },
   },
   {
     name: '/pseudo-restore',
-    description: 'Undo pseudonymization: a pseudo repo if named, else the current document/selection',
+    description:
+      'Undo pseudonymization: a pseudo repo if named, else the current document/selection',
     args: 'optional',
     argsHint: '[repo-name]',
     requiresCwd: true,
@@ -69,18 +71,21 @@ const COMMAND_REGISTRY = [
       } else {
         await ctx.depseudonymizeSelection();
       }
-    }
+    },
   },
   {
     name: '/pseudo-repo',
-    description: 'Pseudonymize repos/folders into pseudo/<name>/. Bare = all git repos, --all = every folder, --ai = smart scan',
+    description:
+      'Pseudonymize repos/folders into pseudo/<name>/. Bare = all git repos, --all = every folder, --ai = smart scan',
     args: 'optional',
     argsHint: '[folder] [--all] [--ai] [--customer "Name[=Replacement]"]',
     requiresCwd: true,
     async handler(args, ctx, cwd) {
       const { folder, customers, ai, all } = ctx.parsePseudoArgs(args);
-      await ctx.runPseudoRepo(cwd, folder, ai ? 'ai' : 'deterministic', '/pseudo-repo', customers, { all });
-    }
+      await ctx.runPseudoRepo(cwd, folder, ai ? 'ai' : 'deterministic', '/pseudo-repo', customers, {
+        all,
+      });
+    },
   },
   {
     name: '/pseudo-map',
@@ -90,11 +95,12 @@ const COMMAND_REGISTRY = [
     requiresCwd: true,
     async handler(args, ctx, cwd) {
       await ctx.showPseudoMapping(cwd);
-    }
+    },
   },
   {
     name: '/pseudo',
-    description: 'Pseudonymize the current document into a -pseudo copy. --ai = smart scan. --customer "Acme" or "Acme=Globex" forces a name',
+    description:
+      'Pseudonymize the current document into a -pseudo copy. --ai = smart scan. --customer "Acme" or "Acme=Globex" forces a name',
     args: 'optional',
     argsHint: '[--ai] [--customer "Name[=Replacement]"]',
     requiresCwd: true,
@@ -104,9 +110,9 @@ const COMMAND_REGISTRY = [
       // Default is the fast deterministic scan. --ai (or the legacy positional
       // "ai") selects the AI engine; "deterministic"/"det"/"fast" are accepted
       // as legacy no-ops since deterministic is now the default.
-      const mode = (ai || token === 'ai') ? 'ai' : 'deterministic';
+      const mode = ai || token === 'ai' ? 'ai' : 'deterministic';
       await ctx.pseudonymizeCurrentDoc(cwd, mode, customers);
-    }
+    },
   },
 
   // ---- Legacy aliases (hidden from picker/help; kept for compatibility) ----
@@ -119,8 +125,10 @@ const COMMAND_REGISTRY = [
     requiresCwd: true,
     async handler(args, ctx, cwd) {
       const { folder, customers, all } = ctx.parsePseudoArgs(args);
-      await ctx.runPseudoRepo(cwd, folder, 'deterministic', '/pseudo-deterministic', customers, { all });
-    }
+      await ctx.runPseudoRepo(cwd, folder, 'deterministic', '/pseudo-deterministic', customers, {
+        all,
+      });
+    },
   },
   {
     name: '/pseudo-ai',
@@ -132,7 +140,7 @@ const COMMAND_REGISTRY = [
     async handler(args, ctx, cwd) {
       const { folder, customers, all } = ctx.parsePseudoArgs(args);
       await ctx.runPseudoRepo(cwd, folder, 'ai', '/pseudo-ai', customers, { all });
-    }
+    },
   },
   {
     name: '/pseudo-run',
@@ -144,7 +152,7 @@ const COMMAND_REGISTRY = [
     async handler(args, ctx, cwd) {
       const { folder, customers, all } = ctx.parsePseudoArgs(args);
       await ctx.runPseudoRepo(cwd, folder, 'deterministic', '/pseudo-run', customers, { all });
-    }
+    },
   },
   {
     name: '/pseudo-text',
@@ -155,7 +163,7 @@ const COMMAND_REGISTRY = [
     requiresCwd: false,
     async handler(args, ctx, cwd) {
       await ctx.pseudonymizeSelection(cwd, 'deterministic');
-    }
+    },
   },
   {
     name: '/pseudo-text-ai',
@@ -166,7 +174,7 @@ const COMMAND_REGISTRY = [
     requiresCwd: true,
     async handler(args, ctx, cwd) {
       await ctx.pseudonymizeSelection(cwd, 'ai');
-    }
+    },
   },
   {
     name: '/pseudo-depseudo-text',
@@ -177,7 +185,7 @@ const COMMAND_REGISTRY = [
     requiresCwd: false,
     async handler(args, ctx) {
       await ctx.depseudonymizeSelection();
-    }
+    },
   },
   {
     name: '/pseudo-depseudo',
@@ -193,7 +201,7 @@ const COMMAND_REGISTRY = [
       } else {
         await ctx.depseudonymizeCurrentDoc();
       }
-    }
+    },
   },
   {
     name: '/index',
@@ -204,7 +212,7 @@ const COMMAND_REGISTRY = [
     async handler(args, ctx, cwd) {
       const targetPath = args ? `${cwd}/${args.replace(/^\//, '')}` : cwd;
       await ctx.indexFolderForRAG(cwd, targetPath, args || null);
-    }
+    },
   },
   {
     name: '/reindex',
@@ -214,7 +222,7 @@ const COMMAND_REGISTRY = [
     requiresCwd: true,
     async handler(args, ctx, cwd) {
       await ctx.reindexRAG(cwd);
-    }
+    },
   },
   {
     name: '/rag',
@@ -224,7 +232,7 @@ const COMMAND_REGISTRY = [
     requiresCwd: true,
     async handler(args, ctx, cwd) {
       await ctx.searchWithRAG(args, cwd);
-    }
+    },
   },
   {
     name: '/wiki',
@@ -241,9 +249,12 @@ const COMMAND_REGISTRY = [
         window.dispatchEvent(new CustomEvent('vomit:toggle-wiki-graph'));
       } else {
         ctx.appendTerminalOutput(`❯ /wiki ${args}`, 'input');
-        ctx.appendTerminalOutput(`Unknown /wiki subcommand: ${sub}. Try: /wiki reindex | /wiki graph`, 'error');
+        ctx.appendTerminalOutput(
+          `Unknown /wiki subcommand: ${sub}. Try: /wiki reindex | /wiki graph`,
+          'error',
+        );
       }
-    }
+    },
   },
   {
     name: '/okf',
@@ -258,16 +269,24 @@ const COMMAND_REGISTRY = [
         ctx.appendTerminalOutput(`Unknown /okf subcommand: ${sub}. Try: /okf export`, 'error');
         return;
       }
-      ctx.appendTerminalOutput('Exporting bucket as an OKF bundle (type: stamped, wikilinks rewritten)...', 'system');
+      ctx.appendTerminalOutput(
+        'Exporting bucket as an OKF bundle (type: stamped, wikilinks rewritten)...',
+        'system',
+      );
       const result = await window.vomit.okfExport(cwd);
       if (result.success) {
-        const brokenNote = result.brokenLinks ? `, ${result.brokenLinks} broken wikilink(s) left as-is` : '';
-        ctx.appendTerminalOutput(`✓ ${result.notes} note(s) exported — ${result.stamped} stamped with type:, ${result.linksRewritten} wikilink(s) rewritten${brokenNote}`, 'system');
+        const brokenNote = result.brokenLinks
+          ? `, ${result.brokenLinks} broken wikilink(s) left as-is`
+          : '';
+        ctx.appendTerminalOutput(
+          `✓ ${result.notes} note(s) exported — ${result.stamped} stamped with type:, ${result.linksRewritten} wikilink(s) rewritten${brokenNote}`,
+          'system',
+        );
         ctx.appendTerminalOutput(`Bundle: ${result.output}`, 'system');
       } else {
         ctx.appendTerminalOutput(`✗ Export failed: ${result.error}`, 'error');
       }
-    }
+    },
   },
   {
     name: '/presentation',
@@ -277,7 +296,7 @@ const COMMAND_REGISTRY = [
     requiresCwd: true,
     async handler(args, ctx, cwd) {
       await ctx.generatePresentation(args, cwd);
-    }
+    },
   },
   {
     name: '/doc',
@@ -287,7 +306,7 @@ const COMMAND_REGISTRY = [
     requiresCwd: true,
     async handler(args, ctx, cwd) {
       await ctx.executeDocCommand(args, cwd);
-    }
+    },
   },
   {
     name: '/help',
@@ -298,7 +317,7 @@ const COMMAND_REGISTRY = [
     async handler(args, ctx) {
       ctx.appendTerminalOutput('❯ /help', 'input');
       ctx.showAvailableCommands();
-    }
+    },
   },
 ];
 
@@ -333,7 +352,7 @@ function parseCommand(input) {
  * ctx is the TerminalManager instance.
  */
 async function dispatchCommand(parsed, ctx) {
-  const cmd = COMMAND_REGISTRY.find(c => c.name === parsed.name);
+  const cmd = COMMAND_REGISTRY.find((c) => c.name === parsed.name);
   if (!cmd) return false;
 
   // Enforce args policy — surface violations as terminal errors
@@ -342,11 +361,17 @@ async function dispatchCommand(parsed, ctx) {
     return true;
   }
   if (cmd.args === 'required' && !parsed.args) {
-    ctx.appendTerminalOutput(`Error: Command ${cmd.name} requires an argument. Usage: ${cmd.name} ${cmd.argsHint}.`, 'error');
+    ctx.appendTerminalOutput(
+      `Error: Command ${cmd.name} requires an argument. Usage: ${cmd.name} ${cmd.argsHint}.`,
+      'error',
+    );
     return true;
   }
   if (cmd.subcommands && parsed.args !== '' && !cmd.subcommands.includes(parsed.args)) {
-    ctx.appendTerminalOutput(`Error: Unknown subcommand '${parsed.args}' for ${cmd.name}. Valid: ${cmd.subcommands.join(', ')}.`, 'error');
+    ctx.appendTerminalOutput(
+      `Error: Unknown subcommand '${parsed.args}' for ${cmd.name}. Valid: ${cmd.subcommands.join(', ')}.`,
+      'error',
+    );
     return true;
   }
 
@@ -354,7 +379,10 @@ async function dispatchCommand(parsed, ctx) {
   if (cmd.requiresCwd !== false) {
     cwd = ctx.state.projectRoot || ctx.state.currentDirectory;
     if (!cwd) {
-      ctx.appendTerminalOutput('Error: No project folder open. Add or select a bucket from the Buckets menu first.', 'error');
+      ctx.appendTerminalOutput(
+        'Error: No project folder open. Add or select a bucket from the Buckets menu first.',
+        'error',
+      );
       return true;
     }
   }

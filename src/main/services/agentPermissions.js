@@ -33,7 +33,10 @@ function createPermissionBroker({ sendOutput, state }) {
   // `npm test` allows npm for the rest of the session), other tools by name.
   function allowlistKey(toolName, args) {
     if (toolName === 'bash') {
-      const first = String((args && args.command) || '').trim().split(/\s+/)[0] || '';
+      const first =
+        String((args && args.command) || '')
+          .trim()
+          .split(/\s+/)[0] || '';
       return `bash:${first.toLowerCase()}`;
     }
     return `tool:${toolName}`;
@@ -63,7 +66,7 @@ function createPermissionBroker({ sendOutput, state }) {
         id,
         toolName,
         summary: summarize(toolName, args),
-        ...(extras || {})
+        ...(extras || {}),
       });
     });
   }
@@ -89,12 +92,15 @@ function createPermissionBroker({ sendOutput, state }) {
       if (state.agentSessionAllowlist.has(allowlistKey(toolName, args))) return 'allow';
 
       if (opts.diff) {
-        const answer = (await prompt(toolName, args, { kind: 'diff', diff: opts.diff })).trim().toLowerCase();
+        const answer = (await prompt(toolName, args, { kind: 'diff', diff: opts.diff }))
+          .trim()
+          .toLowerCase();
         if (answer === 's' || answer === 'always') {
           state.agentSessionAllowlist.add(allowlistKey(toolName, args));
           return 'allow';
         }
-        if (answer === 'a' || answer === 'approve' || answer === 'y' || answer === 'yes') return 'allow';
+        if (answer === 'a' || answer === 'approve' || answer === 'y' || answer === 'yes')
+          return 'allow';
         return 'deny';
       }
 
@@ -135,7 +141,7 @@ function createPermissionBroker({ sendOutput, state }) {
     /** Number of prompts currently awaiting an answer (for tests/debugging). */
     pendingCount() {
       return pending.size;
-    }
+    },
   };
 }
 

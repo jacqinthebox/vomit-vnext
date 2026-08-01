@@ -62,10 +62,7 @@ class FormattingManager {
     // Select 'url' part
     const cursor = cm.getCursor();
     const urlStart = cursor.ch - 4;
-    cm.setSelection(
-      { line: cursor.line, ch: urlStart },
-      { line: cursor.line, ch: urlStart + 3 }
-    );
+    cm.setSelection({ line: cursor.line, ch: urlStart }, { line: cursor.line, ch: urlStart + 3 });
     cm.focus();
   }
 
@@ -83,7 +80,8 @@ class FormattingManager {
     for (const selection of selections) {
       const start = Math.min(selection.anchor.line, selection.head.line);
       let end = Math.max(selection.anchor.line, selection.head.line);
-      const endCursor = selection.anchor.line > selection.head.line ? selection.anchor : selection.head;
+      const endCursor =
+        selection.anchor.line > selection.head.line ? selection.anchor : selection.head;
       if (end > start && endCursor.ch === 0) end--;
       for (let line = start; line <= end; line++) {
         lines.add(line);
@@ -92,11 +90,11 @@ class FormattingManager {
 
     const targetLines = [...lines].sort((a, b) => a - b);
     const checkboxStates = targetLines
-      .filter(line => !this._isLineInFence(line))
-      .map(line => this._parseTodoLine(cm.getLine(line)))
-      .filter(parsed => parsed.type === 'checkbox')
-      .map(parsed => parsed.checked);
-    const shouldCheck = checkboxStates.length > 0 && checkboxStates.some(checked => !checked);
+      .filter((line) => !this._isLineInFence(line))
+      .map((line) => this._parseTodoLine(cm.getLine(line)))
+      .filter((parsed) => parsed.type === 'checkbox')
+      .map((parsed) => parsed.checked);
+    const shouldCheck = checkboxStates.length > 0 && checkboxStates.some((checked) => !checked);
 
     cm.operation(() => {
       for (const line of targetLines) {
@@ -139,7 +137,7 @@ class FormattingManager {
         indent: checkbox[1],
         marker: checkbox[2],
         checked: checkbox[3].toLowerCase() === 'x',
-        text: checkbox[4]
+        text: checkbox[4],
       };
     }
 
@@ -180,7 +178,13 @@ class FormattingManager {
     let startLine = cursor.line;
     let endLine = cursor.line;
 
-    while (startLine > 0 && cm.getLine(startLine - 1).trim().startsWith('|')) {
+    while (
+      startLine > 0 &&
+      cm
+        .getLine(startLine - 1)
+        .trim()
+        .startsWith('|')
+    ) {
       startLine--;
     }
 
@@ -188,7 +192,13 @@ class FormattingManager {
       return; // Not in a table
     }
 
-    while (endLine < lineCount - 1 && cm.getLine(endLine + 1).trim().startsWith('|')) {
+    while (
+      endLine < lineCount - 1 &&
+      cm
+        .getLine(endLine + 1)
+        .trim()
+        .startsWith('|')
+    ) {
       endLine++;
     }
 
@@ -210,8 +220,8 @@ class FormattingManager {
   // Returns the formatted lines, or null if it isn't a real GFM table
   // (needs a header, a `---` separator row, and at least one body row).
   _alignTableLines(tableLines) {
-    const rows = tableLines.map(line => {
-      const cells = line.split('|').map(cell => cell.trim());
+    const rows = tableLines.map((line) => {
+      const cells = line.split('|').map((cell) => cell.trim());
       if (cells[0] === '') cells.shift();
       if (cells[cells.length - 1] === '') cells.pop();
       return cells;
@@ -219,11 +229,10 @@ class FormattingManager {
 
     if (rows.length < 2) return null;
     // Second row must be a separator row, else this isn't a table to align.
-    const isSeparator = rows[1].length > 0 &&
-      rows[1].every(cell => /^:?-+:?$/.test(cell));
+    const isSeparator = rows[1].length > 0 && rows[1].every((cell) => /^:?-+:?$/.test(cell));
     if (!isSeparator) return null;
 
-    const colCount = Math.max(...rows.map(r => r.length));
+    const colCount = Math.max(...rows.map((r) => r.length));
     const colWidths = [];
 
     for (let col = 0; col < colCount; col++) {
@@ -276,7 +285,13 @@ class FormattingManager {
     while (i < lineCount) {
       if (cm.getLine(i).trim().startsWith('|')) {
         let end = i;
-        while (end + 1 < lineCount && cm.getLine(end + 1).trim().startsWith('|')) {
+        while (
+          end + 1 < lineCount &&
+          cm
+            .getLine(end + 1)
+            .trim()
+            .startsWith('|')
+        ) {
           end++;
         }
         if (end > i) blocks.push({ start: i, end });
@@ -295,7 +310,7 @@ class FormattingManager {
       cm.replaceRange(
         formatted.join('\n'),
         { line: start, ch: 0 },
-        { line: end, ch: cm.getLine(end).length }
+        { line: end, ch: cm.getLine(end).length },
       );
     }
   }

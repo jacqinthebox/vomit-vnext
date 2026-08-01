@@ -44,110 +44,116 @@ const agentTools = [
     type: 'function',
     function: {
       name: 'bash',
-      description: 'Execute a shell command and return the output. Use this for running any shell command like kubectl, git, npm, ls, cat, etc.',
+      description:
+        'Execute a shell command and return the output. Use this for running any shell command like kubectl, git, npm, ls, cat, etc.',
       parameters: {
         type: 'object',
         properties: {
           command: {
             type: 'string',
-            description: 'The shell command to execute'
-          }
+            description: 'The shell command to execute',
+          },
         },
-        required: ['command']
-      }
-    }
+        required: ['command'],
+      },
+    },
   },
   {
     type: 'function',
     function: {
       name: 'read_file',
-      description: 'Read the contents of a text file or extract text from a PDF document. Use this directly for .pdf files; no external PDF command-line tools are needed. Large files are returned in chunks — pass offset to continue reading.',
+      description:
+        'Read the contents of a text file or extract text from a PDF document. Use this directly for .pdf files; no external PDF command-line tools are needed. Large files are returned in chunks — pass offset to continue reading.',
       parameters: {
         type: 'object',
         properties: {
           path: {
             type: 'string',
-            description: 'The path to the file to read'
+            description: 'The path to the file to read',
           },
           offset: {
             type: 'number',
-            description: 'Optional 1-based line number to start reading from (default 1)'
+            description: 'Optional 1-based line number to start reading from (default 1)',
           },
           limit: {
             type: 'number',
-            description: 'Optional maximum number of lines to read (default 2000)'
-          }
+            description: 'Optional maximum number of lines to read (default 2000)',
+          },
         },
-        required: ['path']
-      }
-    }
+        required: ['path'],
+      },
+    },
   },
   {
     type: 'function',
     function: {
       name: 'read_pdf',
-      description: 'Extract readable text from a PDF document so it can be summarized or analyzed. Use this for .pdf files instead of shell commands like pdftotext.',
+      description:
+        'Extract readable text from a PDF document so it can be summarized or analyzed. Use this for .pdf files instead of shell commands like pdftotext.',
       parameters: {
         type: 'object',
         properties: {
           path: {
             type: 'string',
-            description: 'The path to the PDF file to read'
-          }
+            description: 'The path to the PDF file to read',
+          },
         },
-        required: ['path']
-      }
-    }
+        required: ['path'],
+      },
+    },
   },
   {
     type: 'function',
     function: {
       name: 'write_file',
-      description: 'Write content to a file. Creates the file if it does not exist, overwrites if it does. For small changes to an existing file prefer edit_file.',
+      description:
+        'Write content to a file. Creates the file if it does not exist, overwrites if it does. For small changes to an existing file prefer edit_file.',
       parameters: {
         type: 'object',
         properties: {
           path: {
             type: 'string',
-            description: 'The path to the file to write'
+            description: 'The path to the file to write',
           },
           content: {
             type: 'string',
-            description: 'The content to write to the file'
-          }
+            description: 'The content to write to the file',
+          },
         },
-        required: ['path', 'content']
-      }
-    }
+        required: ['path', 'content'],
+      },
+    },
   },
   {
     type: 'function',
     function: {
       name: 'edit_file',
-      description: 'Make a targeted change to an existing file by replacing an exact text snippet. Safer than write_file for modifying files: the rest of the file is left untouched. old_string must match the file exactly (including whitespace) and must be unique unless replace_all is true.',
+      description:
+        'Make a targeted change to an existing file by replacing an exact text snippet. Safer than write_file for modifying files: the rest of the file is left untouched. old_string must match the file exactly (including whitespace) and must be unique unless replace_all is true.',
       parameters: {
         type: 'object',
         properties: {
           path: {
             type: 'string',
-            description: 'The path to the file to edit'
+            description: 'The path to the file to edit',
           },
           old_string: {
             type: 'string',
-            description: 'The exact text to replace (must be unique in the file unless replace_all is true)'
+            description:
+              'The exact text to replace (must be unique in the file unless replace_all is true)',
           },
           new_string: {
             type: 'string',
-            description: 'The text to replace it with'
+            description: 'The text to replace it with',
           },
           replace_all: {
             type: 'boolean',
-            description: 'Replace every occurrence of old_string (default false)'
-          }
+            description: 'Replace every occurrence of old_string (default false)',
+          },
         },
-        required: ['path', 'old_string', 'new_string']
-      }
-    }
+        required: ['path', 'old_string', 'new_string'],
+      },
+    },
   },
   {
     type: 'function',
@@ -159,83 +165,93 @@ const agentTools = [
         properties: {
           path: {
             type: 'string',
-            description: 'The directory path to list'
-          }
+            description: 'The directory path to list',
+          },
         },
-        required: ['path']
-      }
-    }
+        required: ['path'],
+      },
+    },
   },
   {
     type: 'function',
     function: {
       name: 'search_files',
-      description: 'Search file contents recursively for a regular expression. Returns matching lines as relative-path:line: excerpt. Use this to find where something is defined or mentioned in a project.',
+      description:
+        'Search file contents recursively for a regular expression. Returns matching lines as relative-path:line: excerpt. Use this to find where something is defined or mentioned in a project.',
       parameters: {
         type: 'object',
         properties: {
           pattern: {
             type: 'string',
-            description: 'The regular expression to search for (case-insensitive)'
+            description: 'The regular expression to search for (case-insensitive)',
           },
           path: {
             type: 'string',
-            description: 'Optional directory to search in (default: current working directory)'
+            description: 'Optional directory to search in (default: current working directory)',
           },
           file_glob: {
             type: 'string',
-            description: 'Optional filename filter like *.js or *.md'
-          }
+            description: 'Optional filename filter like *.js or *.md',
+          },
         },
-        required: ['pattern']
-      }
-    }
+        required: ['pattern'],
+      },
+    },
   },
   {
     type: 'function',
     function: {
       name: 'fetch_url',
-      description: 'Fetch a web page by URL and return its readable text content. Use this to read a specific page (documentation, article, changelog) when you already know the URL; use tavily_search to discover URLs.',
+      description:
+        'Fetch a web page by URL and return its readable text content. Use this to read a specific page (documentation, article, changelog) when you already know the URL; use tavily_search to discover URLs.',
       parameters: {
         type: 'object',
         properties: {
           url: {
             type: 'string',
-            description: 'The http(s) URL to fetch'
-          }
+            description: 'The http(s) URL to fetch',
+          },
         },
-        required: ['url']
-      }
-    }
+        required: ['url'],
+      },
+    },
   },
   {
     type: 'function',
     function: {
       name: 'tavily_search',
-      description: 'Search the internet using Tavily API. Returns current information from web search results. Use this when you need up-to-date information, facts, news, or documentation from the internet.',
+      description:
+        'Search the internet using Tavily API. Returns current information from web search results. Use this when you need up-to-date information, facts, news, or documentation from the internet.',
       parameters: {
         type: 'object',
         properties: {
           query: {
             type: 'string',
-            description: 'The search query'
+            description: 'The search query',
           },
           max_results: {
             type: 'number',
             description: 'Maximum number of results to return (default: 5)',
-            default: 5
-          }
+            default: 5,
+          },
         },
-        required: ['query']
-      }
-    }
-  }
+        required: ['query'],
+      },
+    },
+  },
 ];
 
 const TOOL_NAMES = agentTools.map((t) => t.function.name);
 
 // Tools that never mutate anything and can run without a permission prompt.
-const READONLY_TOOLS = new Set(['read_file', 'read_pdf', 'list_files', 'tavily_search', 'search_files', 'fetch_url']);
+const READONLY_TOOLS = new Set([
+  'read_file',
+  'read_pdf',
+  'list_files',
+  'tavily_search',
+  'search_files',
+  'fetch_url',
+]);
 
 // ---- Token estimation & history trimming ----
 
@@ -305,19 +321,83 @@ function stringifyValue(value) {
 
 const READONLY_COMMANDS = new Set([
   // POSIX / common CLI
-  'ls', 'pwd', 'cat', 'head', 'tail', 'more', 'less', 'grep', 'egrep', 'fgrep',
-  'rg', 'ag', 'find', 'fd', 'which', 'whereis', 'whoami', 'id', 'wc', 'sort',
-  'uniq', 'cut', 'diff', 'cmp', 'file', 'stat', 'du', 'df', 'date', 'cal',
-  'uname', 'hostname', 'basename', 'dirname', 'realpath', 'readlink', 'tree',
-  'ps', 'env', 'printenv', 'echo', 'printf', 'jq', 'md5', 'md5sum', 'shasum',
-  'sha256sum', 'strings', 'nl', 'column',
+  'ls',
+  'pwd',
+  'cat',
+  'head',
+  'tail',
+  'more',
+  'less',
+  'grep',
+  'egrep',
+  'fgrep',
+  'rg',
+  'ag',
+  'find',
+  'fd',
+  'which',
+  'whereis',
+  'whoami',
+  'id',
+  'wc',
+  'sort',
+  'uniq',
+  'cut',
+  'diff',
+  'cmp',
+  'file',
+  'stat',
+  'du',
+  'df',
+  'date',
+  'cal',
+  'uname',
+  'hostname',
+  'basename',
+  'dirname',
+  'realpath',
+  'readlink',
+  'tree',
+  'ps',
+  'env',
+  'printenv',
+  'echo',
+  'printf',
+  'jq',
+  'md5',
+  'md5sum',
+  'shasum',
+  'sha256sum',
+  'strings',
+  'nl',
+  'column',
   // Windows (cmd.exe builtins / standard tools)
-  'dir', 'type', 'where', 'findstr', 'ver', 'tasklist', 'systeminfo', 'fc'
+  'dir',
+  'type',
+  'where',
+  'findstr',
+  'ver',
+  'tasklist',
+  'systeminfo',
+  'fc',
 ]);
 
 const GIT_READONLY_SUBCOMMANDS = new Set([
-  'status', 'log', 'diff', 'show', 'blame', 'shortlog', 'describe', 'rev-parse',
-  'ls-files', 'ls-tree', 'ls-remote', 'grep', 'reflog', 'cat-file', 'show-ref'
+  'status',
+  'log',
+  'diff',
+  'show',
+  'blame',
+  'shortlog',
+  'describe',
+  'rev-parse',
+  'ls-files',
+  'ls-tree',
+  'ls-remote',
+  'grep',
+  'reflog',
+  'cat-file',
+  'show-ref',
 ]);
 
 // Subcommands that only stay read-only in their bare/list form
@@ -503,7 +583,10 @@ function applyEdit(content, oldString, newString, replaceAll = false) {
   }
   if (count === 0) return { ok: false, error: 'old_string not found in file' };
   if (count > 1 && !replaceAll) {
-    return { ok: false, error: `old_string matched ${count} times; provide a larger unique snippet or set replace_all: true` };
+    return {
+      ok: false,
+      error: `old_string matched ${count} times; provide a larger unique snippet or set replace_all: true`,
+    };
   }
   const next = replaceAll
     ? content.split(oldString).join(newString)
@@ -586,7 +669,7 @@ function runBashCommand(command, cwd, state) {
         shell: true,
         cwd,
         windowsHide: true,
-        detached: process.platform !== 'win32'
+        detached: process.platform !== 'win32',
       });
     } catch (e) {
       resolve(`Error: ${e.message}`);
@@ -647,9 +730,35 @@ function runBashCommand(command, cwd, state) {
 
 const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', 'out', 'coverage']);
 const BINARY_EXTS = new Set([
-  '.png', '.jpg', '.jpeg', '.gif', '.ico', '.icns', '.pdf', '.zip', '.gz', '.tar',
-  '.db', '.sqlite', '.exe', '.dll', '.dylib', '.so', '.node', '.woff', '.woff2',
-  '.ttf', '.eot', '.otf', '.mp3', '.mp4', '.mov', '.avi', '.bin', '.asar', '.dmg'
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.gif',
+  '.ico',
+  '.icns',
+  '.pdf',
+  '.zip',
+  '.gz',
+  '.tar',
+  '.db',
+  '.sqlite',
+  '.exe',
+  '.dll',
+  '.dylib',
+  '.so',
+  '.node',
+  '.woff',
+  '.woff2',
+  '.ttf',
+  '.eot',
+  '.otf',
+  '.mp3',
+  '.mp4',
+  '.mov',
+  '.avi',
+  '.bin',
+  '.asar',
+  '.dmg',
 ]);
 
 function globToRegExp(glob) {
@@ -676,8 +785,7 @@ function searchFiles(pattern, rootPath, fileGlob) {
   let cappedNote = '';
   const stack = [rootPath];
 
-  outer:
-  while (stack.length) {
+  outer: while (stack.length) {
     const dir = stack.pop();
     let entries;
     try {
@@ -710,7 +818,9 @@ function searchFiles(pattern, rootPath, fileGlob) {
       const lines = text.split('\n');
       for (let ln = 0; ln < lines.length; ln++) {
         if (re.test(lines[ln])) {
-          matches.push(`${path.relative(rootPath, full)}:${ln + 1}: ${lines[ln].trim().slice(0, SEARCH_EXCERPT_CHARS)}`);
+          matches.push(
+            `${path.relative(rootPath, full)}:${ln + 1}: ${lines[ln].trim().slice(0, SEARCH_EXCERPT_CHARS)}`,
+          );
           if (matches.length >= SEARCH_MAX_MATCHES) {
             cappedNote = `\n[capped at ${SEARCH_MAX_MATCHES} matches — narrow the pattern for more]`;
             break outer;
@@ -806,7 +916,7 @@ function fetchUrl(url, redirects = 0) {
           if (raw.length > FETCH_MAX_CHARS * 20) req.destroy();
         });
         res.on('end', () => finish(htmlToText(raw)));
-      }
+      },
     );
 
     req.setTimeout(FETCH_TIMEOUT_MS, () => {
@@ -825,7 +935,9 @@ function fetchUrl(url, redirects = 0) {
 function tavilySearch(safeArgs, configStore) {
   const apiKey = (configStore && configStore.getTavilyApiKey()) || process.env.TAVILY_API_KEY;
   if (!apiKey) {
-    return Promise.resolve('Error: Tavily API key not set. Add it via the AI menu → Set Tavily API Key...');
+    return Promise.resolve(
+      'Error: Tavily API key not set. Add it via the AI menu → Set Tavily API Key...',
+    );
   }
 
   const https = require('https');
@@ -835,7 +947,7 @@ function tavilySearch(safeArgs, configStore) {
     query: safeArgs.query,
     search_depth: 'basic',
     max_results: maxResults,
-    include_answer: true
+    include_answer: true,
   });
 
   return new Promise((resolve) => {
@@ -847,8 +959,8 @@ function tavilySearch(safeArgs, configStore) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Content-Length': Buffer.byteLength(requestBody)
-        }
+          'Content-Length': Buffer.byteLength(requestBody),
+        },
       },
       (res) => {
         let data = '';
@@ -879,7 +991,7 @@ function tavilySearch(safeArgs, configStore) {
             resolve(`Error parsing Tavily response: ${e.message}`);
           }
         });
-      }
+      },
     );
 
     req.on('error', (err) => {
@@ -913,7 +1025,8 @@ function extractImageRefs(text) {
   while ((m = dataRe.exec(source)) !== null) refs.push(m[0]);
 
   // Bare paths ending in an image extension
-  const bareRe = /(?:^|[\s"'`(<])((?:[A-Za-z]:)?[^\s"'`()<>]+\.(?:png|jpe?g|gif|webp|bmp))(?=$|[\s"'`)>.,;:])/gim;
+  const bareRe =
+    /(?:^|[\s"'`(<])((?:[A-Za-z]:)?[^\s"'`()<>]+\.(?:png|jpe?g|gif|webp|bmp))(?=$|[\s"'`)>.,;:])/gim;
   while ((m = bareRe.exec(source)) !== null) refs.push(m[1]);
 
   return [...new Set(refs)];
@@ -937,7 +1050,7 @@ const IMAGE_MIME_BY_EXT = {
   '.jpeg': 'image/jpeg',
   '.gif': 'image/gif',
   '.webp': 'image/webp',
-  '.bmp': 'image/bmp'
+  '.bmp': 'image/bmp',
 };
 
 function mimeFromPath(filePath) {
@@ -1076,7 +1189,7 @@ async function executeAgentTool(toolName, args, cwd, deps = {}) {
           content,
           String(safeArgs.old_string != null ? safeArgs.old_string : ''),
           String(safeArgs.new_string != null ? safeArgs.new_string : ''),
-          safeArgs.replace_all === true || safeArgs.replace_all === 'true'
+          safeArgs.replace_all === true || safeArgs.replace_all === 'true',
         );
         if (!result.ok) return `Error: ${result.error}`;
         fs.writeFileSync(filePath, result.content, 'utf-8');
@@ -1133,6 +1246,6 @@ module.exports = {
     READ_FILE_MAX_BYTES,
     SEARCH_MAX_MATCHES,
     FETCH_MAX_CHARS,
-    HISTORY_HARD_CAP
-  }
+    HISTORY_HARD_CAP,
+  },
 };

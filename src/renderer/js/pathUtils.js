@@ -20,7 +20,11 @@ window.PathUtils = {
   join(base, child) {
     if (!base) return child || '';
     if (!child) return base;
-    if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(child) || child.startsWith('/') || child.startsWith('\\')) {
+    if (
+      /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(child) ||
+      child.startsWith('/') ||
+      child.startsWith('\\')
+    ) {
       return child;
     }
     const sep = String(base).includes('\\') ? '\\' : '/';
@@ -41,5 +45,5 @@ window.PathUtils = {
 
   toVomitFileUrl(path) {
     return `vomit-file://${encodeURIComponent(path)}`;
-  }
+  },
 };

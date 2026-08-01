@@ -50,10 +50,11 @@ Explain how the slide format works. The triple dash creates a new slide.
 Paste images directly with **Cmd+V**
 
 Resize with syntax:
+
 ```markdown
-![alt](image.png =400x)     - width only
-![alt](image.png =x300)     - height only
-![alt](image.png =400x300)  - both
+![alt](image.png =400x) - width only
+![alt](image.png =x300) - height only
+![alt](image.png =400x300) - both
 ```
 
 ???
@@ -106,13 +107,13 @@ You can switch themes any time during editing or presentation.
 
 ## Keyboard Shortcuts
 
-| Key | Action |
-|-----|--------|
-| Right / Space | Next slide |
-| Left | Previous slide |
-| Home | First slide |
-| End | Last slide |
-| R | Reset timer |
+| Key           | Action         |
+| ------------- | -------------- |
+| Right / Space | Next slide     |
+| Left          | Previous slide |
+| Home          | First slide    |
+| End           | Last slide     |
+| R             | Reset timer    |
 
 ???
 The presenter view shows these shortcuts too.
@@ -130,7 +131,6 @@ Support for LaTex
 ---
 
 # Plant UML
-
 
 ```plantuml
 @startuml
@@ -171,5 +171,3 @@ Check out [the GitHub repo](https://github.com/jacqinthebox/vomit-vnext) for mor
 
 ???
 End of presentation. Open the floor for questions.
-
-

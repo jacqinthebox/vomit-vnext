@@ -37,7 +37,12 @@ test('rewriteWikilinks converts to bucket-root-relative markdown links', () => {
 
 test('rewriteWikilinks keeps alias and heading', () => {
   const resolve = () => abs('tables/customers.md');
-  const r = rewriteWikilinks('See [[customers#joins|our clients]].', ROOT, abs('orders.md'), resolve);
+  const r = rewriteWikilinks(
+    'See [[customers#joins|our clients]].',
+    ROOT,
+    abs('orders.md'),
+    resolve,
+  );
   assert.strictEqual(r.content, 'See [our clients](/tables/customers.md#joins).');
 });
 

@@ -54,43 +54,55 @@ class EditorState extends EventTarget {
     this.searchTimeout = null;
     this.autoSaveTimeout = null;
     this.pendingLineJump = null;
-    this.pendingSearchQuery = null;  // Search term to highlight after file opens
+    this.pendingSearchQuery = null; // Search term to highlight after file opens
     this.selectedSearchIndex = -1;
   }
 
   // --- Notification helper ---
   _notify(property, value, oldValue) {
-    this.dispatchEvent(new CustomEvent('change', {
-      detail: { property, value, oldValue }
-    }));
-    this.dispatchEvent(new CustomEvent(`change:${property}`, {
-      detail: { value, oldValue }
-    }));
+    this.dispatchEvent(
+      new CustomEvent('change', {
+        detail: { property, value, oldValue },
+      }),
+    );
+    this.dispatchEvent(
+      new CustomEvent(`change:${property}`, {
+        detail: { value, oldValue },
+      }),
+    );
   }
 
   // --- File context ---
-  get currentFilePath() { return this._currentFilePath; }
+  get currentFilePath() {
+    return this._currentFilePath;
+  }
   set currentFilePath(v) {
     const old = this._currentFilePath;
     this._currentFilePath = v;
     if (v !== old) this._notify('currentFilePath', v, old);
   }
 
-  get basePath() { return this._basePath; }
+  get basePath() {
+    return this._basePath;
+  }
   set basePath(v) {
     const old = this._basePath;
     this._basePath = v;
     if (v !== old) this._notify('basePath', v, old);
   }
 
-  get currentDirectory() { return this._currentDirectory; }
+  get currentDirectory() {
+    return this._currentDirectory;
+  }
   set currentDirectory(v) {
     const old = this._currentDirectory;
     this._currentDirectory = v;
     if (v !== old) this._notify('currentDirectory', v, old);
   }
 
-  get projectRoot() { return this._projectRoot; }
+  get projectRoot() {
+    return this._projectRoot;
+  }
   set projectRoot(v) {
     const old = this._projectRoot;
     this._projectRoot = v;
@@ -98,17 +110,25 @@ class EditorState extends EventTarget {
   }
 
   // --- Editor flags ---
-  get isDirty() { return this._isDirty; }
+  get isDirty() {
+    return this._isDirty;
+  }
   set isDirty(v) {
     const old = this._isDirty;
     this._isDirty = !!v;
     if (!!v !== old) this._notify('isDirty', !!v, old);
   }
 
-  get isRestoringTab() { return this._isRestoringTab; }
-  set isRestoringTab(v) { this._isRestoringTab = !!v; }
+  get isRestoringTab() {
+    return this._isRestoringTab;
+  }
+  set isRestoringTab(v) {
+    this._isRestoringTab = !!v;
+  }
 
-  get autoSaveEnabled() { return this._autoSaveEnabled; }
+  get autoSaveEnabled() {
+    return this._autoSaveEnabled;
+  }
   set autoSaveEnabled(v) {
     const old = this._autoSaveEnabled;
     this._autoSaveEnabled = !!v;
@@ -116,14 +136,18 @@ class EditorState extends EventTarget {
   }
 
   // --- View mode ---
-  get viewMode() { return this._viewMode; }
+  get viewMode() {
+    return this._viewMode;
+  }
   set viewMode(v) {
     const old = this._viewMode;
     this._viewMode = v;
     if (v !== old) this._notify('viewMode', v, old);
   }
 
-  get isPreviewVisible() { return this._isPreviewVisible; }
+  get isPreviewVisible() {
+    return this._isPreviewVisible;
+  }
   set isPreviewVisible(v) {
     const old = this._isPreviewVisible;
     this._isPreviewVisible = !!v;
@@ -131,49 +155,63 @@ class EditorState extends EventTarget {
   }
 
   // --- Sidebar state ---
-  get isFileTreeVisible() { return this._isFileTreeVisible; }
+  get isFileTreeVisible() {
+    return this._isFileTreeVisible;
+  }
   set isFileTreeVisible(v) {
     const old = this._isFileTreeVisible;
     this._isFileTreeVisible = !!v;
     if (!!v !== old) this._notify('isFileTreeVisible', !!v, old);
   }
 
-  get isOutlineVisible() { return this._isOutlineVisible; }
+  get isOutlineVisible() {
+    return this._isOutlineVisible;
+  }
   set isOutlineVisible(v) {
     const old = this._isOutlineVisible;
     this._isOutlineVisible = !!v;
     if (!!v !== old) this._notify('isOutlineVisible', !!v, old);
   }
 
-  get isSearchVisible() { return this._isSearchVisible; }
+  get isSearchVisible() {
+    return this._isSearchVisible;
+  }
   set isSearchVisible(v) {
     const old = this._isSearchVisible;
     this._isSearchVisible = !!v;
     if (!!v !== old) this._notify('isSearchVisible', !!v, old);
   }
 
-  get isTagExplorerVisible() { return this._isTagExplorerVisible; }
+  get isTagExplorerVisible() {
+    return this._isTagExplorerVisible;
+  }
   set isTagExplorerVisible(v) {
     const old = this._isTagExplorerVisible;
     this._isTagExplorerVisible = !!v;
     if (!!v !== old) this._notify('isTagExplorerVisible', !!v, old);
   }
 
-  get isTodoExplorerVisible() { return this._isTodoExplorerVisible; }
+  get isTodoExplorerVisible() {
+    return this._isTodoExplorerVisible;
+  }
   set isTodoExplorerVisible(v) {
     const old = this._isTodoExplorerVisible;
     this._isTodoExplorerVisible = !!v;
     if (!!v !== old) this._notify('isTodoExplorerVisible', !!v, old);
   }
 
-  get isRightOutlineVisible() { return this._isRightOutlineVisible; }
+  get isRightOutlineVisible() {
+    return this._isRightOutlineVisible;
+  }
   set isRightOutlineVisible(v) {
     const old = this._isRightOutlineVisible;
     this._isRightOutlineVisible = !!v;
     if (!!v !== old) this._notify('isRightOutlineVisible', !!v, old);
   }
 
-  get focusedPane() { return this._focusedPane; }
+  get focusedPane() {
+    return this._focusedPane;
+  }
   set focusedPane(v) {
     const old = this._focusedPane;
     this._focusedPane = v;
@@ -181,42 +219,54 @@ class EditorState extends EventTarget {
   }
 
   // --- Terminal state ---
-  get isTerminalPanelVisible() { return this._isTerminalPanelVisible; }
+  get isTerminalPanelVisible() {
+    return this._isTerminalPanelVisible;
+  }
   set isTerminalPanelVisible(v) {
     const old = this._isTerminalPanelVisible;
     this._isTerminalPanelVisible = !!v;
     if (!!v !== old) this._notify('isTerminalPanelVisible', !!v, old);
   }
 
-  get activeTerminalTab() { return this._activeTerminalTab; }
+  get activeTerminalTab() {
+    return this._activeTerminalTab;
+  }
   set activeTerminalTab(v) {
     const old = this._activeTerminalTab;
     this._activeTerminalTab = v;
     if (v !== old) this._notify('activeTerminalTab', v, old);
   }
 
-  get isClaudeRunning() { return this._isClaudeRunning; }
+  get isClaudeRunning() {
+    return this._isClaudeRunning;
+  }
   set isClaudeRunning(v) {
     const old = this._isClaudeRunning;
     this._isClaudeRunning = !!v;
     if (!!v !== old) this._notify('isClaudeRunning', !!v, old);
   }
 
-  get isShellRunning() { return this._isShellRunning; }
+  get isShellRunning() {
+    return this._isShellRunning;
+  }
   set isShellRunning(v) {
     const old = this._isShellRunning;
     this._isShellRunning = !!v;
     if (!!v !== old) this._notify('isShellRunning', !!v, old);
   }
 
-  get isTerminalDetached() { return this._isTerminalDetached; }
+  get isTerminalDetached() {
+    return this._isTerminalDetached;
+  }
   set isTerminalDetached(v) {
     const old = this._isTerminalDetached;
     this._isTerminalDetached = !!v;
     if (!!v !== old) this._notify('isTerminalDetached', !!v, old);
   }
 
-  get terminalHeight() { return this._terminalHeight; }
+  get terminalHeight() {
+    return this._terminalHeight;
+  }
   set terminalHeight(v) {
     const old = this._terminalHeight;
     this._terminalHeight = v;

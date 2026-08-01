@@ -23,7 +23,9 @@ function normalizeEol(text) {
  */
 function parsePorcelainZ(output) {
   const entries = [];
-  const parts = String(output || '').split('\0').filter((p) => p.length > 0);
+  const parts = String(output || '')
+    .split('\0')
+    .filter((p) => p.length > 0);
   let i = 0;
   while (i < parts.length) {
     const part = parts[i];
@@ -143,7 +145,7 @@ function computeGutterLines(headText, bufferText) {
   return {
     added: [...new Set(added)],
     modified: [...new Set(modified)],
-    deleted: [...new Set(deleted.map(clamp))]
+    deleted: [...new Set(deleted.map(clamp))],
   };
 }
 
@@ -152,5 +154,5 @@ module.exports = {
   classifyStatus,
   propagateToFolders,
   computeGutterLines,
-  normalizeEol
+  normalizeEol,
 };

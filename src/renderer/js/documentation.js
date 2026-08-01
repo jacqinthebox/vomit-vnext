@@ -1,12 +1,12 @@
 // Documentation window — renders markdown in preview mode
 'use strict';
 
-(function() {
+(function () {
   const contentEl = document.getElementById('documentation-content');
 
   // Configure marked
   marked.setOptions({
-    highlight: function(code, lang) {
+    highlight: function (code, lang) {
       if (lang && hljs.getLanguage(lang)) {
         try {
           return hljs.highlight(code, { language: lang }).value;
@@ -15,7 +15,7 @@
       return hljs.highlightAuto(code).value;
     },
     breaks: true,
-    gfm: true
+    gfm: true,
   });
 
   // Process emoji shortcodes
@@ -36,9 +36,9 @@
           { left: '$$', right: '$$', display: true },
           { left: '$', right: '$', display: false },
           { left: '\\[', right: '\\]', display: true },
-          { left: '\\(', right: '\\)', display: false }
+          { left: '\\(', right: '\\)', display: false },
         ],
-        throwOnError: false
+        throwOnError: false,
       });
     }
   }
@@ -48,7 +48,7 @@
     if (typeof plantumlEncoder === 'undefined') return;
 
     const codeBlocks = element.querySelectorAll('pre code.language-plantuml');
-    codeBlocks.forEach(block => {
+    codeBlocks.forEach((block) => {
       const code = block.textContent;
       const encoded = plantumlEncoder.encode(code);
       const img = document.createElement('img');

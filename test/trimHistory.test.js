@@ -43,7 +43,13 @@ test('hard entry cap applies before token trimming', () => {
 });
 
 test('tool_calls payloads count toward the estimate', () => {
-  const withTools = [{ role: 'assistant', content: '', tool_calls: [{ function: { name: 'bash', arguments: { command: 'x'.repeat(4000) } } }] }];
+  const withTools = [
+    {
+      role: 'assistant',
+      content: '',
+      tool_calls: [{ function: { name: 'bash', arguments: { command: 'x'.repeat(4000) } } }],
+    },
+  ];
   assert.ok(estimateTokens(withTools) > 900);
 });
 

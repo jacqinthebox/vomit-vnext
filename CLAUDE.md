@@ -17,17 +17,20 @@ Vomit is a keyboard-centric markdown editor and presentation app built with Elec
 Modular, with clear separation of concerns.
 
 ### Main process (`src/main/`)
+
 - `main.js` — app lifecycle orchestrator; `preload.js` — context bridge (`window.vomit.*`); `menu.js` — app menu + AI model submenu; `rag.js` — indexing, embeddings, vector search
 - `services/` — `configStore.js` (prefs), `sessionState.js` (shared state), `windowManager.js` (windows)
 - `ipc/` — `rendererBus.js` + `handlers/` (`file.js`, `ai.js`, `agent.js`, `shell.js`, `presentation.js`)
 
 ### Renderer process (`src/renderer/`)
+
 - `js/editor.js` — orchestrator wiring managers + routing IPC; `pathUtils.js`, `tabs.js`, `hints.js`, `emoji.js`
 - `js/state/editorState.js` — EventTarget state container; `js/hosts/codemirrorHost.js` — CM5 wrapper
 - `js/features/` — `terminal.js`, `fileTree.js`, `preview.js`, `settings.js`, `commandPalette.js`, `formatting.js`, `search.js`
 - `css/` — `styles.css`, `themes.css`
 
 ### Key patterns
+
 - **Dependency injection** via constructor: `new TerminalManager({ state, host, dom, getTabManager })`
 - **Lazy getters** for cross-module refs to avoid circular init order
 - **IPC registration**: `registerHandlers(ipcMain, { state, bus, configStore })`
@@ -52,10 +55,10 @@ npm start     # run in development
 
 **All platforms are important — validate macOS and Windows builds.**
 
-| Platform | Command | Output |
-|----------|---------|--------|
+| Platform | Command                            | Output                     |
+| -------- | ---------------------------------- | -------------------------- |
 | macOS    | `npx electron-builder --mac --dir` | `dist/mac-arm64/Vomit.app` |
-| Windows  | `npm run build:win` | `dist/` |
+| Windows  | `npm run build:win`                | `dist/`                    |
 
 - **DO NOT build DMG locally** — fails with "disk busy". Use `--dir` for the `.app` only.
 - **DO NOT run `npm run build`** for cross-platform validation — it is mac-only. Use `build:mac` / `build:win`.
@@ -65,12 +68,12 @@ npm start     # run in development
 
 The pipeline uses **semantic versioning**. On every push to `main`, semantic-release analyzes commits, generates `CHANGELOG.md`, tags, and creates a GitHub Release; the build workflow then attaches **macOS and Windows** artifacts.
 
-| Commit type | Bump | Example |
-|-------------|------|---------|
-| `fix:` | patch (1.6.14 → 1.6.15) | `fix: resolve crash` |
-| `feat:` | minor (1.6.14 → 1.7.0) | `feat: add dark mode` |
-| `feat!:` / `BREAKING CHANGE:` | major (1.6.14 → 2.0.0) | `feat!: new API` |
-| `chore:`, `docs:`, `refactor:` | none | `chore: update deps` |
+| Commit type                    | Bump                    | Example               |
+| ------------------------------ | ----------------------- | --------------------- |
+| `fix:`                         | patch (1.6.14 → 1.6.15) | `fix: resolve crash`  |
+| `feat:`                        | minor (1.6.14 → 1.7.0)  | `feat: add dark mode` |
+| `feat!:` / `BREAKING CHANGE:`  | major (1.6.14 → 2.0.0)  | `feat!: new API`      |
+| `chore:`, `docs:`, `refactor:` | none                    | `chore: update deps`  |
 
 - **Commit with the semantic-release type that matches the intended release bump**: use `fix:` for a patch, `feat:` for a minor, and `feat!:` or a `BREAKING CHANGE:` footer for a major. If the user asks to "push a patch", make a `fix:` commit and bump `package.json`/`package-lock.json` by one patch version before pushing.
 - **Default to `fix:` (patch)** unless the user explicitly asks for a minor or major release. The bump type is the user's release decision, not a judgment of the change's size — feature-sized changes still ship as `fix:` by default.

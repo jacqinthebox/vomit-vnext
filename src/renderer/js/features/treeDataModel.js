@@ -3,19 +3,23 @@
 // Follows VS Code TreeDataProvider pattern
 
 class TreeDataModel extends EventTarget {
-  #nodes = new Map();      // path -> { name, path, isDirectory, isMarkdown, parentPath, mtimeMs }
-  #children = new Map();   // path -> [childPaths]
+  #nodes = new Map(); // path -> { name, path, isDirectory, isMarkdown, parentPath, mtimeMs }
+  #children = new Map(); // path -> [childPaths]
   #rootPath = null;
   #loadingPaths = new Set(); // Prevent duplicate concurrent loads
-  #dirtyPaths = new Set();   // Paths invalidated while a load was in flight
-  #sortOrder = 'name';       // 'name' or 'modified'
+  #dirtyPaths = new Set(); // Paths invalidated while a load was in flight
+  #sortOrder = 'name'; // 'name' or 'modified'
 
   // ─────────────────────────────────────────────────────────────
   // Root management
   // ─────────────────────────────────────────────────────────────
 
-  get rootPath() { return this.#rootPath; }
-  get sortOrder() { return this.#sortOrder; }
+  get rootPath() {
+    return this.#rootPath;
+  }
+  get sortOrder() {
+    return this.#sortOrder;
+  }
 
   set sortOrder(order) {
     this.#sortOrder = order;
@@ -53,7 +57,7 @@ class TreeDataModel extends EventTarget {
 
   getChildren(parentPath) {
     const childPaths = this.#children.get(parentPath) || [];
-    return childPaths.map(p => this.#nodes.get(p)).filter(Boolean);
+    return childPaths.map((p) => this.#nodes.get(p)).filter(Boolean);
   }
 
   hasChildren(path) {
@@ -83,7 +87,7 @@ class TreeDataModel extends EventTarget {
       const items = await window.vomit.getDirectoryContents(parentPath);
 
       // Store children paths
-      const childPaths = items.map(item => item.path);
+      const childPaths = items.map((item) => item.path);
       this.#children.set(parentPath, childPaths);
 
       // Store each node
@@ -94,14 +98,16 @@ class TreeDataModel extends EventTarget {
           isDirectory: item.isDirectory,
           isMarkdown: item.isMarkdown,
           parentPath: parentPath,
-          mtimeMs: item.mtimeMs || 0
+          mtimeMs: item.mtimeMs || 0,
         });
       }
 
       this.dispatchEvent(new CustomEvent('childrenLoaded', { detail: parentPath }));
     } catch (err) {
       console.error('Failed to load children:', err);
-      this.dispatchEvent(new CustomEvent('loadingFailed', { detail: { path: parentPath, error: err } }));
+      this.dispatchEvent(
+        new CustomEvent('loadingFailed', { detail: { path: parentPath, error: err } }),
+      );
     } finally {
       this.#loadingPaths.delete(parentPath);
       // If invalidated while this load was in flight, reload with fresh data
@@ -121,8 +127,10 @@ class TreeDataModel extends EventTarget {
       name: node.name,
       path: path,
       isDirectory: node.isDirectory,
-      isMarkdown: node.isMarkdown || (!node.isDirectory && (path.endsWith('.md') || path.endsWith('.markdown'))),
-      parentPath: node.parentPath
+      isMarkdown:
+        node.isMarkdown ||
+        (!node.isDirectory && (path.endsWith('.md') || path.endsWith('.markdown'))),
+      parentPath: node.parentPath,
     });
 
     // Add to parent's children
@@ -180,7 +188,7 @@ class TreeDataModel extends EventTarget {
     const updatedNode = {
       ...node,
       name: newName,
-      path: newPath
+      path: newPath,
     };
 
     // Remove old, add new
@@ -233,7 +241,7 @@ class TreeDataModel extends EventTarget {
     const updatedNode = {
       ...node,
       path: newPath,
-      parentPath: newParentPath
+      parentPath: newParentPath,
     };
 
     // Remove old, add new
@@ -253,16 +261,18 @@ class TreeDataModel extends EventTarget {
       this.#updateDescendantPaths(oldPath, newPath);
     }
 
-    this.dispatchEvent(new CustomEvent('nodeMoved', {
-      detail: { oldPath, newPath, oldParentPath, newParentPath }
-    }));
+    this.dispatchEvent(
+      new CustomEvent('nodeMoved', {
+        detail: { oldPath, newPath, oldParentPath, newParentPath },
+      }),
+    );
   }
 
   #updateDescendantPaths(oldBasePath, newBasePath) {
     // Update children paths for this node
     const oldChildPaths = this.#children.get(oldBasePath);
     if (oldChildPaths) {
-      const newChildPaths = oldChildPaths.map(childPath => {
+      const newChildPaths = oldChildPaths.map((childPath) => {
         const relativePath = childPath.slice(oldBasePath.length);
         return newBasePath + relativePath;
       });
@@ -281,7 +291,7 @@ class TreeDataModel extends EventTarget {
           this.#nodes.set(newChildPath, {
             ...childNode,
             path: newChildPath,
-            parentPath: newBasePath
+            parentPath: newBasePath,
           });
 
           // Recursively update if this child is also a directory

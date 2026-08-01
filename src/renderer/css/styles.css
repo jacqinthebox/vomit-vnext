@@ -32,7 +32,8 @@
   --syntax-hr: #d0d7de;
 }
 
-html, body {
+html,
+body {
   height: 100%;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
   background: var(--bg-primary);
@@ -127,7 +128,10 @@ html, body {
   letter-spacing: 0.5px;
   cursor: pointer;
   border-bottom: 2px solid transparent;
-  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  transition:
+    color 0.15s,
+    border-color 0.15s,
+    background 0.15s;
 }
 
 .sidebar-tab:hover {
@@ -340,7 +344,7 @@ html, body {
   user-select: none;
 }
 
-.wiki-graph-toggle input[type="checkbox"] {
+.wiki-graph-toggle input[type='checkbox'] {
   margin: 0;
   cursor: pointer;
 }
@@ -1196,9 +1200,15 @@ html, body {
   font-weight: 600;
 }
 
-#editor .CodeMirror .cm-header-1 { font-size: 1.4em; }
-#editor .CodeMirror .cm-header-2 { font-size: 1.2em; }
-#editor .CodeMirror .cm-header-3 { font-size: 1.1em; }
+#editor .CodeMirror .cm-header-1 {
+  font-size: 1.4em;
+}
+#editor .CodeMirror .cm-header-2 {
+  font-size: 1.2em;
+}
+#editor .CodeMirror .cm-header-3 {
+  font-size: 1.1em;
+}
 
 #editor .CodeMirror .cm-strong,
 .cm-s-default .cm-strong {
@@ -1323,7 +1333,10 @@ html, body {
   border-radius: 4px;
   cursor: pointer;
   opacity: 0.4;
-  transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease;
+  transition:
+    opacity 0.15s ease,
+    color 0.15s ease,
+    background 0.15s ease;
 }
 
 #editor .CodeMirror .cm-code-copy-btn:hover,
@@ -1387,7 +1400,8 @@ html, body {
   line-height: 1.6;
 }
 
-#preview ul, #preview ol {
+#preview ul,
+#preview ol {
   margin: 1em 0;
   padding-left: 2em;
 }
@@ -1471,7 +1485,10 @@ html, body {
   border-radius: 5px;
   cursor: pointer;
   opacity: 0;
-  transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease;
+  transition:
+    opacity 0.15s ease,
+    color 0.15s ease,
+    background 0.15s ease;
 }
 
 #preview pre.has-copy-btn:hover .code-copy-btn,
@@ -1503,7 +1520,8 @@ html, body {
   margin: 1em 0;
 }
 
-#preview th, #preview td {
+#preview th,
+#preview td {
   padding: 8px 12px;
   border: 1px solid var(--border-color);
   text-align: left;
@@ -1816,7 +1834,7 @@ html, body {
 .drawio-native-label {
   box-sizing: border-box;
   display: flex;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   height: 100%;
   line-height: 1.25;
   overflow: hidden;
@@ -1828,7 +1846,7 @@ html, body {
 
 .drawio-native-edge-label {
   fill: #111827;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 12px;
   paint-order: stroke;
   pointer-events: none;
@@ -2435,7 +2453,7 @@ li.CodeMirror-hint-active {
 .terminal-detach-btn {
   font-size: 13px;
   line-height: 1;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 /* Terminal window styles (for detached terminal window) */
@@ -2610,7 +2628,9 @@ li.CodeMirror-hint-active {
 }
 
 @keyframes thinking-blink {
-  0%, 20%, 100% {
+  0%,
+  20%,
+  100% {
     opacity: 0.3;
   }
   50% {
@@ -2664,12 +2684,20 @@ li.CodeMirror-hint-active {
 
 /* Keep headings close to body size — in a monospace terminal, large headings
    break the uniform look. Distinguish them by weight + accent color instead. */
-.terminal-output-stream.complete h1 { font-size: 1.15em; }
-.terminal-output-stream.complete h2 { font-size: 1.1em; }
-.terminal-output-stream.complete h3 { font-size: 1.05em; }
+.terminal-output-stream.complete h1 {
+  font-size: 1.15em;
+}
+.terminal-output-stream.complete h2 {
+  font-size: 1.1em;
+}
+.terminal-output-stream.complete h3 {
+  font-size: 1.05em;
+}
 .terminal-output-stream.complete h4,
 .terminal-output-stream.complete h5,
-.terminal-output-stream.complete h6 { font-size: 1em; }
+.terminal-output-stream.complete h6 {
+  font-size: 1em;
+}
 
 .terminal-output-stream.complete p {
   margin: 2px 0;
@@ -2777,14 +2805,26 @@ li.CodeMirror-hint-active {
 #terminal-context-bar .context-usage-fill {
   height: 100%;
   border-radius: 2px;
-  transition: width 0.3s, background-color 0.3s;
+  transition:
+    width 0.3s,
+    background-color 0.3s;
 }
 
-#terminal-context-bar.level-ok .context-usage-fill { background: var(--accent-color); }
-#terminal-context-bar.level-warn { color: #e8a838; }
-#terminal-context-bar.level-warn .context-usage-fill { background: #e8a838; }
-#terminal-context-bar.level-danger { color: #e85838; }
-#terminal-context-bar.level-danger .context-usage-fill { background: #e85838; }
+#terminal-context-bar.level-ok .context-usage-fill {
+  background: var(--accent-color);
+}
+#terminal-context-bar.level-warn {
+  color: #e8a838;
+}
+#terminal-context-bar.level-warn .context-usage-fill {
+  background: #e8a838;
+}
+#terminal-context-bar.level-danger {
+  color: #e85838;
+}
+#terminal-context-bar.level-danger .context-usage-fill {
+  background: #e85838;
+}
 
 #terminal-input-container {
   display: flex;

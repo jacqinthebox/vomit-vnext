@@ -4,7 +4,8 @@
   'use strict';
 
   CodeMirror.defineMode('terraform', function () {
-    var blockKeywords = /^(resource|data|variable|output|locals|module|provider|terraform|backend|provisioner|connection|dynamic|import|moved|check|removed)$/;
+    var blockKeywords =
+      /^(resource|data|variable|output|locals|module|provider|terraform|backend|provisioner|connection|dynamic|import|moved|check|removed)$/;
     var atoms = /^(true|false|null)$/;
     var types = /^(string|number|bool|list|map|set|object|tuple|any)$/;
 
@@ -99,7 +100,7 @@
       },
       lineComment: '#',
       blockCommentStart: '/*',
-      blockCommentEnd: '*/'
+      blockCommentEnd: '*/',
     };
   });
 
@@ -113,7 +114,7 @@
       mime: 'text/x-terraform',
       mode: 'terraform',
       ext: ['tf', 'tfvars'],
-      alias: ['tf', 'hcl', 'tfvars']
+      alias: ['tf', 'hcl', 'tfvars'],
     });
   }
 })(CodeMirror);

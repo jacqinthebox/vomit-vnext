@@ -26,10 +26,10 @@ class BacklinksManager {
     this.activeTab = name;
     const sidebar = document.getElementById('right-outline');
     if (!sidebar) return;
-    sidebar.querySelectorAll('.sidebar-tab').forEach(t => {
+    sidebar.querySelectorAll('.sidebar-tab').forEach((t) => {
       t.classList.toggle('active', t.dataset.tab === name);
     });
-    sidebar.querySelectorAll('.sidebar-tab-pane').forEach(p => {
+    sidebar.querySelectorAll('.sidebar-tab-pane').forEach((p) => {
       p.classList.toggle('active', p.dataset.pane === name);
     });
     if (name === 'backlinks') {
@@ -65,7 +65,8 @@ class BacklinksManager {
     try {
       const result = await window.vomit.wikiBacklinks(bucketRoot, filePath);
       if (!result || !result.success) {
-        list.innerHTML = '<div class="backlink-empty">Wiki index not built. Run /wiki reindex.</div>';
+        list.innerHTML =
+          '<div class="backlink-empty">Wiki index not built. Run /wiki reindex.</div>';
         return;
       }
       this._render(list, result.backlinks || []);

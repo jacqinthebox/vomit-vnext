@@ -3,8 +3,15 @@
   <head>
     <meta charset="utf-8" />
     <style>
-      html, body { margin: 0; padding: 0; background: transparent; }
-      canvas { display: block; }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: transparent;
+      }
+      canvas {
+        display: block;
+      }
     </style>
   </head>
   <body>
@@ -29,7 +36,9 @@
       ctx.clearRect(0, 0, 1024, 1024);
 
       // Rounded "squircle" tile with transparent padding (macOS icon grid).
-      const p = 100, size = 1024 - p * 2, radius = 185;
+      const p = 100,
+        size = 1024 - p * 2,
+        radius = 185;
       const tile = ctx.createLinearGradient(p, p, 1024 - p, 1024 - p);
       tile.addColorStop(0, '#1b1e25');
       tile.addColorStop(1, '#0a0b0e');
@@ -40,7 +49,8 @@
       ctx.strokeStyle = '#2a2f39';
       ctx.stroke();
 
-      const cx = 512, cy = 512;
+      const cx = 512,
+        cy = 512;
 
       // Purple glow behind the face.
       const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, 340);

@@ -43,8 +43,8 @@ const store = new Store({
     // Requested Ollama context window (num_ctx). Ollama defaults to 4096
     // regardless of what the model supports; we ask for more, capped by the
     // model's own maximum. Larger values cost RAM (KV cache).
-    ollamaNumCtx: 16384
-  }
+    ollamaNumCtx: 16384,
+  },
 });
 
 // Migration: convert legacy single bucketPath to buckets array
@@ -55,7 +55,7 @@ function migrateConfig() {
   if ((!buckets || buckets.length === 0) && legacyPath) {
     const migratedBucket = {
       name: path.basename(legacyPath),
-      path: legacyPath
+      path: legacyPath,
     };
     store.set('buckets', [migratedBucket]);
     store.set('activeBucketIndex', 0);
@@ -76,12 +76,14 @@ function migrateConfig() {
   if ((!endpoints || endpoints.length === 0) && legacyModel) {
     const legacyBaseUrl = store.get('openaiBaseUrl') || 'http://127.0.0.1:8000/v1';
     const legacyApiKey = store.get('openaiApiKey') || 'dummy';
-    store.set('openaiEndpoints', [{
-      name: deriveEndpointName(legacyBaseUrl, legacyModel),
-      baseUrl: legacyBaseUrl,
-      apiKey: legacyApiKey,
-      model: legacyModel
-    }]);
+    store.set('openaiEndpoints', [
+      {
+        name: deriveEndpointName(legacyBaseUrl, legacyModel),
+        baseUrl: legacyBaseUrl,
+        apiKey: legacyApiKey,
+        model: legacyModel,
+      },
+    ]);
     store.set('activeOpenaiEndpointIndex', 0);
   }
 }
@@ -102,29 +104,49 @@ function deriveEndpointName(baseUrl, model) {
 migrateConfig();
 
 /** @returns {string} */
-function getTheme() { return store.get('theme'); }
+function getTheme() {
+  return store.get('theme');
+}
 /** @param {string} theme */
-function setTheme(theme) { store.set('theme', theme); }
+function setTheme(theme) {
+  store.set('theme', theme);
+}
 
 /** @returns {boolean} */
-function getAutoSaveEnabled() { return store.get('autoSaveEnabled'); }
+function getAutoSaveEnabled() {
+  return store.get('autoSaveEnabled');
+}
 /** @param {boolean} enabled */
-function setAutoSaveEnabled(enabled) { store.set('autoSaveEnabled', enabled); }
+function setAutoSaveEnabled(enabled) {
+  store.set('autoSaveEnabled', enabled);
+}
 
 /** @returns {string} */
-function getOllamaModel() { return store.get('ollamaModel'); }
+function getOllamaModel() {
+  return store.get('ollamaModel');
+}
 /** @param {string} model */
-function setOllamaModel(model) { store.set('ollamaModel', model); }
+function setOllamaModel(model) {
+  store.set('ollamaModel', model);
+}
 
 /** @returns {string} */
-function getMermaidCurve() { return store.get('mermaidCurve'); }
+function getMermaidCurve() {
+  return store.get('mermaidCurve');
+}
 /** @param {string} curve */
-function setMermaidCurve(curve) { store.set('mermaidCurve', curve); }
+function setMermaidCurve(curve) {
+  store.set('mermaidCurve', curve);
+}
 
 /** @returns {number} */
-function getFontSize() { return store.get('fontSize'); }
+function getFontSize() {
+  return store.get('fontSize');
+}
 /** @param {number} size */
-function setFontSize(size) { store.set('fontSize', size); }
+function setFontSize(size) {
+  store.set('fontSize', size);
+}
 
 const AGENT_PERMISSION_MODES = ['auto', 'always', 'never'];
 /** @returns {string} 'auto' | 'always' | 'never' */
@@ -150,9 +172,13 @@ function setOllamaNumCtx(n) {
 }
 
 /** @returns {boolean} */
-function getAgentDiffGate() { return store.get('agentDiffGate') !== false; }
+function getAgentDiffGate() {
+  return store.get('agentDiffGate') !== false;
+}
 /** @param {boolean} enabled */
-function setAgentDiffGate(enabled) { store.set('agentDiffGate', enabled !== false); }
+function setAgentDiffGate(enabled) {
+  store.set('agentDiffGate', enabled !== false);
+}
 
 // RAG embedding model name for OpenAI-compatible endpoints (only used when
 // Ollama's nomic-embed-text isn't available). The default matches LM Studio's
@@ -161,7 +187,7 @@ const DEFAULT_OPENAI_EMBED_MODEL = 'text-embedding-nomic-embed-text-v1.5';
 /** @returns {string} */
 function getOpenAIEmbedModel() {
   const v = store.get('openaiEmbedModel');
-  return (typeof v === 'string' && v.trim()) ? v.trim() : DEFAULT_OPENAI_EMBED_MODEL;
+  return typeof v === 'string' && v.trim() ? v.trim() : DEFAULT_OPENAI_EMBED_MODEL;
 }
 /** @param {string} model */
 function setOpenAIEmbedModel(model) {
@@ -181,31 +207,53 @@ function setOpenAIMaxTokens(n) {
 }
 
 /** @returns {boolean} */
-function getOpenAIDisableThinking() { return store.get('openaiDisableThinking') === true; }
+function getOpenAIDisableThinking() {
+  return store.get('openaiDisableThinking') === true;
+}
 /** @param {boolean} enabled */
-function setOpenAIDisableThinking(enabled) { store.set('openaiDisableThinking', enabled === true); }
+function setOpenAIDisableThinking(enabled) {
+  store.set('openaiDisableThinking', enabled === true);
+}
 
 /** @returns {string} */
-function getTavilyApiKey() { return store.get('tavilyApiKey') || ''; }
+function getTavilyApiKey() {
+  return store.get('tavilyApiKey') || '';
+}
 /** @param {string} key */
-function setTavilyApiKey(key) { store.set('tavilyApiKey', key); }
+function setTavilyApiKey(key) {
+  store.set('tavilyApiKey', key);
+}
 
 /** @returns {boolean} */
-function getShowImagesFolder() { return store.get('showImagesFolder') === true; }
+function getShowImagesFolder() {
+  return store.get('showImagesFolder') === true;
+}
 /** @param {boolean} value */
-function setShowImagesFolder(value) { store.set('showImagesFolder', value); }
+function setShowImagesFolder(value) {
+  store.set('showImagesFolder', value);
+}
 
 /** @returns {string} 'name' or 'modified' */
-function getFileSortOrder() { return store.get('fileSortOrder') || 'name'; }
+function getFileSortOrder() {
+  return store.get('fileSortOrder') || 'name';
+}
 /** @param {string} order */
-function setFileSortOrder(order) { store.set('fileSortOrder', order); }
+function setFileSortOrder(order) {
+  store.set('fileSortOrder', order);
+}
 
 const TERMINAL_HISTORY_MAX = 100;
 /** @returns {string[]} */
-function getTerminalHistory() { return store.get('terminalHistory') || []; }
+function getTerminalHistory() {
+  return store.get('terminalHistory') || [];
+}
 /** @param {string[]} history */
-function setTerminalHistory(history) { store.set('terminalHistory', history.slice(-TERMINAL_HISTORY_MAX)); }
-function clearTerminalHistory() { store.set('terminalHistory', []); }
+function setTerminalHistory(history) {
+  store.set('terminalHistory', history.slice(-TERMINAL_HISTORY_MAX));
+}
+function clearTerminalHistory() {
+  store.set('terminalHistory', []);
+}
 
 /** @returns {string} */
 function getAIProvider() {
@@ -225,9 +273,13 @@ function setAIProvider(provider) {
  */
 
 /** @returns {OpenAIEndpoint[]} */
-function getOpenAIEndpoints() { return store.get('openaiEndpoints') || []; }
+function getOpenAIEndpoints() {
+  return store.get('openaiEndpoints') || [];
+}
 /** @param {OpenAIEndpoint[]} list */
-function setOpenAIEndpoints(list) { store.set('openaiEndpoints', list || []); }
+function setOpenAIEndpoints(list) {
+  store.set('openaiEndpoints', list || []);
+}
 
 /** @returns {number} */
 function getActiveOpenAIEndpointIndex() {
@@ -257,7 +309,7 @@ function addOpenAIEndpoint(ep) {
     name: ep.name || deriveEndpointName(ep.baseUrl, ep.model),
     baseUrl: ep.baseUrl || '',
     apiKey: ep.apiKey || '',
-    model: ep.model || ''
+    model: ep.model || '',
   };
   if (typeof ep.contextLength === 'number' && ep.contextLength > 0) {
     entry.contextLength = ep.contextLength;
@@ -281,7 +333,7 @@ function updateOpenAIEndpoint(index, patch) {
     name: typeof patch.name === 'string' ? patch.name : current.name,
     baseUrl: typeof patch.baseUrl === 'string' ? patch.baseUrl : current.baseUrl,
     apiKey: typeof patch.apiKey === 'string' ? patch.apiKey : current.apiKey,
-    model: typeof patch.model === 'string' ? patch.model : current.model
+    model: typeof patch.model === 'string' ? patch.model : current.model,
   };
   // contextLength is optional. Patch may set a positive number, omit it
   // (keep current), or set 0/null to clear it.
@@ -321,7 +373,7 @@ function removeOpenAIEndpoint(index) {
 /** @returns {string} */
 function getOpenAIBaseUrl() {
   const ep = getActiveOpenAIEndpoint();
-  return ep ? ep.baseUrl : (store.get('openaiBaseUrl') || 'http://127.0.0.1:8000/v1');
+  return ep ? ep.baseUrl : store.get('openaiBaseUrl') || 'http://127.0.0.1:8000/v1';
 }
 /** @param {string} url */
 function setOpenAIBaseUrl(url) {
@@ -333,7 +385,7 @@ function setOpenAIBaseUrl(url) {
 /** @returns {string} */
 function getOpenAIApiKey() {
   const ep = getActiveOpenAIEndpoint();
-  return ep ? (ep.apiKey || '') : (store.get('openaiApiKey') || '');
+  return ep ? ep.apiKey || '' : store.get('openaiApiKey') || '';
 }
 /** @param {string} key */
 function setOpenAIApiKey(key) {
@@ -345,7 +397,7 @@ function setOpenAIApiKey(key) {
 /** @returns {string} */
 function getOpenAIModel() {
   const ep = getActiveOpenAIEndpoint();
-  return ep ? (ep.model || '') : (store.get('openaiModel') || '');
+  return ep ? ep.model || '' : store.get('openaiModel') || '';
 }
 /** @param {string} model */
 function setOpenAIModel(model) {
@@ -365,7 +417,9 @@ function getBucketPath() {
   return activeBucket ? activeBucket.path : null;
 }
 /** @param {string|null} bucketPath @deprecated Use bucket functions instead */
-function setBucketPath(bucketPath) { store.set('bucketPath', bucketPath); }
+function setBucketPath(bucketPath) {
+  store.set('bucketPath', bucketPath);
+}
 
 // Bucket management functions
 
@@ -374,16 +428,24 @@ function setBucketPath(bucketPath) { store.set('bucketPath', bucketPath); }
  */
 
 /** @returns {Bucket[]} */
-function getBuckets() { return store.get('buckets') || []; }
+function getBuckets() {
+  return store.get('buckets') || [];
+}
 
 /** @param {Bucket[]} buckets */
-function setBuckets(buckets) { store.set('buckets', buckets); }
+function setBuckets(buckets) {
+  store.set('buckets', buckets);
+}
 
 /** @returns {number} */
-function getActiveBucketIndex() { return store.get('activeBucketIndex') || 0; }
+function getActiveBucketIndex() {
+  return store.get('activeBucketIndex') || 0;
+}
 
 /** @param {number} index */
-function setActiveBucketIndex(index) { store.set('activeBucketIndex', index); }
+function setActiveBucketIndex(index) {
+  store.set('activeBucketIndex', index);
+}
 
 /** @returns {Bucket|null} */
 function getActiveBucket() {
@@ -482,5 +544,5 @@ module.exports = {
   setActiveBucketIndex,
   getActiveBucket,
   addBucket,
-  removeBucket
+  removeBucket,
 };

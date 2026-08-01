@@ -9,14 +9,14 @@ function initMermaid(curve) {
     window.mermaid.initialize({
       startOnLoad: false,
       flowchart: { curve: mermaidCurve },
-      theme: 'dark'
+      theme: 'dark',
     });
   }
 }
 
 // Load initial setting
 if (window.vomit && window.vomit.getMermaidCurve) {
-  window.vomit.getMermaidCurve().then(curve => initMermaid(curve));
+  window.vomit.getMermaidCurve().then((curve) => initMermaid(curve));
 } else {
   initMermaid('linear');
 }
@@ -34,7 +34,7 @@ class PreviewManager {
   constructor({ state, host, dom }) {
     this.state = state;
     this.host = host;
-    this.dom = dom;  // { preview, previewPane, editorContainer, statusFile, statusSlides, statusWords, outlineList, rightOutline, rightOutlineList, rightSidebarResize }
+    this.dom = dom; // { preview, previewPane, editorContainer, statusFile, statusSlides, statusWords, outlineList, rightOutline, rightOutlineList, rightSidebarResize }
 
     // Scroll sync state
     this._isSyncingScroll = false;
@@ -60,7 +60,11 @@ class PreviewManager {
       if (rawHref.startsWith('#')) {
         e.preventDefault();
         let id = rawHref.slice(1);
-        try { id = decodeURIComponent(id); } catch (_) { /* keep raw */ }
+        try {
+          id = decodeURIComponent(id);
+        } catch (_) {
+          /* keep raw */
+        }
         let target = this.dom.preview.querySelector(`[id="${CSS.escape(id)}"]`);
         if (!target) {
           // GitHub-style slugs keep one hyphen per removed character
@@ -107,7 +111,8 @@ class PreviewManager {
       if (maxEditorScroll > 0) {
         const scrollPercent = scrollInfo.top / maxEditorScroll;
         // Use previewPane (the scrollable container), not preview (the content)
-        const maxPreviewScroll = this.dom.previewPane.scrollHeight - this.dom.previewPane.clientHeight;
+        const maxPreviewScroll =
+          this.dom.previewPane.scrollHeight - this.dom.previewPane.clientHeight;
         this.dom.previewPane.scrollTop = scrollPercent * maxPreviewScroll;
       }
 
@@ -124,7 +129,8 @@ class PreviewManager {
 
       this._isSyncingScroll = true;
 
-      const maxPreviewScroll = this.dom.previewPane.scrollHeight - this.dom.previewPane.clientHeight;
+      const maxPreviewScroll =
+        this.dom.previewPane.scrollHeight - this.dom.previewPane.clientHeight;
 
       if (maxPreviewScroll > 0) {
         const scrollPercent = this.dom.previewPane.scrollTop / maxPreviewScroll;
@@ -155,7 +161,8 @@ class PreviewManager {
 
       if (maxEditorScroll > 0) {
         const scrollPercent = scrollInfo.top / maxEditorScroll;
-        const maxPreviewScroll = this.dom.previewPane.scrollHeight - this.dom.previewPane.clientHeight;
+        const maxPreviewScroll =
+          this.dom.previewPane.scrollHeight - this.dom.previewPane.clientHeight;
         this.dom.previewPane.scrollTop = scrollPercent * maxPreviewScroll;
       }
     });
@@ -265,20 +272,36 @@ class PreviewManager {
     if (!this.state.currentFilePath) return 'yaml-frontmatter';
     const ext = this.state.currentFilePath.split('.').pop().toLowerCase();
     const modeMap = {
-      'md': 'yaml-frontmatter', 'markdown': 'yaml-frontmatter',
-      'js': 'javascript', 'ts': 'javascript', 'json': 'javascript',
-      'py': 'python',
-      'yml': 'yaml', 'yaml': 'yaml',
-      'sh': 'shell', 'bash': 'shell', 'zsh': 'shell',
-      'go': 'go',
-      'sql': 'sql',
-      'lua': 'lua',
-      'cs': 'clike', 'java': 'clike', 'c': 'clike', 'cpp': 'clike', 'h': 'clike',
-      'xml': 'xml', 'html': 'xml', 'htm': 'xml',
-      'css': 'css',
-      'dockerfile': 'dockerfile',
-      'tf': 'terraform', 'hcl': 'terraform', 'tfvars': 'terraform',
-      'ps1': 'powershell', 'psm1': 'powershell', 'psd1': 'powershell'
+      md: 'yaml-frontmatter',
+      markdown: 'yaml-frontmatter',
+      js: 'javascript',
+      ts: 'javascript',
+      json: 'javascript',
+      py: 'python',
+      yml: 'yaml',
+      yaml: 'yaml',
+      sh: 'shell',
+      bash: 'shell',
+      zsh: 'shell',
+      go: 'go',
+      sql: 'sql',
+      lua: 'lua',
+      cs: 'clike',
+      java: 'clike',
+      c: 'clike',
+      cpp: 'clike',
+      h: 'clike',
+      xml: 'xml',
+      html: 'xml',
+      htm: 'xml',
+      css: 'css',
+      dockerfile: 'dockerfile',
+      tf: 'terraform',
+      hcl: 'terraform',
+      tfvars: 'terraform',
+      ps1: 'powershell',
+      psm1: 'powershell',
+      psd1: 'powershell',
     };
     return modeMap[ext] || 'text/plain';
   }
@@ -292,14 +315,33 @@ class PreviewManager {
     if (!this.state.currentFilePath) return 'text';
     const ext = this.state.currentFilePath.split('.').pop().toLowerCase();
     const langMap = {
-      'js': 'javascript', 'ts': 'typescript', 'py': 'python',
-      'rb': 'ruby', 'go': 'go', 'rs': 'rust', 'java': 'java',
-      'tf': 'terraform', 'hcl': 'terraform', 'tfvars': 'terraform',
-      'ps1': 'powershell', 'psm1': 'powershell', 'psd1': 'powershell',
-      'yml': 'yaml', 'yaml': 'yaml',
-      'json': 'json', 'sh': 'bash', 'bash': 'bash', 'zsh': 'bash',
-      'sql': 'sql', 'cs': 'csharp', 'lua': 'lua', 'dockerfile': 'dockerfile',
-      'html': 'html', 'css': 'css', 'xml': 'xml', 'toml': 'toml'
+      js: 'javascript',
+      ts: 'typescript',
+      py: 'python',
+      rb: 'ruby',
+      go: 'go',
+      rs: 'rust',
+      java: 'java',
+      tf: 'terraform',
+      hcl: 'terraform',
+      tfvars: 'terraform',
+      ps1: 'powershell',
+      psm1: 'powershell',
+      psd1: 'powershell',
+      yml: 'yaml',
+      yaml: 'yaml',
+      json: 'json',
+      sh: 'bash',
+      bash: 'bash',
+      zsh: 'bash',
+      sql: 'sql',
+      cs: 'csharp',
+      lua: 'lua',
+      dockerfile: 'dockerfile',
+      html: 'html',
+      css: 'css',
+      xml: 'xml',
+      toml: 'toml',
     };
     return langMap[ext] || ext;
   }
@@ -316,7 +358,7 @@ class PreviewManager {
       const escaped = content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       this.dom.preview.innerHTML = `<pre><code class="language-${lang}">${escaped}</code></pre>`;
       if (window.hljs) {
-        this.dom.preview.querySelectorAll('pre code').forEach(block => {
+        this.dom.preview.querySelectorAll('pre code').forEach((block) => {
           window.hljs.highlightElement(block);
         });
       }
@@ -331,7 +373,9 @@ class PreviewManager {
     const slugCounts = new Map();
     this.dom.preview.querySelectorAll('h1, h2, h3, h4, h5, h6').forEach((h) => {
       if (h.id) return;
-      let slug = h.textContent.trim().toLowerCase()
+      let slug = h.textContent
+        .trim()
+        .toLowerCase()
         .replace(/[^\wÀ-￿\- ]/g, '')
         .replace(/\s+/g, '-');
       const seen = slugCounts.get(slug) || 0;
@@ -360,9 +404,9 @@ class PreviewManager {
           { left: '$$', right: '$$', display: true },
           { left: '$', right: '$', display: false },
           { left: '\\[', right: '\\]', display: true },
-          { left: '\\(', right: '\\)', display: false }
+          { left: '\\(', right: '\\)', display: false },
         ],
-        throwOnError: false
+        throwOnError: false,
       });
     }
 
@@ -547,25 +591,27 @@ class PreviewManager {
       return '<p class="viewer-info">No diagrams found in this file.</p>';
     }
 
-    return diagrams.map((diagram, index) => {
-      const name = diagram.name || `Diagram ${index + 1}`;
-      const svg = diagram.xml ? this._renderDrawioModelToSvg(diagram.xml) : null;
-      return `<div class="drawio-diagram-card">
+    return diagrams
+      .map((diagram, index) => {
+        const name = diagram.name || `Diagram ${index + 1}`;
+        const svg = diagram.xml ? this._renderDrawioModelToSvg(diagram.xml) : null;
+        return `<div class="drawio-diagram-card">
         <h3>${this._escapeHtml(name)}</h3>
         ${svg || '<p class="viewer-info">This diagram could not be decoded for native preview.</p>'}
       </div>`;
-    }).join('');
+      })
+      .join('');
   }
 
   _renderDrawioModelToSvg(xmlString) {
     const parser = new DOMParser();
     const doc = parser.parseFromString(xmlString, 'text/xml');
     const cells = Array.from(doc.querySelectorAll('mxCell'));
-    const cellById = new Map(cells.map(cell => [cell.getAttribute('id'), cell]));
+    const cellById = new Map(cells.map((cell) => [cell.getAttribute('id'), cell]));
     const nodeById = new Map();
     const nodes = [];
 
-    cells.forEach(cell => {
+    cells.forEach((cell) => {
       if (cell.getAttribute('vertex') !== '1') return;
       const geometry = cell.querySelector('mxGeometry');
       if (!geometry) return;
@@ -579,7 +625,7 @@ class PreviewManager {
         x: position.x,
         y: position.y,
         width,
-        height
+        height,
       };
       nodes.push(node);
       nodeById.set(node.id, node);
@@ -587,21 +633,30 @@ class PreviewManager {
 
     if (nodes.length === 0) return null;
 
-    const minX = Math.min(...nodes.map(node => node.x)) - 40;
-    const minY = Math.min(...nodes.map(node => node.y)) - 40;
-    const maxX = Math.max(...nodes.map(node => node.x + node.width)) + 40;
-    const maxY = Math.max(...nodes.map(node => node.y + node.height)) + 40;
-    const edges = cells.filter(cell => cell.getAttribute('edge') === '1');
+    const minX = Math.min(...nodes.map((node) => node.x)) - 40;
+    const minY = Math.min(...nodes.map((node) => node.y)) - 40;
+    const maxX = Math.max(...nodes.map((node) => node.x + node.width)) + 40;
+    const maxY = Math.max(...nodes.map((node) => node.y + node.height)) + 40;
+    const edges = cells.filter((cell) => cell.getAttribute('edge') === '1');
 
     let svg = `<svg class="drawio-native-svg" viewBox="${minX} ${minY} ${maxX - minX} ${maxY - minY}" xmlns="http://www.w3.org/2000/svg">`;
-    svg += '<rect class="drawio-canvas" x="' + minX + '" y="' + minY + '" width="' + (maxX - minX) + '" height="' + (maxY - minY) + '" />';
+    svg +=
+      '<rect class="drawio-canvas" x="' +
+      minX +
+      '" y="' +
+      minY +
+      '" width="' +
+      (maxX - minX) +
+      '" height="' +
+      (maxY - minY) +
+      '" />';
 
-    edges.forEach(edge => {
+    edges.forEach((edge) => {
       const source = nodeById.get(edge.getAttribute('source'));
       const target = nodeById.get(edge.getAttribute('target'));
       if (!source || !target) return;
       const points = this._drawioEdgePoints(edge, source, target);
-      const pointList = points.map(point => `${point.x},${point.y}`).join(' ');
+      const pointList = points.map((point) => `${point.x},${point.y}`).join(' ');
       svg += `<polyline class="drawio-native-edge" points="${pointList}" />`;
       const label = this._stripHtml(edge.getAttribute('value') || '');
       if (label) {
@@ -610,10 +665,13 @@ class PreviewManager {
       }
     });
 
-    nodes.forEach(node => {
+    nodes.forEach((node) => {
       const fill = this._styleValue(node.style, 'fillColor') || '#ffffff';
       const stroke = this._styleValue(node.style, 'strokeColor') || '#6c7086';
-      const isTextOnly = node.style.startsWith('text;') || node.style.includes('text;') || (fill === 'none' && stroke === 'none');
+      const isTextOnly =
+        node.style.startsWith('text;') ||
+        node.style.includes('text;') ||
+        (fill === 'none' && stroke === 'none');
       const isEllipse = node.style.includes('ellipse');
 
       if (!isTextOnly) {
@@ -652,14 +710,12 @@ class PreviewManager {
 
   _drawioEdgePoints(edge, source, target) {
     const geometry = edge.querySelector('mxGeometry');
-    const points = [
-      { x: source.x + source.width / 2, y: source.y + source.height / 2 }
-    ];
+    const points = [{ x: source.x + source.width / 2, y: source.y + source.height / 2 }];
 
-    geometry?.querySelectorAll('Array[as="points"] mxPoint').forEach(point => {
+    geometry?.querySelectorAll('Array[as="points"] mxPoint').forEach((point) => {
       points.push({
         x: Number(point.getAttribute('x') || 0),
-        y: Number(point.getAttribute('y') || 0)
+        y: Number(point.getAttribute('y') || 0),
       });
     });
 
@@ -674,7 +730,8 @@ class PreviewManager {
     const verticalAlign = this._styleValue(node.style, 'verticalAlign') || 'middle';
     const escapedLabel = this._escapeHtml(node.label).replace(/\n/g, '<br>');
     const justify = align === 'left' ? 'flex-start' : align === 'right' ? 'flex-end' : 'center';
-    const items = verticalAlign === 'top' ? 'flex-start' : verticalAlign === 'bottom' ? 'flex-end' : 'center';
+    const items =
+      verticalAlign === 'top' ? 'flex-start' : verticalAlign === 'bottom' ? 'flex-end' : 'center';
 
     return `<foreignObject x="${node.x + 4}" y="${node.y + 4}" width="${Math.max(1, node.width - 8)}" height="${Math.max(1, node.height - 8)}">
       <div xmlns="http://www.w3.org/1999/xhtml" class="drawio-native-label"
@@ -782,7 +839,7 @@ class PreviewManager {
     if (cells.length === 0) return '<p class="viewer-info">No labeled elements found.</p>';
 
     let html = '<div class="drawio-cells">';
-    cells.forEach(cell => {
+    cells.forEach((cell) => {
       const value = cell.getAttribute('value');
       if (value && value.trim()) {
         const style = cell.getAttribute('style') || '';
@@ -796,7 +853,11 @@ class PreviewManager {
   }
 
   _escapeHtml(str) {
-    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
   }
 
   /**
@@ -821,25 +882,27 @@ class PreviewManager {
 
     const slides = markdown.split(/\n---\n/);
 
-    return slides.map((slide, index) => {
-      const parts = slide.split(/\n\?\?\?\n/);
-      const slideContent = parts[0].trim();
-      const notes = parts[1] ? parts[1].trim() : '';
+    return slides
+      .map((slide, index) => {
+        const parts = slide.split(/\n\?\?\?\n/);
+        const slideContent = parts[0].trim();
+        const notes = parts[1] ? parts[1].trim() : '';
 
-      let html = '';
+        let html = '';
 
-      if (index > 0) {
-        html += `<div class="slide-separator">Slide ${index + 1}</div>`;
-      }
+        if (index > 0) {
+          html += `<div class="slide-separator">Slide ${index + 1}</div>`;
+        }
 
-      html += this.renderMarkdown(slideContent);
+        html += this.renderMarkdown(slideContent);
 
-      if (notes) {
-        html += `<div class="speaker-notes">${this.renderMarkdown(notes)}</div>`;
-      }
+        if (notes) {
+          html += `<div class="speaker-notes">${this.renderMarkdown(notes)}</div>`;
+        }
 
-      return html;
-    }).join('');
+        return html;
+      })
+      .join('');
   }
 
   renderMarkdown(text) {
@@ -856,24 +919,33 @@ class PreviewManager {
         if (width) style += `width:${width}px;`;
         if (height) style += `height:${height}px;`;
         let resolvedSrc = src;
-        if (basePath && !src.startsWith('http') && !src.startsWith('file://') && !src.startsWith('vomit-file://') && !src.startsWith('data:')) {
+        if (
+          basePath &&
+          !src.startsWith('http') &&
+          !src.startsWith('file://') &&
+          !src.startsWith('vomit-file://') &&
+          !src.startsWith('data:')
+        ) {
           resolvedSrc = window.PathUtils.toVomitFileUrl(window.PathUtils.join(basePath, src));
         }
         return `<img src="${resolvedSrc}" alt="${alt}" style="${style}">`;
-      }
+      },
     );
 
-    processed = processed.replace(
-      /!\[([^\]]*)\]\(([^)\s]+)\)/g,
-      (match, alt, src) => {
-        if (src.includes('=')) return match;
-        let resolvedSrc = src;
-        if (basePath && !src.startsWith('http') && !src.startsWith('file://') && !src.startsWith('vomit-file://') && !src.startsWith('data:')) {
-          resolvedSrc = window.PathUtils.toVomitFileUrl(window.PathUtils.join(basePath, src));
-        }
-        return `![${alt}](${resolvedSrc})`;
+    processed = processed.replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, (match, alt, src) => {
+      if (src.includes('=')) return match;
+      let resolvedSrc = src;
+      if (
+        basePath &&
+        !src.startsWith('http') &&
+        !src.startsWith('file://') &&
+        !src.startsWith('vomit-file://') &&
+        !src.startsWith('data:')
+      ) {
+        resolvedSrc = window.PathUtils.toVomitFileUrl(window.PathUtils.join(basePath, src));
       }
-    );
+      return `![${alt}](${resolvedSrc})`;
+    });
 
     processed = this.renderWikilinks(processed);
 
@@ -924,10 +996,10 @@ class PreviewManager {
     }
 
     const markdown = window.Frontmatter.strip(content);
-    const slides = markdown.split(/\n---\n/).filter(s => s.trim());
+    const slides = markdown.split(/\n---\n/).filter((s) => s.trim());
     this.dom.statusSlides.textContent = `${slides.length} slide${slides.length !== 1 ? 's' : ''}`;
 
-    const words = content.split(/\s+/).filter(w => w.length > 0).length;
+    const words = content.split(/\s+/).filter((w) => w.length > 0).length;
     this.dom.statusWords.textContent = `${words} words`;
   }
 
@@ -964,7 +1036,7 @@ class PreviewManager {
         items.push({
           type: 'slide',
           text: `Slide ${slideNum}`,
-          line: index
+          line: index,
         });
         return;
       }
@@ -982,14 +1054,16 @@ class PreviewManager {
       }
     });
 
-    this.dom.outlineList.innerHTML = items.map(item => {
-      if (item.type === 'slide') {
-        return `<div class="outline-item slide-marker" data-line="${item.line}">${item.text}</div>`;
-      }
-      return `<div class="outline-item ${item.type}" data-line="${item.line}">${item.text}</div>`;
-    }).join('');
+    this.dom.outlineList.innerHTML = items
+      .map((item) => {
+        if (item.type === 'slide') {
+          return `<div class="outline-item slide-marker" data-line="${item.line}">${item.text}</div>`;
+        }
+        return `<div class="outline-item ${item.type}" data-line="${item.line}">${item.text}</div>`;
+      })
+      .join('');
 
-    this.dom.outlineList.querySelectorAll('.outline-item').forEach(el => {
+    this.dom.outlineList.querySelectorAll('.outline-item').forEach((el) => {
       el.addEventListener('click', () => {
         const lineNum = parseInt(el.dataset.line, 10);
         this.goToLine(lineNum);
@@ -1030,7 +1104,7 @@ class PreviewManager {
         items.push({
           type: 'slide',
           text: `Slide ${slideNum}`,
-          line: index
+          line: index,
         });
         return;
       }
@@ -1048,14 +1122,16 @@ class PreviewManager {
       }
     });
 
-    this.dom.rightOutlineList.innerHTML = items.map(item => {
-      if (item.type === 'slide') {
-        return `<div class="outline-item slide-marker" data-line="${item.line}">${item.text}</div>`;
-      }
-      return `<div class="outline-item ${item.type}" data-line="${item.line}">${item.text}</div>`;
-    }).join('');
+    this.dom.rightOutlineList.innerHTML = items
+      .map((item) => {
+        if (item.type === 'slide') {
+          return `<div class="outline-item slide-marker" data-line="${item.line}">${item.text}</div>`;
+        }
+        return `<div class="outline-item ${item.type}" data-line="${item.line}">${item.text}</div>`;
+      })
+      .join('');
 
-    this.dom.rightOutlineList.querySelectorAll('.outline-item').forEach(el => {
+    this.dom.rightOutlineList.querySelectorAll('.outline-item').forEach((el) => {
       el.addEventListener('click', () => {
         const lineNum = parseInt(el.dataset.line, 10);
         this.goToLine(lineNum);

@@ -31,8 +31,8 @@ function getOllamaModelContextLength(modelName) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Content-Length': Buffer.byteLength(requestBody)
-        }
+          'Content-Length': Buffer.byteLength(requestBody),
+        },
       },
       (res) => {
         let data = '';
@@ -53,7 +53,7 @@ function getOllamaModelContextLength(modelName) {
             resolve(DEFAULT_CONTEXT_LIMIT);
           }
         });
-      }
+      },
     );
     req.on('error', () => resolve(DEFAULT_CONTEXT_LIMIT));
     req.write(requestBody);
@@ -139,7 +139,10 @@ async function getContextLimit(configStore) {
  */
 async function getEffectiveContextLimit(configStore) {
   const max = await getContextLimit(configStore);
-  if (configStore.getAIProvider() === 'ollama' && typeof configStore.getOllamaNumCtx === 'function') {
+  if (
+    configStore.getAIProvider() === 'ollama' &&
+    typeof configStore.getOllamaNumCtx === 'function'
+  ) {
     return Math.min(max, configStore.getOllamaNumCtx());
   }
   return max;
@@ -150,5 +153,5 @@ module.exports = {
   getEffectiveContextLimit,
   getOllamaModelContextLength,
   getOpenAIModelContextLength,
-  DEFAULT_CONTEXT_LIMIT
+  DEFAULT_CONTEXT_LIMIT,
 };

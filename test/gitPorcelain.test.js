@@ -9,11 +9,14 @@ const NUL = '\0';
 test('parses modified, staged, and untracked entries', () => {
   const out = ` M notes/todo.md${NUL}M  staged.md${NUL}?? new-file.md${NUL}`;
   const entries = parsePorcelainZ(out);
-  assert.deepStrictEqual(entries.map((e) => [e.x, e.y, e.relPath]), [
-    [' ', 'M', 'notes/todo.md'],
-    ['M', ' ', 'staged.md'],
-    ['?', '?', 'new-file.md']
-  ]);
+  assert.deepStrictEqual(
+    entries.map((e) => [e.x, e.y, e.relPath]),
+    [
+      [' ', 'M', 'notes/todo.md'],
+      ['M', ' ', 'staged.md'],
+      ['?', '?', 'new-file.md'],
+    ],
+  );
 });
 
 test('rename entries consume the original path and keep the new path', () => {
@@ -46,7 +49,7 @@ test('classifyStatus: worktree-dirty wins over staged', () => {
     { x: ' ', y: 'M', relPath: 'worktree-only.md' },
     { x: ' ', y: 'D', relPath: 'deleted-worktree.md' },
     { x: '?', y: '?', relPath: 'untracked.md' },
-    { x: '!', y: '!', relPath: 'ignored.md' }
+    { x: '!', y: '!', relPath: 'ignored.md' },
   ]);
   assert.strictEqual(map.get('both.md'), 'modified');
   assert.strictEqual(map.get('added-then-edited.md'), 'modified');

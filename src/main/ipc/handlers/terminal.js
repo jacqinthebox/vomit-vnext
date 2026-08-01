@@ -8,7 +8,6 @@ const path = require('path');
  * @param {{ state: import('../../services/sessionState').SessionState, bus: import('../rendererBus').RendererBus, windowManager: ReturnType<import('../../services/windowManager').createWindowManager> }} deps
  */
 function createTerminalService({ state, bus, windowManager }) {
-
   function detachTerminal(payload) {
     if (!bus.getTerminalWindow()) {
       windowManager.createTerminalWindow();
@@ -18,9 +17,7 @@ function createTerminalService({ state, bus, windowManager }) {
     // renderer. The renderer is the source of truth for projectRoot,
     // currentDirectory and currentFilePath because they don't exist on main's
     // SessionState.
-    const data = typeof payload === 'string'
-      ? { terminalHTML: payload }
-      : (payload || {});
+    const data = typeof payload === 'string' ? { terminalHTML: payload } : payload || {};
 
     const currentFilePath = data.currentFilePath || state.currentFilePath || null;
     const basePath = data.basePath || (currentFilePath ? path.dirname(currentFilePath) : null);
@@ -31,7 +28,7 @@ function createTerminalService({ state, bus, windowManager }) {
       projectRoot: data.projectRoot || null,
       currentDirectory: data.currentDirectory || null,
       currentFilePath,
-      currentTheme: state.currentTheme
+      currentTheme: state.currentTheme,
     };
 
     const sendToTerminalWindow = () => {
@@ -60,13 +57,12 @@ function createTerminalService({ state, bus, windowManager }) {
   function syncTerminalContext(ctx) {
     if (!bus.getTerminalWindow()) return;
     const currentFilePath = ctx?.currentFilePath ?? null;
-    const basePath = ctx?.basePath
-      ?? (currentFilePath ? path.dirname(currentFilePath) : null);
+    const basePath = ctx?.basePath ?? (currentFilePath ? path.dirname(currentFilePath) : null);
     bus.sendToTerminal('terminal-context-update', {
       currentFilePath,
       basePath,
       projectRoot: ctx?.projectRoot ?? null,
-      currentDirectory: ctx?.currentDirectory ?? null
+      currentDirectory: ctx?.currentDirectory ?? null,
     });
   }
 
@@ -124,7 +120,7 @@ function createTerminalService({ state, bus, windowManager }) {
   function getEditorContent() {
     return {
       content: state.currentContent || '',
-      filePath: state.currentFilePath
+      filePath: state.currentFilePath,
     };
   }
 
@@ -182,7 +178,7 @@ function createTerminalService({ state, bus, windowManager }) {
     syncTerminalOutput,
     syncTerminalTab,
     syncTerminalContext,
-    registerHandlers
+    registerHandlers,
   };
 }
 

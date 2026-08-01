@@ -91,7 +91,8 @@ class TodoExplorerManager {
 
     const chevron = document.createElement('span');
     chevron.className = 'chevron';
-    chevron.innerHTML = '<svg viewBox="0 0 16 16" fill="currentColor"><path d="M6 4l4 4-4 4"/></svg>';
+    chevron.innerHTML =
+      '<svg viewBox="0 0 16 16" fill="currentColor"><path d="M6 4l4 4-4 4"/></svg>';
     if (this.expandedSections.has(id)) chevron.classList.add('expanded');
 
     const name = document.createElement('span');
@@ -116,7 +117,7 @@ class TodoExplorerManager {
       empty.textContent = id === 'open' ? 'Nothing open.' : 'Nothing done yet.';
       body.appendChild(empty);
     } else {
-      this._groupByFile(todos).forEach(group => this._renderFileGroup(body, group));
+      this._groupByFile(todos).forEach((group) => this._renderFileGroup(body, group));
     }
 
     header.addEventListener('click', () => {
@@ -156,7 +157,8 @@ class TodoExplorerManager {
     const isExpanded = !this.expandedFiles.has(group.file);
     const chevron = document.createElement('span');
     chevron.className = 'chevron';
-    chevron.innerHTML = '<svg viewBox="0 0 16 16" fill="currentColor"><path d="M6 4l4 4-4 4"/></svg>';
+    chevron.innerHTML =
+      '<svg viewBox="0 0 16 16" fill="currentColor"><path d="M6 4l4 4-4 4"/></svg>';
     if (isExpanded) chevron.classList.add('expanded');
 
     const name = document.createElement('span');
@@ -257,11 +259,12 @@ class TodoExplorerManager {
   }
 
   _updateResizeHandle() {
-    const anySidebarVisible = this.state.isFileTreeVisible ||
-                               this.state.isOutlineVisible ||
-                               this.state.isSearchVisible ||
-                               this.state.isTagExplorerVisible ||
-                               this.state.isTodoExplorerVisible;
+    const anySidebarVisible =
+      this.state.isFileTreeVisible ||
+      this.state.isOutlineVisible ||
+      this.state.isSearchVisible ||
+      this.state.isTagExplorerVisible ||
+      this.state.isTodoExplorerVisible;
     this.sidebarResize.classList.toggle('hidden', !anySidebarVisible);
   }
 }

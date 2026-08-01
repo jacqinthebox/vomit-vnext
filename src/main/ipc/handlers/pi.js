@@ -25,16 +25,16 @@ function resolvePiPath() {
     candidates.push(
       path.join(appData, 'npm', 'pi.cmd'),
       path.join(appData, 'npm', 'pi.exe'),
-      path.join(appData, 'npm', 'pi')
+      path.join(appData, 'npm', 'pi'),
     );
   } else {
     candidates.push(
-      '/usr/local/bin/pi',              // Intel homebrew / Linux npm prefix
-      '/opt/homebrew/bin/pi',           // Apple Silicon homebrew npm prefix
-      '/usr/bin/pi',                    // System
+      '/usr/local/bin/pi', // Intel homebrew / Linux npm prefix
+      '/opt/homebrew/bin/pi', // Apple Silicon homebrew npm prefix
+      '/usr/bin/pi', // System
       path.join(home, '.npm-global', 'bin', 'pi'),
       path.join(home, '.local', 'bin', 'pi'),
-      path.join(home, 'node_modules', '.bin', 'pi')
+      path.join(home, 'node_modules', '.bin', 'pi'),
     );
     // nvm installs live under ~/.nvm/versions/node/<version>/bin — scan them so
     // an nvm-managed global pi resolves even with a stripped PATH.
@@ -43,13 +43,17 @@ function resolvePiPath() {
       for (const ver of fs.readdirSync(nvmNode)) {
         candidates.push(path.join(nvmNode, ver, 'bin', 'pi'));
       }
-    } catch { /* no nvm — ignore */ }
+    } catch {
+      /* no nvm — ignore */
+    }
   }
 
   for (const p of candidates) {
     try {
       if (p && fs.existsSync(p)) return p;
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
 
   // Fallback: platform lookup. Works in dev (`npm start`) where PATH is inherited.
@@ -57,8 +61,10 @@ function resolvePiPath() {
     const lookup = isWin ? 'where.exe' : 'which';
     const result = execFileSync(lookup, ['pi'], {
       encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe']
-    }).trim().split(/\r?\n/)[0];
+      stdio: ['pipe', 'pipe', 'pipe'],
+    })
+      .trim()
+      .split(/\r?\n/)[0];
     return result && fs.existsSync(result) ? result : null;
   } catch {
     return null;
@@ -132,20 +138,32 @@ function installExtension() {
   try {
     fs.mkdirSync(path.dirname(EXTENSION_FILE), { recursive: true });
     fs.writeFileSync(EXTENSION_FILE, EXTENSION_SOURCE, 'utf-8');
-  } catch { /* pi still works, just without vomit awareness */ }
+  } catch {
+    /* pi still works, just without vomit awareness */
+  }
 }
 
 function writeContext(ctx) {
   try {
     fs.mkdirSync(path.dirname(CONTEXT_FILE), { recursive: true });
-    fs.writeFileSync(CONTEXT_FILE, JSON.stringify({
-      currentFilePath: ctx?.currentFilePath ?? null,
-      basePath: ctx?.basePath ?? null,
-      projectRoot: ctx?.projectRoot ?? null,
-      currentDirectory: ctx?.currentDirectory ?? null,
-      updatedAt: new Date().toISOString()
-    }, null, 2), 'utf-8');
-  } catch { /* non-fatal — pi just sees the previous context */ }
+    fs.writeFileSync(
+      CONTEXT_FILE,
+      JSON.stringify(
+        {
+          currentFilePath: ctx?.currentFilePath ?? null,
+          basePath: ctx?.basePath ?? null,
+          projectRoot: ctx?.projectRoot ?? null,
+          currentDirectory: ctx?.currentDirectory ?? null,
+          updatedAt: new Date().toISOString(),
+        },
+        null,
+        2,
+      ),
+      'utf-8',
+    );
+  } catch {
+    /* non-fatal — pi just sees the previous context */
+  }
 }
 
 /**
@@ -197,9 +215,10 @@ function registerHandlers(ipcMain, { state, bus, terminalService }) {
     // the pi shim (true for homebrew, nvm, system, and npm-prefix installs), so
     // prepend that dir — plus the usual local bins — to the PATH we hand the PTY.
     const sep = process.platform === 'win32' ? ';' : ':';
-    const extraPaths = process.platform === 'win32'
-      ? [path.dirname(piPath)]
-      : [path.dirname(piPath), '/opt/homebrew/bin', '/usr/local/bin', '/usr/bin'];
+    const extraPaths =
+      process.platform === 'win32'
+        ? [path.dirname(piPath)]
+        : [path.dirname(piPath), '/opt/homebrew/bin', '/usr/local/bin', '/usr/bin'];
     const mergedPath = [...extraPaths, process.env.PATH || ''].filter(Boolean).join(sep);
 
     state.piProcess = pty.spawn(file, spawnArgs, {
@@ -207,7 +226,7 @@ function registerHandlers(ipcMain, { state, bus, terminalService }) {
       cols: 120,
       rows: 30,
       cwd: workingDir,
-      env: { ...process.env, TERM: 'xterm-256color', PATH: mergedPath }
+      env: { ...process.env, TERM: 'xterm-256color', PATH: mergedPath },
     });
 
     state.piProcess.onData((data) => {

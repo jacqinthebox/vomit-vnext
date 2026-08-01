@@ -2,7 +2,7 @@
 // Fetches the bucket's note list once per minute and filters by what the user
 // has typed since the opening `[[`. Inserts `[[note]]` and places the cursor
 // after the closing brackets.
-(function() {
+(function () {
   const CodeMirror = window.CodeMirror;
   if (!CodeMirror) return;
 
@@ -15,12 +15,7 @@
   async function loadNotes(bucketRoot, force = false) {
     if (!bucketRoot) return [];
     const now = Date.now();
-    if (
-      !force &&
-      cachedBucket === bucketRoot &&
-      cachedNotes &&
-      now - cachedAt < CACHE_TTL_MS
-    ) {
+    if (!force && cachedBucket === bucketRoot && cachedNotes && now - cachedAt < CACHE_TTL_MS) {
       return cachedNotes;
     }
     try {
@@ -35,12 +30,15 @@
         // in-flight request to avoid thrashing.
         if (cachedNotes.length === 0 && !indexInFlight && window.vomit.wikiIndex) {
           indexInFlight = true;
-          window.vomit.wikiIndex(bucketRoot)
+          window.vomit
+            .wikiIndex(bucketRoot)
             .then((res) => {
               indexInFlight = false;
               if (res && res.success) cachedAt = 0; // force-reload next call
             })
-            .catch(() => { indexInFlight = false; });
+            .catch(() => {
+              indexInFlight = false;
+            });
         }
 
         return cachedNotes;
@@ -73,16 +71,16 @@
     return {
       from: { line: cur.line, ch: open + 2 },
       to: cur,
-      query
+      query,
     };
   }
 
   function rankNotes(notes, query) {
     if (!query) {
-      return notes.slice(0, 20).map(n => ({
+      return notes.slice(0, 20).map((n) => ({
         text: n.basename,
         displayText: n.basename,
-        note: n
+        note: n,
       }));
     }
     const q = query.toLowerCase();
@@ -99,10 +97,10 @@
       }
     }
     scored.sort((a, b) => b.score - a.score || a.note.basename.localeCompare(b.note.basename));
-    return scored.slice(0, 20).map(s => ({
+    return scored.slice(0, 20).map((s) => ({
       text: s.note.basename,
       displayText: s.note.title ? `${s.note.basename} — ${s.note.title}` : s.note.basename,
-      note: s.note
+      note: s.note,
     }));
   }
 
@@ -122,7 +120,7 @@
     const completion = {
       from: span.from,
       to: span.to,
-      list: matches.map(m => ({
+      list: matches.map((m) => ({
         text: m.text,
         displayText: m.displayText,
         hint(cm2, _data, item) {
@@ -132,8 +130,8 @@
           // Place cursor after the closing brackets.
           const finalCh = span.from.ch + item.text.length + closing.length;
           cm2.setCursor({ line: span.from.line, ch: finalCh });
-        }
-      }))
+        },
+      })),
     };
     return completion;
   }
@@ -164,13 +162,15 @@
       instance.showHint({
         hint: (cm2) => wikilinkHint(cm2, getBucketRoot),
         completeSingle: false,
-        closeOnUnfocus: true
+        closeOnUnfocus: true,
       });
     });
   }
 
   window.VomitWikilinkHint = {
     attachWikilinkHint,
-    invalidateCache() { cachedAt = 0; }
+    invalidateCache() {
+      cachedAt = 0;
+    },
   };
 })();

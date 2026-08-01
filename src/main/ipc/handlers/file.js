@@ -27,13 +27,25 @@ function isMarkdownPath(filePath) {
   return ext === '.md' || ext === '.markdown';
 }
 
-const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.bmp', '.ico', '.avif']);
+const IMAGE_EXTENSIONS = new Set([
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.gif',
+  '.webp',
+  '.svg',
+  '.bmp',
+  '.ico',
+  '.avif',
+]);
 
 function isSameOrSubPath(childPath, parentPath) {
   const child = path.resolve(childPath);
   const parent = path.resolve(parentPath);
   const relative = path.relative(parent, child);
-  return relative === '' || (!!relative && !relative.startsWith('..') && !path.isAbsolute(relative));
+  return (
+    relative === '' || (!!relative && !relative.startsWith('..') && !path.isAbsolute(relative))
+  );
 }
 
 function updateModifiedDate(content) {
@@ -66,28 +78,43 @@ function updateWikilinkReferences(bucketRoot, oldBasename, newBasename) {
   // [[oldName]] | [[oldName|alias]] | [[oldName#heading]] | [[oldName#h|alias]]
   const re = new RegExp(
     `\\[\\[(${escapeRegExp(oldBasename)})((?:#[^\\]|\\n]+)?(?:\\|[^\\]\\n]+)?)\\]\\]`,
-    'gi'
+    'gi',
   );
 
   let modified = 0;
   const walk = (dir) => {
     let items;
-    try { items = fs.readdirSync(dir); } catch { return; }
+    try {
+      items = fs.readdirSync(dir);
+    } catch {
+      return;
+    }
     for (const item of items) {
       if (item.startsWith('.') || SKIP_RENAME_DIRS.has(item)) continue;
       const fullPath = path.join(dir, item);
       let stat;
-      try { stat = fs.statSync(fullPath); } catch { continue; }
+      try {
+        stat = fs.statSync(fullPath);
+      } catch {
+        continue;
+      }
       if (stat.isDirectory()) {
         walk(fullPath);
         continue;
       }
       if (!isMarkdownPath(fullPath)) continue;
       let content;
-      try { content = fs.readFileSync(fullPath, 'utf-8'); } catch { continue; }
+      try {
+        content = fs.readFileSync(fullPath, 'utf-8');
+      } catch {
+        continue;
+      }
       if (!re.test(content)) continue;
       re.lastIndex = 0;
-      const updated = content.replace(re, (_m, _name, suffix) => `[[${newBasename}${suffix || ''}]]`);
+      const updated = content.replace(
+        re,
+        (_m, _name, suffix) => `[[${newBasename}${suffix || ''}]]`,
+      );
       if (updated !== content) {
         try {
           fs.writeFileSync(fullPath, updated, 'utf-8');
@@ -102,7 +129,6 @@ function updateWikilinkReferences(bucketRoot, oldBasename, newBasename) {
 }
 
 function createFileService({ state, bus, configStore }) {
-
   async function newFile() {
     const bucketPath = configStore.getBucketPath();
     if (!bucketPath) {
@@ -209,11 +235,14 @@ Questions?
         { name: 'Markdown Files', extensions: ['md', 'markdown'] },
         { name: 'PDF Files', extensions: ['pdf'] },
         { name: 'Draw.io Diagrams', extensions: ['drawio'] },
-        { name: 'Image Files', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico', 'avif'] },
-        { name: 'All Files', extensions: ['*'] }
+        {
+          name: 'Image Files',
+          extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico', 'avif'],
+        },
+        { name: 'All Files', extensions: ['*'] },
       ],
       properties: ['openFile'],
-      defaultPath: bucketPath || undefined
+      defaultPath: bucketPath || undefined,
     });
 
     if (!result.canceled && result.filePaths.length > 0) {
@@ -243,7 +272,9 @@ Questions?
     for (const timer of debounceMap.values()) clearTimeout(timer);
     debounceMap.clear();
     if (directoryWatcher) {
-      try { directoryWatcher.close(); } catch (_) {}
+      try {
+        directoryWatcher.close();
+      } catch (_) {}
       directoryWatcher = null;
       watchedDirectory = null;
     }
@@ -260,27 +291,30 @@ Questions?
       // Ignore node_modules, .git dir, and hidden files — use segment-aware regex
       ignored: /(^|[/\\])(node_modules|\.git)(\/|\\|$)/,
       persistent: true,
-      ignoreInitial: true
+      ignoreInitial: true,
     });
 
     const sendRefresh = (eventName, eventPath) => {
       const changedDir = path.dirname(eventPath);
       if (debounceMap.has(changedDir)) clearTimeout(debounceMap.get(changedDir));
-      debounceMap.set(changedDir, setTimeout(() => {
-        debounceMap.delete(changedDir);
-        const payload = { changedPath: changedDir };
-        // For deleted dirs, also pass the path so renderer can purge its subtree cache
-        if (eventName === 'unlinkDir') payload.deletedPath = eventPath;
-        bus.send('refresh-file-tree', payload);
-      }, 300));
+      debounceMap.set(
+        changedDir,
+        setTimeout(() => {
+          debounceMap.delete(changedDir);
+          const payload = { changedPath: changedDir };
+          // For deleted dirs, also pass the path so renderer can purge its subtree cache
+          if (eventName === 'unlinkDir') payload.deletedPath = eventPath;
+          bus.send('refresh-file-tree', payload);
+        }, 300),
+      );
     };
 
     directoryWatcher
-      .on('add',       p => sendRefresh('add', p))
-      .on('addDir',    p => sendRefresh('addDir', p))
-      .on('unlink',    p => sendRefresh('unlink', p))
-      .on('unlinkDir', p => sendRefresh('unlinkDir', p))
-      .on('error',     () => stopDirectoryWatcher());
+      .on('add', (p) => sendRefresh('add', p))
+      .on('addDir', (p) => sendRefresh('addDir', p))
+      .on('unlink', (p) => sendRefresh('unlink', p))
+      .on('unlinkDir', (p) => sendRefresh('unlinkDir', p))
+      .on('error', () => stopDirectoryWatcher());
   }
 
   function startFileWatcher(filePath) {
@@ -320,20 +354,26 @@ Questions?
   }
 
   function getDrawioCliPath() {
-    const candidates = process.platform === 'win32'
-      ? [
-          path.join(process.env.ProgramFiles || '', 'draw.io', 'draw.io.exe'),
-          path.join(process.env.ProgramFiles || '', 'diagrams.net', 'diagrams.net.exe'),
-          path.join(process.env.LOCALAPPDATA || '', 'Programs', 'draw.io', 'draw.io.exe'),
-          path.join(process.env.LOCALAPPDATA || '', 'Programs', 'diagrams.net', 'diagrams.net.exe')
-        ]
-      : [
-          '/opt/homebrew/bin/drawio',
-          '/usr/local/bin/drawio',
-          '/Applications/draw.io.app/Contents/MacOS/draw.io',
-          '/Applications/diagrams.net.app/Contents/MacOS/diagrams.net'
-        ];
-    return candidates.find(candidate => fs.existsSync(candidate)) || null;
+    const candidates =
+      process.platform === 'win32'
+        ? [
+            path.join(process.env.ProgramFiles || '', 'draw.io', 'draw.io.exe'),
+            path.join(process.env.ProgramFiles || '', 'diagrams.net', 'diagrams.net.exe'),
+            path.join(process.env.LOCALAPPDATA || '', 'Programs', 'draw.io', 'draw.io.exe'),
+            path.join(
+              process.env.LOCALAPPDATA || '',
+              'Programs',
+              'diagrams.net',
+              'diagrams.net.exe',
+            ),
+          ]
+        : [
+            '/opt/homebrew/bin/drawio',
+            '/usr/local/bin/drawio',
+            '/Applications/draw.io.app/Contents/MacOS/draw.io',
+            '/Applications/diagrams.net.app/Contents/MacOS/diagrams.net',
+          ];
+    return candidates.find((candidate) => fs.existsSync(candidate)) || null;
   }
 
   function renderDrawioToSvg(filePath) {
@@ -344,16 +384,24 @@ Questions?
         return;
       }
 
-      const outputPath = path.join(os.tmpdir(), `vomit-drawio-${Date.now()}-${Math.random().toString(36).slice(2)}.svg`);
+      const outputPath = path.join(
+        os.tmpdir(),
+        `vomit-drawio-${Date.now()}-${Math.random().toString(36).slice(2)}.svg`,
+      );
       const args = [
         '--export',
-        '--format', 'svg',
+        '--format',
+        'svg',
         '--embed-svg-images',
-        '--embed-svg-fonts', 'true',
-        '--svg-theme', 'light',
-        '--border', '8',
-        '--output', outputPath,
-        filePath
+        '--embed-svg-fonts',
+        'true',
+        '--svg-theme',
+        'light',
+        '--border',
+        '8',
+        '--output',
+        outputPath,
+        filePath,
       ];
 
       execFile(cliPath, args, { timeout: 30000 }, (err, stdout, stderr) => {
@@ -424,14 +472,15 @@ Questions?
       : '';
     const markdownFilter = { name: 'Markdown Files', extensions: ['md', 'markdown'] };
     const allFilesFilter = { name: 'All Files', extensions: ['*'] };
-    const filters = (currentExt && currentExt !== '.md' && currentExt !== '.markdown')
-      ? [allFilesFilter, markdownFilter]
-      : [markdownFilter, allFilesFilter];
+    const filters =
+      currentExt && currentExt !== '.md' && currentExt !== '.markdown'
+        ? [allFilesFilter, markdownFilter]
+        : [markdownFilter, allFilesFilter];
 
     const result = await dialog.showSaveDialog(bus.getMainWindow(), {
       title: 'Save File',
       filters,
-      defaultPath
+      defaultPath,
     });
 
     if (!result.canceled && result.filePath) {
@@ -441,7 +490,7 @@ Questions?
           type: 'error',
           title: 'Error',
           message: 'Files must be saved within your bucket folder.',
-          detail: `Bucket location: ${bucketPath}`
+          detail: `Bucket location: ${bucketPath}`,
         });
         return;
       }
@@ -485,7 +534,11 @@ Questions?
       // Live-index wikilinks for the active document.
       try {
         const bucketRoot = state.currentProjectRoot;
-        if (bucketRoot && isMarkdownPath(state.currentFilePath) && state.currentFilePath.startsWith(bucketRoot)) {
+        if (
+          bucketRoot &&
+          isMarkdownPath(state.currentFilePath) &&
+          state.currentFilePath.startsWith(bucketRoot)
+        ) {
           wiki.indexSingleFile(bucketRoot, state.currentFilePath);
           bus.send('wiki-changed', { type: 'file', path: state.currentFilePath });
           bus.sendToTerminal('wiki-changed', { type: 'file', path: state.currentFilePath });
@@ -617,17 +670,25 @@ Questions?
         const sortOrder = configStore.getFileSortOrder();
         const entries = fs.readdirSync(dirPath, { withFileTypes: true });
         const items = entries
-          .filter(entry => !entry.name.startsWith('.') && (configStore.getShowImagesFolder() || entry.name !== 'images')) // Hide hidden files; hide images folder unless toggled on
-          .map(entry => {
+          .filter(
+            (entry) =>
+              !entry.name.startsWith('.') &&
+              (configStore.getShowImagesFolder() || entry.name !== 'images'),
+          ) // Hide hidden files; hide images folder unless toggled on
+          .map((entry) => {
             const fullPath = path.join(dirPath, entry.name);
             let mtimeMs = 0;
-            try { mtimeMs = fs.statSync(fullPath).mtimeMs; } catch (e) {}
+            try {
+              mtimeMs = fs.statSync(fullPath).mtimeMs;
+            } catch (e) {}
             return {
               name: entry.name,
               path: fullPath,
               isDirectory: entry.isDirectory(),
-              isMarkdown: !entry.isDirectory() && (entry.name.endsWith('.md') || entry.name.endsWith('.markdown')),
-              mtimeMs
+              isMarkdown:
+                !entry.isDirectory() &&
+                (entry.name.endsWith('.md') || entry.name.endsWith('.markdown')),
+              mtimeMs,
             };
           })
           .sort((a, b) => {
@@ -678,13 +739,17 @@ Questions?
         // Inline format: tags: [a, b, c]
         const inlineMatch = fm.match(/^tags:\s*\[([^\]]*)\]/m);
         if (inlineMatch) {
-          return inlineMatch[1].split(',').map(t => t.trim()).filter(Boolean);
+          return inlineMatch[1]
+            .split(',')
+            .map((t) => t.trim())
+            .filter(Boolean);
         }
         // Multiline format: tags:\n  - a\n  - b
         const multiMatch = fm.match(/^tags:\s*\n((?:\s+-\s+.+\n?)*)/m);
         if (multiMatch) {
-          return multiMatch[1].split('\n')
-            .map(l => l.replace(/^\s*-\s*/, '').trim())
+          return multiMatch[1]
+            .split('\n')
+            .map((l) => l.replace(/^\s*-\s*/, '').trim())
             .filter(Boolean);
         }
         return [];
@@ -745,7 +810,9 @@ Questions?
       function parseTodoText(rawText) {
         const dueMatch = rawText.match(/(?:^|\s)@(\d{4}-\d{2}-\d{2})(?=\s|$)/);
         const priorityMatch = rawText.match(/(?:^|\s)!(high|medium|low)(?=\s|$)/i);
-        const tags = Array.from(rawText.matchAll(/(?:^|\s)#([A-Za-z0-9_-]+)/g)).map(match => match[1]);
+        const tags = Array.from(rawText.matchAll(/(?:^|\s)#([A-Za-z0-9_-]+)/g)).map(
+          (match) => match[1],
+        );
         const text = rawText
           .replace(/(?:^|\s)@\d{4}-\d{2}-\d{2}(?=\s|$)/g, ' ')
           .replace(/(?:^|\s)!(high|medium|low)(?=\s|$)/gi, ' ')
@@ -757,7 +824,7 @@ Questions?
           text: text || rawText.trim(),
           due: dueMatch ? dueMatch[1] : null,
           priority: priorityMatch ? priorityMatch[1].toLowerCase() : null,
-          tags
+          tags,
         };
       }
 
@@ -793,7 +860,7 @@ Questions?
             indent: match[1].length,
             file: path.basename(filePath),
             relativePath: path.relative(bucketPath, filePath),
-            path: filePath
+            path: filePath,
           });
         }
 
@@ -804,7 +871,12 @@ Questions?
         try {
           const entries = fs.readdirSync(dir, { withFileTypes: true });
           for (const entry of entries) {
-            if (entry.name.startsWith('.') || entry.name === 'node_modules' || entry.name === 'pseudo') continue;
+            if (
+              entry.name.startsWith('.') ||
+              entry.name === 'node_modules' ||
+              entry.name === 'pseudo'
+            )
+              continue;
             const fullPath = path.join(dir, entry.name);
             if (entry.isDirectory()) {
               walk(fullPath);
@@ -834,12 +906,12 @@ Questions?
         return a.line - b.line;
       };
 
-      const open = todos.filter(todo => !todo.checked).sort(sortTodos);
-      const done = todos.filter(todo => todo.checked).sort(sortTodos);
+      const open = todos.filter((todo) => !todo.checked).sort(sortTodos);
+      const done = todos.filter((todo) => todo.checked).sort(sortTodos);
       return {
         open,
         done,
-        counts: { open: open.length, done: done.length, total: todos.length }
+        counts: { open: open.length, done: done.length, total: todos.length },
       };
     });
 
@@ -903,7 +975,7 @@ Questions?
           cancelId: 0,
           title: 'Delete',
           message: `Delete "${path.basename(itemPath)}"?`,
-          detail: 'This action cannot be undone.'
+          detail: 'This action cannot be undone.',
         });
 
         if (result.response === 1) {
@@ -953,7 +1025,7 @@ Questions?
                   if (line.toLowerCase().includes(searchQuery)) {
                     matches.push({
                       line: index + 1,
-                      text: line.trim().substring(0, 100)
+                      text: line.trim().substring(0, 100),
                     });
                   }
                 });
@@ -962,7 +1034,7 @@ Questions?
                   results.push({
                     file: entry.name,
                     path: fullPath,
-                    matches: matches.slice(0, 10) // Limit matches per file
+                    matches: matches.slice(0, 10), // Limit matches per file
                   });
                 }
               } catch (err) {
@@ -1035,7 +1107,7 @@ Questions?
         cancelId: 2,
         title: 'Unsaved Changes',
         message: `Do you want to save changes to ${filename || 'Untitled'}?`,
-        detail: 'Your changes will be lost if you don\'t save them.'
+        detail: "Your changes will be lost if you don't save them.",
       });
 
       if (result.response === 0) return 'save';
@@ -1082,7 +1154,9 @@ Questions?
           const attrs = match[1] || '';
           const body = (match[2] || '').trim();
           const nameMatch = attrs.match(/\bname="([^"]*)"/i);
-          const name = nameMatch ? nameMatch[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&') : `Diagram ${diagrams.length + 1}`;
+          const name = nameMatch
+            ? nameMatch[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&')
+            : `Diagram ${diagrams.length + 1}`;
           let decoded = null;
 
           if (body.startsWith('<mxGraphModel')) {
@@ -1168,7 +1242,10 @@ Questions?
 
         // Check if target already has an item with the same name
         if (fs.existsSync(newPath)) {
-          return { success: false, error: 'An item with that name already exists in the target folder' };
+          return {
+            success: false,
+            error: 'An item with that name already exists in the target folder',
+          };
         }
 
         // Prevent moving a folder into itself or its descendants
@@ -1197,15 +1274,23 @@ Questions?
     });
 
     ipcMain.handle('get-terminal-history', () => configStore.getTerminalHistory());
-    ipcMain.handle('set-terminal-history', (event, history) => configStore.setTerminalHistory(history));
+    ipcMain.handle('set-terminal-history', (event, history) =>
+      configStore.setTerminalHistory(history),
+    );
     ipcMain.handle('clear-terminal-history', () => configStore.clearTerminalHistory());
   }
 
   return {
-    newFile, newPresentation, openFile,
-    loadFile, saveFile, saveFileAs, writeFile,
-    stopFileWatcher, startFileWatcher,
-    registerHandlers
+    newFile,
+    newPresentation,
+    openFile,
+    loadFile,
+    saveFile,
+    saveFileAs,
+    writeFile,
+    stopFileWatcher,
+    startFileWatcher,
+    registerHandlers,
   };
 }
 

@@ -36,7 +36,7 @@ test('ignores images, external URLs, anchors, and non-md targets', () => {
     '[mail](mailto:a@b.nl)',
     '[jump](#section)',
     '[data](export.csv)',
-    '[parent](../up.md)'
+    '[parent](../up.md)',
   ].join('\n');
   const links = parseMarkdownLinks(content);
   assert.strictEqual(links.length, 1);

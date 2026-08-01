@@ -29,7 +29,7 @@ class TabManager {
       cursorPosition: { line: 0, ch: 0 },
       scrollInfo: { left: 0, top: 0 },
       history: null,
-      lastAccessed: Date.now()
+      lastAccessed: Date.now(),
     };
 
     this.tabs.set(id, tab);
@@ -179,7 +179,7 @@ class TabManager {
     // Check for unsaved changes
     if (tab.isDirty) {
       const response = await window.vomit.showUnsavedChangesDialog(
-        tab.filePath ? window.PathUtils.basename(tab.filePath) : 'Untitled'
+        tab.filePath ? window.PathUtils.basename(tab.filePath) : 'Untitled',
       );
 
       if (response === 'save') {
@@ -188,7 +188,7 @@ class TabManager {
           await window.vomit.requestSave();
         }
         // Wait a moment for save to complete
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, 100));
       } else if (response === 'cancel') {
         return; // Don't close
       }
@@ -206,7 +206,7 @@ class TabManager {
 
     // Remove tab
     this.tabs.delete(tabId);
-    this.tabOrder = this.tabOrder.filter(id => id !== tabId);
+    this.tabOrder = this.tabOrder.filter((id) => id !== tabId);
 
     // If we closed the active tab, switch to another
     if (tabId === this.activeTabId) {
@@ -255,7 +255,7 @@ class TabManager {
     if (!keepTabId || !this.tabs.has(keepTabId)) return;
 
     // Close every tab except the kept one (will prompt for unsaved)
-    const tabIds = this.tabOrder.filter(id => id !== keepTabId);
+    const tabIds = this.tabOrder.filter((id) => id !== keepTabId);
     for (const tabId of tabIds) {
       this.closeTab(tabId);
     }
@@ -308,7 +308,7 @@ class TabManager {
     const newTab = {
       ...tab,
       id: newId,
-      lastAccessed: Date.now()
+      lastAccessed: Date.now(),
     };
 
     this.tabs.set(newId, newTab);
@@ -320,9 +320,7 @@ class TabManager {
     const tab = this.tabs.get(this.activeTabId);
     if (!tab) return;
 
-    const filename = tab.filePath
-      ? window.PathUtils.basename(tab.filePath)
-      : 'Untitled';
+    const filename = tab.filePath ? window.PathUtils.basename(tab.filePath) : 'Untitled';
     const dirtyIndicator = tab.isDirty ? ' *' : '';
 
     document.title = `${filename}${dirtyIndicator} - Vomit`;
@@ -383,7 +381,8 @@ class TabManager {
 
     // Middle-click to close tab
     this.tabBar.addEventListener('auxclick', (e) => {
-      if (e.button === 1) { // Middle click
+      if (e.button === 1) {
+        // Middle click
         const tab = e.target.closest('.tab');
         if (tab) {
           e.preventDefault();
@@ -464,18 +463,17 @@ class TabManager {
   renderTabBar() {
     if (!this.tabBar) return;
 
-    this.tabBar.innerHTML = this.tabOrder.map((tabId, index) => {
-      const tab = this.tabs.get(tabId);
-      if (!tab) return '';
+    this.tabBar.innerHTML = this.tabOrder
+      .map((tabId, index) => {
+        const tab = this.tabs.get(tabId);
+        if (!tab) return '';
 
-      const isActive = tabId === this.activeTabId;
-      const displayName = tab.filePath
-        ? window.PathUtils.basename(tab.filePath)
-        : 'Untitled';
-      const number = index < 9 ? index + 1 : '';
-      const title = tab.filePath || 'Untitled';
+        const isActive = tabId === this.activeTabId;
+        const displayName = tab.filePath ? window.PathUtils.basename(tab.filePath) : 'Untitled';
+        const number = index < 9 ? index + 1 : '';
+        const title = tab.filePath || 'Untitled';
 
-      return `
+        return `
         <div class="tab ${isActive ? 'active' : ''}"
              data-tab-id="${tabId}"
              tabindex="0"
@@ -486,25 +484,26 @@ class TabManager {
           <button class="tab-close" aria-label="Close tab">&times;</button>
         </div>
       `;
-    }).join('');
+      })
+      .join('');
   }
 
   // Persistence methods
   serializeState() {
     return {
-      tabs: Array.from(this.tabs.values()).map(tab => ({
+      tabs: Array.from(this.tabs.values()).map((tab) => ({
         filePath: tab.filePath,
         content: tab.content,
         isDirty: tab.isDirty,
         cursorPosition: tab.cursorPosition,
-        scrollInfo: tab.scrollInfo
+        scrollInfo: tab.scrollInfo,
         // Note: history is not persisted (too large)
       })),
       activeTabIndex: this.tabOrder.indexOf(this.activeTabId),
-      tabOrder: this.tabOrder.map(id => {
+      tabOrder: this.tabOrder.map((id) => {
         const tab = this.tabs.get(id);
         return tab ? tab.filePath : null;
-      })
+      }),
     };
   }
 
@@ -516,7 +515,7 @@ class TabManager {
     }
 
     // Restore each tab
-    data.tabs.forEach(savedTab => {
+    data.tabs.forEach((savedTab) => {
       const id = this.generateTabId();
       const tab = {
         id,
@@ -526,7 +525,7 @@ class TabManager {
         cursorPosition: savedTab.cursorPosition || { line: 0, ch: 0 },
         scrollInfo: savedTab.scrollInfo || { left: 0, top: 0 },
         history: null,
-        lastAccessed: Date.now()
+        lastAccessed: Date.now(),
       };
 
       this.tabs.set(id, tab);
@@ -534,9 +533,10 @@ class TabManager {
     });
 
     // Switch to the previously active tab
-    const activeIndex = data.activeTabIndex >= 0 && data.activeTabIndex < this.tabOrder.length
-      ? data.activeTabIndex
-      : 0;
+    const activeIndex =
+      data.activeTabIndex >= 0 && data.activeTabIndex < this.tabOrder.length
+        ? data.activeTabIndex
+        : 0;
 
     this.switchToTab(this.tabOrder[activeIndex]);
   }

@@ -23,9 +23,9 @@ function buildAISubmenu() {
       accelerator: 'CmdOrCtrl+J',
       click: () => {
         _bus.send('toggle-terminal');
-      }
+      },
     },
-    { type: 'separator' }
+    { type: 'separator' },
   ];
 
   const currentProvider = _configStore.getAIProvider();
@@ -35,13 +35,13 @@ function buildAISubmenu() {
     label: 'Ollama (local)',
     type: 'radio',
     checked: currentProvider === 'ollama',
-    click: () => setAIProvider('ollama')
+    click: () => setAIProvider('ollama'),
   });
   submenu.push({
     label: 'OpenAI-Compatible (e.g. MLX, vLLM, LM Studio)',
     type: 'radio',
     checked: currentProvider === 'openai-compatible',
-    click: () => setAIProvider('openai-compatible')
+    click: () => setAIProvider('openai-compatible'),
   });
   submenu.push({ type: 'separator' });
 
@@ -53,7 +53,7 @@ function buildAISubmenu() {
           label: model,
           type: 'radio',
           checked: _configStore.getOllamaModel() === model,
-          click: () => setOllamaModel(model)
+          click: () => setOllamaModel(model),
         });
       }
     } else if (_state.availableAITools.ollama) {
@@ -77,7 +77,7 @@ function buildAISubmenu() {
           label,
           type: 'radio',
           checked: idx === activeIndex,
-          click: () => selectOpenAIEndpoint(idx)
+          click: () => selectOpenAIEndpoint(idx),
         });
       });
     }
@@ -86,30 +86,30 @@ function buildAISubmenu() {
   submenu.push({ type: 'separator' });
   submenu.push({
     label: 'Add OpenAI-Compatible Endpoint…',
-    click: () => addOpenAIEndpoint()
+    click: () => addOpenAIEndpoint(),
   });
 
   const activeEp = _configStore.getActiveOpenAIEndpoint();
   if (activeEp) {
     submenu.push({
       label: `Edit "${activeEp.name}"…`,
-      click: () => editActiveOpenAIEndpoint()
+      click: () => editActiveOpenAIEndpoint(),
     });
     submenu.push({
       label: `Remove "${activeEp.name}"…`,
-      click: () => removeActiveOpenAIEndpoint()
+      click: () => removeActiveOpenAIEndpoint(),
     });
   }
   submenu.push({
     label: 'Test AI Connection',
-    click: () => testAIConnection()
+    click: () => testAIConnection(),
   });
 
   submenu.push({ type: 'separator' });
   const tavilyKey = _configStore.getTavilyApiKey();
   submenu.push({
     label: tavilyKey ? 'Tavily API Key ✓' : 'Set Tavily API Key...',
-    click: () => setTavilyApiKey()
+    click: () => setTavilyApiKey(),
   });
 
   submenu.push({ type: 'separator' });
@@ -121,21 +121,21 @@ function buildAISubmenu() {
         label: 'Auto-allow read-only tools',
         type: 'radio',
         checked: permissionMode === 'auto',
-        click: () => setAgentPermissionMode('auto')
+        click: () => setAgentPermissionMode('auto'),
       },
       {
         label: 'Always ask',
         type: 'radio',
         checked: permissionMode === 'always',
-        click: () => setAgentPermissionMode('always')
+        click: () => setAgentPermissionMode('always'),
       },
       {
         label: 'Never ask (unrestricted)',
         type: 'radio',
         checked: permissionMode === 'never',
-        click: () => setAgentPermissionMode('never')
-      }
-    ]
+        click: () => setAgentPermissionMode('never'),
+      },
+    ],
   });
   submenu.push({
     label: 'Diff Preview for File Writes',
@@ -144,7 +144,7 @@ function buildAISubmenu() {
     click: (menuItem) => {
       _configStore.setAgentDiffGate(menuItem.checked);
       createMenu();
-    }
+    },
   });
   submenu.push({
     label: 'Disable Model Thinking (vLLM)',
@@ -153,19 +153,19 @@ function buildAISubmenu() {
     click: (menuItem) => {
       _configStore.setOpenAIDisableThinking(menuItem.checked);
       createMenu();
-    }
+    },
   });
   submenu.push({
     label: 'Set Max Output Tokens…',
-    click: () => setMaxOutputTokens()
+    click: () => setMaxOutputTokens(),
   });
   submenu.push({
     label: 'Set Ollama Context Size…',
-    click: () => setOllamaContextSize()
+    click: () => setOllamaContextSize(),
   });
   submenu.push({
     label: 'Set Embeddings Model…',
-    click: () => setEmbedModel()
+    click: () => setEmbedModel(),
   });
 
   return submenu;
@@ -175,7 +175,7 @@ async function setEmbedModel() {
   const current = _configStore.getOpenAIEmbedModel();
   const raw = await promptString(
     `Embedding model name on the OpenAI-compatible endpoint, used for /index and /rag when Ollama's nomic-embed-text is not available (current: ${current}):`,
-    current
+    current,
   );
   if (raw == null || raw.trim() === '') return;
   _configStore.setOpenAIEmbedModel(raw.trim());
@@ -186,7 +186,7 @@ async function setOllamaContextSize() {
   const current = _configStore.getOllamaNumCtx();
   const raw = await promptString(
     `Ollama context window (num_ctx) in tokens (current: ${current}).\nCapped by the model's own maximum. Larger values use more RAM:`,
-    String(current)
+    String(current),
   );
   if (raw == null || raw === '') return;
   const n = parseInt(raw, 10);
@@ -207,7 +207,7 @@ async function setMaxOutputTokens() {
   const current = _configStore.getOpenAIMaxTokens();
   const raw = await promptString(
     `Max output tokens per response for OpenAI-compatible endpoints (current: ${current}):`,
-    String(current)
+    String(current),
   );
   if (raw == null || raw === '') return;
   const n = parseInt(raw, 10);
@@ -243,26 +243,26 @@ function notifyAIProviderChanged(payload) {
   _bus.sendToTerminal('ai-provider-changed', payload);
 }
 
-  async function promptString(message, defaultValue, { hidden = false } = {}) {
-    return new Promise((resolve) => {
-      const channel = `prompt-string-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      const parent = _bus?.getMainWindow?.() || null;
-      const win = new BrowserWindow({
-        width: 460,
-        height: 190,
-        parent,
-        modal: !!parent,
-        resizable: false,
-        minimizable: false,
-        maximizable: false,
-        title: app.getName(),
-        webPreferences: {
-          nodeIntegration: true,
-          contextIsolation: false
-        }
-      });
+async function promptString(message, defaultValue, { hidden = false } = {}) {
+  return new Promise((resolve) => {
+    const channel = `prompt-string-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const parent = _bus?.getMainWindow?.() || null;
+    const win = new BrowserWindow({
+      width: 460,
+      height: 190,
+      parent,
+      modal: !!parent,
+      resizable: false,
+      minimizable: false,
+      maximizable: false,
+      title: app.getName(),
+      webPreferences: {
+        nodeIntegration: true,
+        contextIsolation: false,
+      },
+    });
 
-      const html = `<!doctype html>
+    const html = `<!doctype html>
   <html>
     <head>
       <meta charset="utf-8">
@@ -296,28 +296,28 @@ function notifyAIProviderChanged(payload) {
     </body>
   </html>`;
 
-      let settled = false;
-      const cleanup = (value) => {
-        if (settled) return;
-        settled = true;
-        ipcMain.removeAllListeners(channel);
-        if (!win.isDestroyed()) win.close();
-        resolve(typeof value === 'string' ? value.trim() : null);
-      };
+    let settled = false;
+    const cleanup = (value) => {
+      if (settled) return;
+      settled = true;
+      ipcMain.removeAllListeners(channel);
+      if (!win.isDestroyed()) win.close();
+      resolve(typeof value === 'string' ? value.trim() : null);
+    };
 
-      ipcMain.once(channel, (_event, value) => cleanup(value));
-      win.on('closed', () => cleanup(null));
-      win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
-    });
-  }
+    ipcMain.once(channel, (_event, value) => cleanup(value));
+    win.on('closed', () => cleanup(null));
+    win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+  });
+}
 
-  function escapeHtml(value) {
-    return String(value)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 async function confirmDialog(message, detail) {
@@ -328,7 +328,7 @@ async function confirmDialog(message, detail) {
     defaultId: 0,
     cancelId: 0,
     message,
-    detail: detail || ''
+    detail: detail || '',
   });
   return r.response === 1;
 }
@@ -339,37 +339,33 @@ async function confirmDialog(message, detail) {
 // contextLength prompt accepts an empty string to mean "use 32k default".
 async function promptEndpoint(defaults) {
   const d = defaults || {};
-  const name = await promptString(
-    'Endpoint name (e.g. "MLX Qwen3-Coder"):',
-    d.name || ''
-  );
+  const name = await promptString('Endpoint name (e.g. "MLX Qwen3-Coder"):', d.name || '');
   if (name === null) return null;
 
   const baseUrl = await promptString(
     'Base URL (e.g. http://127.0.0.1:8000/v1):',
-    d.baseUrl || _configStore.getOpenAIBaseUrl()
+    d.baseUrl || _configStore.getOpenAIBaseUrl(),
   );
   if (baseUrl === null) return null;
 
   const apiKey = await promptString(
     'API key (use "dummy" for local servers like mlx_lm.server):',
     d.apiKey || _configStore.getOpenAIApiKey(),
-    { hidden: true }
+    { hidden: true },
   );
   if (apiKey === null) return null;
 
   const model = await promptString(
     'Model id (e.g. mlx-community/Qwen3-Coder-Next-4bit):',
-    d.model || ''
+    d.model || '',
   );
   if (model === null) return null;
 
-  const ctxDefault = typeof d.contextLength === 'number' && d.contextLength > 0
-    ? String(d.contextLength)
-    : '';
+  const ctxDefault =
+    typeof d.contextLength === 'number' && d.contextLength > 0 ? String(d.contextLength) : '';
   const ctxRaw = await promptString(
     'Context length in tokens (optional, e.g. 262144; leave empty for 32768 default):',
-    ctxDefault
+    ctxDefault,
   );
   if (ctxRaw === null) return null;
   const ctxNum = parseInt(String(ctxRaw).replace(/[_,\s]/g, ''), 10);
@@ -380,7 +376,7 @@ async function promptEndpoint(defaults) {
     baseUrl,
     apiKey,
     model,
-    contextLength
+    contextLength,
   };
 }
 
@@ -412,7 +408,7 @@ async function removeActiveOpenAIEndpoint() {
   if (!current) return;
   const ok = await confirmDialog(
     `Remove endpoint "${current.name}"?`,
-    'This only removes the entry from the AI menu. The remote server is not affected.'
+    'This only removes the entry from the AI menu. The remote server is not affected.',
   );
   if (!ok) return;
   _configStore.removeOpenAIEndpoint(_configStore.getActiveOpenAIEndpointIndex());
@@ -423,7 +419,7 @@ async function removeActiveOpenAIEndpoint() {
   createMenu();
   const payload = {
     provider: _configStore.getAIProvider(),
-    model: _configStore.getActiveModel()
+    model: _configStore.getActiveModel(),
   };
   notifyAIProviderChanged(payload);
 }
@@ -437,7 +433,7 @@ async function testAIConnection() {
     type: result.ok ? 'info' : 'error',
     title: 'AI Connection Test',
     message: result.ok ? 'Connection successful' : 'Connection failed',
-    detail: `Provider: ${cfg.provider}\n${result.message}`
+    detail: `Provider: ${cfg.provider}\n${result.message}`,
   });
 }
 
@@ -491,7 +487,7 @@ function buildBucketsSubmenu() {
       label: bucket.name,
       type: 'radio',
       checked: index === activeIndex,
-      click: () => switchBucket(index)
+      click: () => switchBucket(index),
     });
   });
 
@@ -502,7 +498,7 @@ function buildBucketsSubmenu() {
 
   submenu.push({
     label: 'Add Bucket...',
-    click: () => addBucket()
+    click: () => addBucket(),
   });
 
   if (buckets.length > 0) {
@@ -511,8 +507,8 @@ function buildBucketsSubmenu() {
       label: 'Remove Bucket',
       submenu: buckets.map((bucket, index) => ({
         label: `${bucket.name}...`,
-        click: () => removeBucket(index)
-      }))
+        click: () => removeBucket(index),
+      })),
     });
   }
 
@@ -550,8 +546,8 @@ function createMenu() {
         { role: 'hideOthers' },
         { role: 'unhide' },
         { type: 'separator' },
-        { role: 'quit' }
-      ]
+        { role: 'quit' },
+      ],
     },
     {
       label: 'File',
@@ -561,35 +557,35 @@ function createMenu() {
           accelerator: 'CmdOrCtrl+T',
           click: () => {
             _bus.send('new-tab');
-          }
+          },
         },
         {
           label: 'New Window',
           accelerator: 'CmdOrCtrl+Shift+N',
-          click: () => _actions.createNewEditorWindow()
+          click: () => _actions.createNewEditorWindow(),
         },
         {
           label: 'New File',
           accelerator: 'CmdOrCtrl+N',
-          click: () => _actions.newFile()
+          click: () => _actions.newFile(),
         },
         {
           label: 'New Presentation',
           accelerator: 'CmdOrCtrl+Alt+N',
-          click: () => _actions.newPresentation()
+          click: () => _actions.newPresentation(),
         },
         {
           label: 'New Folder',
           accelerator: 'CmdOrCtrl+Alt+Shift+N',
           click: () => {
             _bus.send('new-folder');
-          }
+          },
         },
         { type: 'separator' },
         {
           label: 'Open File...',
           accelerator: 'CmdOrCtrl+O',
-          click: () => _actions.openFile()
+          click: () => _actions.openFile(),
         },
         { type: 'separator' },
         {
@@ -597,31 +593,31 @@ function createMenu() {
           accelerator: 'CmdOrCtrl+W',
           click: () => {
             _bus.send('close-tab');
-          }
+          },
         },
         {
           label: 'Close Other Tabs',
           accelerator: 'CmdOrCtrl+Alt+W',
           click: () => {
             _bus.send('close-other-tabs');
-          }
+          },
         },
         { type: 'separator' },
         {
           label: 'Save',
           accelerator: 'CmdOrCtrl+S',
-          click: () => _actions.saveFile()
+          click: () => _actions.saveFile(),
         },
         {
           label: 'Save As...',
           accelerator: 'CmdOrCtrl+Shift+S',
-          click: () => _actions.saveFileAs()
+          click: () => _actions.saveFileAs(),
         },
         { type: 'separator' },
         {
           label: 'Export to PDF...',
           accelerator: 'CmdOrCtrl+Shift+E',
-          click: () => _actions.exportToPDF()
+          click: () => _actions.exportToPDF(),
         },
         { type: 'separator' },
         {
@@ -632,9 +628,9 @@ function createMenu() {
             _state.autoSaveEnabled = menuItem.checked;
             _configStore.setAutoSaveEnabled(_state.autoSaveEnabled);
             _bus.send('auto-save-changed', _state.autoSaveEnabled);
-          }
-        }
-      ]
+          },
+        },
+      ],
     },
     {
       label: 'Edit',
@@ -652,23 +648,23 @@ function createMenu() {
           accelerator: 'CmdOrCtrl+F',
           click: () => {
             _bus.send('find-in-file');
-          }
+          },
         },
         {
           label: 'Find and Replace',
           accelerator: 'CmdOrCtrl+Alt+F',
           click: () => {
             _bus.send('find-and-replace');
-          }
+          },
         },
         {
           label: 'Search in Files',
           accelerator: 'CmdOrCtrl+Shift+F',
           click: () => {
             _bus.send('toggle-search');
-          }
-        }
-      ]
+          },
+        },
+      ],
     },
     {
       label: 'Format',
@@ -676,93 +672,93 @@ function createMenu() {
         {
           label: 'Bold',
           accelerator: 'CmdOrCtrl+B',
-          click: () => _actions.sendFormatCommand('bold')
+          click: () => _actions.sendFormatCommand('bold'),
         },
         {
           label: 'Italic',
           accelerator: 'CmdOrCtrl+I',
-          click: () => _actions.sendFormatCommand('italic')
+          click: () => _actions.sendFormatCommand('italic'),
         },
         {
           // No accelerator: CmdOrCtrl+J belongs to Toggle Terminal — a
           // duplicate here hijacked Ctrl+J on Windows/Linux. Inline code is
           // still Cmd/Ctrl+` via the editor keymap.
           label: 'Code',
-          click: () => _actions.sendFormatCommand('code')
+          click: () => _actions.sendFormatCommand('code'),
         },
         {
           label: 'Code Block',
           accelerator: 'CmdOrCtrl+M',
-          click: () => _actions.sendFormatCommand('codeBlock')
+          click: () => _actions.sendFormatCommand('codeBlock'),
         },
         {
           label: 'Link',
           accelerator: 'CmdOrCtrl+K',
-          click: () => _actions.sendFormatCommand('link')
+          click: () => _actions.sendFormatCommand('link'),
         },
         {
           label: 'Insert Table',
-          click: () => _actions.sendFormatCommand('table')
+          click: () => _actions.sendFormatCommand('table'),
         },
         {
           label: 'Format Table',
           accelerator: 'CmdOrCtrl+Shift+T',
-          click: () => _actions.sendFormatCommand('formatTable')
+          click: () => _actions.sendFormatCommand('formatTable'),
         },
         {
           label: 'Toggle Todo',
-          click: () => _actions.sendFormatCommand('todo')
+          click: () => _actions.sendFormatCommand('todo'),
         },
         { type: 'separator' },
         {
           label: 'Heading 1',
           accelerator: 'CmdOrCtrl+Shift+1',
-          click: () => _actions.sendFormatCommand('h1')
+          click: () => _actions.sendFormatCommand('h1'),
         },
         {
           label: 'Heading 2',
           accelerator: 'CmdOrCtrl+Shift+2',
-          click: () => _actions.sendFormatCommand('h2')
+          click: () => _actions.sendFormatCommand('h2'),
         },
         {
           label: 'Heading 3',
           accelerator: 'CmdOrCtrl+Shift+3',
-          click: () => _actions.sendFormatCommand('h3')
+          click: () => _actions.sendFormatCommand('h3'),
         },
         { type: 'separator' },
         {
           label: 'Bullet List',
           accelerator: 'CmdOrCtrl+Shift+8',
-          click: () => _actions.sendFormatCommand('bullet')
+          click: () => _actions.sendFormatCommand('bullet'),
         },
         {
           label: 'Numbered List',
           accelerator: 'CmdOrCtrl+Shift+9',
-          click: () => _actions.sendFormatCommand('numbered')
+          click: () => _actions.sendFormatCommand('numbered'),
         },
         {
           label: 'Quote',
           accelerator: "CmdOrCtrl+'",
-          click: () => _actions.sendFormatCommand('quote')
+          click: () => _actions.sendFormatCommand('quote'),
         },
         {
           label: 'Horizontal Rule',
           accelerator: 'CmdOrCtrl+-',
-          click: () => _actions.sendFormatCommand('hr')
+          click: () => _actions.sendFormatCommand('hr'),
         },
         { type: 'separator' },
         {
           label: 'Insert Slide',
           accelerator: 'CmdOrCtrl+Enter',
-          click: () => _actions.sendFormatCommand('slide')
+          click: () => _actions.sendFormatCommand('slide'),
         },
         { type: 'separator' },
         {
           label: 'Insert Date Heading',
           accelerator: 'CmdOrCtrl+Shift+D',
-          click: () => _actions.sendFormatCommand('dateHeading')
-        }
-      ]
+          click: () => _actions.sendFormatCommand('dateHeading'),
+        },
+      ],
     },
     {
       label: 'View',
@@ -772,7 +768,7 @@ function createMenu() {
           accelerator: 'CmdOrCtrl+.',
           click: () => {
             _bus.send('show-command-palette');
-          }
+          },
         },
         { type: 'separator' },
         {
@@ -780,55 +776,55 @@ function createMenu() {
           accelerator: 'CmdOrCtrl+P',
           click: () => {
             _bus.send('toggle-preview');
-          }
+          },
         },
         {
           label: 'Toggle Outline',
           accelerator: 'CmdOrCtrl+Shift+O',
           click: () => {
             _bus.send('toggle-outline');
-          }
+          },
         },
         {
           label: 'Toggle Right Outline',
           accelerator: 'CmdOrCtrl+Alt+O',
           click: () => {
             _bus.send('toggle-right-outline');
-          }
+          },
         },
         {
           label: 'Wiki Graph',
           accelerator: 'CmdOrCtrl+Shift+G',
           click: () => {
             _bus.send('toggle-wiki-graph');
-          }
+          },
         },
         {
           label: 'Toggle Files',
           accelerator: 'CmdOrCtrl+E',
           click: () => {
             _bus.send('toggle-files');
-          }
+          },
         },
         {
           label: 'Refresh File Tree',
           accelerator: 'CmdOrCtrl+Shift+R',
           click: () => {
             _bus.send('refresh-file-tree');
-          }
+          },
         },
         {
           label: 'Toggle Tags',
           accelerator: 'CmdOrCtrl+Shift+H',
           click: () => {
             _bus.send('toggle-tags');
-          }
+          },
         },
         {
           label: 'Toggle Todos',
           click: () => {
             _bus.send('toggle-todos');
-          }
+          },
         },
         {
           label: 'Show Images Folder',
@@ -838,7 +834,7 @@ function createMenu() {
             _configStore.setShowImagesFolder(!_configStore.getShowImagesFolder());
             createMenu();
             _bus.send('refresh-file-tree');
-          }
+          },
         },
         { type: 'separator' },
         {
@@ -849,7 +845,7 @@ function createMenu() {
             _configStore.setFileSortOrder('name');
             createMenu();
             _bus.send('sort-order-changed', 'name');
-          }
+          },
         },
         {
           label: 'Sort by Modified Date',
@@ -859,14 +855,14 @@ function createMenu() {
             _configStore.setFileSortOrder('modified');
             createMenu();
             _bus.send('sort-order-changed', 'modified');
-          }
+          },
         },
         {
           label: 'Toggle Word Wrap',
           accelerator: 'Alt+Z',
           click: () => {
             _bus.send('toggle-word-wrap');
-          }
+          },
         },
         { type: 'separator' },
         {
@@ -876,21 +872,21 @@ function createMenu() {
               label: 'Straight (Linear)',
               type: 'radio',
               checked: _configStore.getMermaidCurve() === 'linear',
-              click: () => setMermaidCurve('linear')
+              click: () => setMermaidCurve('linear'),
             },
             {
               label: 'Right Angles (Step)',
               type: 'radio',
               checked: _configStore.getMermaidCurve() === 'stepBefore',
-              click: () => setMermaidCurve('stepBefore')
+              click: () => setMermaidCurve('stepBefore'),
             },
             {
               label: 'Curved (Basis)',
               type: 'radio',
               checked: _configStore.getMermaidCurve() === 'basis',
-              click: () => setMermaidCurve('basis')
-            }
-          ]
+              click: () => setMermaidCurve('basis'),
+            },
+          ],
         },
         {
           label: 'Font Size',
@@ -899,39 +895,39 @@ function createMenu() {
               label: '11px (Compact)',
               type: 'radio',
               checked: _configStore.getFontSize() === 11,
-              click: () => setFontSize(11)
+              click: () => setFontSize(11),
             },
             {
               label: '12px (Dense)',
               type: 'radio',
               checked: _configStore.getFontSize() === 12,
-              click: () => setFontSize(12)
+              click: () => setFontSize(12),
             },
             {
               label: '13px (Small)',
               type: 'radio',
               checked: _configStore.getFontSize() === 13,
-              click: () => setFontSize(13)
+              click: () => setFontSize(13),
             },
             {
               label: '14px (Default)',
               type: 'radio',
               checked: _configStore.getFontSize() === 14,
-              click: () => setFontSize(14)
+              click: () => setFontSize(14),
             },
             {
               label: '16px (Large)',
               type: 'radio',
               checked: _configStore.getFontSize() === 16,
-              click: () => setFontSize(16)
+              click: () => setFontSize(16),
             },
             {
               label: '18px (Extra Large)',
               type: 'radio',
               checked: _configStore.getFontSize() === 18,
-              click: () => setFontSize(18)
-            }
-          ]
+              click: () => setFontSize(18),
+            },
+          ],
         },
         { type: 'separator' },
         {
@@ -939,7 +935,7 @@ function createMenu() {
           accelerator: 'CmdOrCtrl+L',
           click: () => {
             _bus.send('toggle-line-numbers');
-          }
+          },
         },
         { type: 'separator' },
         {
@@ -947,7 +943,7 @@ function createMenu() {
           accelerator: 'CmdOrCtrl+`',
           click: () => {
             _bus.send('toggle-shell-terminal');
-          }
+          },
         },
         { type: 'separator' },
         {
@@ -955,21 +951,21 @@ function createMenu() {
           accelerator: 'CmdOrCtrl+Shift+]',
           click: () => {
             _bus.send('next-tab');
-          }
+          },
         },
         {
           label: 'Previous Tab',
           accelerator: 'CmdOrCtrl+Shift+[',
           click: () => {
             _bus.send('prev-tab');
-          }
+          },
         },
         {
           label: 'Toggle Sidebar Focus',
           accelerator: 'CmdOrCtrl+1',
           click: () => {
             _bus.send('toggle-pane-focus');
-          }
+          },
         },
         {
           label: 'Go to...',
@@ -979,24 +975,24 @@ function createMenu() {
               accelerator: 'CmdOrCtrl+Up',
               click: () => {
                 _bus.send('navigate-parent');
-              }
+              },
             },
             { type: 'separator' },
-            ...[2,3,4,5,6,7,8].map(n => ({
+            ...[2, 3, 4, 5, 6, 7, 8].map((n) => ({
               label: `Tab ${n - 1}`,
               accelerator: `CmdOrCtrl+${n}`,
               click: () => {
                 _bus.send('go-to-tab', n - 1);
-              }
+              },
             })),
             {
               label: 'Last Tab',
               accelerator: 'CmdOrCtrl+9',
               click: () => {
                 _bus.send('go-to-tab', 9);
-              }
-            }
-          ]
+              },
+            },
+          ],
         },
         { type: 'separator' },
         { role: 'reload' },
@@ -1006,8 +1002,8 @@ function createMenu() {
         { role: 'zoomIn' },
         { role: 'zoomOut' },
         { type: 'separator' },
-        { role: 'togglefullscreen' }
-      ]
+        { role: 'togglefullscreen' },
+      ],
     },
     {
       label: 'Presentation',
@@ -1015,20 +1011,20 @@ function createMenu() {
         {
           label: 'Start Presentation',
           accelerator: 'CmdOrCtrl+Shift+P',
-          click: () => _actions.startPresentation()
+          click: () => _actions.startPresentation(),
         },
         {
           label: 'Start with Presenter View',
           accelerator: 'CmdOrCtrl+Alt+P',
-          click: () => _actions.startPresentationWithPresenter()
+          click: () => _actions.startPresentationWithPresenter(),
         },
         { type: 'separator' },
         {
           label: 'End Presentation',
           accelerator: 'Escape',
-          click: () => _actions.endPresentation()
-        }
-      ]
+          click: () => _actions.endPresentation(),
+        },
+      ],
     },
     {
       label: 'Theme',
@@ -1040,25 +1036,20 @@ function createMenu() {
         { label: 'Tokyo Night', click: () => _actions.setTheme('tokyo-night') },
         { label: 'Tokyo Night Light', click: () => _actions.setTheme('tokyo-night-light') },
         { label: 'Solarized Dark', click: () => _actions.setTheme('solarized') },
-        { label: 'CherryTree', click: () => _actions.setTheme('cherrytree') }
-      ]
+        { label: 'CherryTree', click: () => _actions.setTheme('cherrytree') },
+      ],
     },
     {
       label: 'Buckets',
-      submenu: buildBucketsSubmenu()
+      submenu: buildBucketsSubmenu(),
     },
     {
       label: 'AI',
-      submenu: buildAISubmenu()
+      submenu: buildAISubmenu(),
     },
     {
       label: 'Window',
-      submenu: [
-        { role: 'minimize' },
-        { role: 'zoom' },
-        { type: 'separator' },
-        { role: 'front' }
-      ]
+      submenu: [{ role: 'minimize' }, { role: 'zoom' }, { type: 'separator' }, { role: 'front' }],
     },
     {
       label: 'Help',
@@ -1075,22 +1066,22 @@ function createMenu() {
             } catch (err) {
               _actions.showDocumentation('# Documentation\n\nManual not found.');
             }
-          }
+          },
         },
         {
           label: 'Keyboard Shortcuts',
           accelerator: 'CmdOrCtrl+/',
           click: () => {
             _bus.send('show-shortcuts');
-          }
+          },
         },
         { type: 'separator' },
         {
           label: 'Vomit on GitHub',
-          click: () => _actions.showHelp()
-        }
-      ]
-    }
+          click: () => _actions.showHelp(),
+        },
+      ],
+    },
   ];
 
   const builtMenu = Menu.buildFromTemplate(template);

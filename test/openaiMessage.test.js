@@ -14,18 +14,18 @@ test('images become image_url content parts with data URIs', () => {
     role: 'user',
     content: 'OCR this',
     images: ['aGk=', 'Ynll'],
-    imageMimes: ['image/png', 'image/jpeg']
+    imageMimes: ['image/png', 'image/jpeg'],
   });
   assert.strictEqual(out.role, 'user');
   assert.ok(Array.isArray(out.content));
   assert.deepStrictEqual(out.content[0], { type: 'text', text: 'OCR this' });
   assert.deepStrictEqual(out.content[1], {
     type: 'image_url',
-    image_url: { url: 'data:image/png;base64,aGk=' }
+    image_url: { url: 'data:image/png;base64,aGk=' },
   });
   assert.deepStrictEqual(out.content[2], {
     type: 'image_url',
-    image_url: { url: 'data:image/jpeg;base64,Ynll' }
+    image_url: { url: 'data:image/jpeg;base64,Ynll' },
   });
 });
 

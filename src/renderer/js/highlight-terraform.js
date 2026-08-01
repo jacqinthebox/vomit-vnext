@@ -6,39 +6,54 @@
   function terraform(hljs) {
     const KEYWORDS = {
       keyword: [
-        'resource', 'data', 'variable', 'output', 'locals', 'module',
-        'provider', 'terraform', 'backend', 'provisioner', 'connection',
-        'dynamic', 'import', 'moved', 'check', 'removed',
-        'for', 'in', 'if'
+        'resource',
+        'data',
+        'variable',
+        'output',
+        'locals',
+        'module',
+        'provider',
+        'terraform',
+        'backend',
+        'provisioner',
+        'connection',
+        'dynamic',
+        'import',
+        'moved',
+        'check',
+        'removed',
+        'for',
+        'in',
+        'if',
       ],
       literal: ['true', 'false', 'null'],
-      type: ['string', 'number', 'bool', 'list', 'map', 'set', 'object', 'tuple', 'any']
+      type: ['string', 'number', 'bool', 'list', 'map', 'set', 'object', 'tuple', 'any'],
     };
 
     const INTERPOLATION = {
       className: 'subst',
       begin: /\$\{/,
       end: /\}/,
-      keywords: KEYWORDS
+      keywords: KEYWORDS,
     };
 
     const QUOTED_STRING = {
       className: 'string',
       begin: /"/,
       end: /"/,
-      contains: [hljs.BACKSLASH_ESCAPE, INTERPOLATION]
+      contains: [hljs.BACKSLASH_ESCAPE, INTERPOLATION],
     };
 
     const HEREDOC = hljs.END_SAME_AS_BEGIN({
       className: 'string',
       begin: /<<-?(\w+)\n/,
       end: /^\s*(\w+)\s*$/,
-      contains: [INTERPOLATION]
+      contains: [INTERPOLATION],
     });
 
     const ATTRIBUTE = {
       className: 'attr',
-      begin: /[A-Za-z_][\w-]*(?=\s*=(?!=))/
+      begin: /[A-Za-z_][\w-]*(?=\s*=(?!=))/,
     };
 
     return {
@@ -52,8 +67,8 @@
         QUOTED_STRING,
         HEREDOC,
         hljs.C_NUMBER_MODE,
-        ATTRIBUTE
-      ]
+        ATTRIBUTE,
+      ],
     };
   }
 

@@ -21,9 +21,15 @@ class SettingsManager {
     this._getTabManager = getTabManager;
   }
 
-  get previewManager() { return this._getPreviewManager(); }
-  get searchManager() { return this._getSearchManager(); }
-  get tabManager() { return this._getTabManager(); }
+  get previewManager() {
+    return this._getPreviewManager();
+  }
+  get searchManager() {
+    return this._getSearchManager();
+  }
+  get tabManager() {
+    return this._getTabManager();
+  }
 
   toggleLineNumbers() {
     const current = this.host.cm.getOption('lineNumbers');
@@ -162,22 +168,26 @@ class SettingsManager {
 
   setupKeyboardNavigation() {
     // Ctrl+W, Ctrl+Tab, or Ctrl+Esc to toggle focus between editor and sidebar
-    document.addEventListener('keydown', (e) => {
-      if (e.ctrlKey && (e.key === 'w' || e.key === 'Tab' || e.key === 'Escape')) {
-        e.preventDefault();
-        e.stopPropagation();
-        this.searchManager.togglePaneFocus();
-      }
-
-      // Cmd/Ctrl+\ toggles focus between editor and preview in split view.
-      if ((e.metaKey || e.ctrlKey) && e.key === '\\') {
-        e.preventDefault();
-        e.stopPropagation();
-        if (this.previewManager) {
-          this.previewManager.toggleEditorPreviewFocus();
+    document.addEventListener(
+      'keydown',
+      (e) => {
+        if (e.ctrlKey && (e.key === 'w' || e.key === 'Tab' || e.key === 'Escape')) {
+          e.preventDefault();
+          e.stopPropagation();
+          this.searchManager.togglePaneFocus();
         }
-      }
-    }, true);  // capture phase
+
+        // Cmd/Ctrl+\ toggles focus between editor and preview in split view.
+        if ((e.metaKey || e.ctrlKey) && e.key === '\\') {
+          e.preventDefault();
+          e.stopPropagation();
+          if (this.previewManager) {
+            this.previewManager.toggleEditorPreviewFocus();
+          }
+        }
+      },
+      true,
+    ); // capture phase
 
     // Cmd+1 from menu
     window.addEventListener('vomit:toggle-pane-focus', () => {

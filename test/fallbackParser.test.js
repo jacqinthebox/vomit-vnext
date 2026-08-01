@@ -13,14 +13,16 @@ test('parses a bare JSON tool call object', () => {
 });
 
 test('parses a tool call wrapped in prose', () => {
-  const content = 'I will list the files now.\n{"name": "list_files", "parameters": {"path": "."}}\nLet me know.';
+  const content =
+    'I will list the files now.\n{"name": "list_files", "parameters": {"path": "."}}\nLet me know.';
   const calls = parseFallbackToolCalls(content, TOOL_NAMES);
   assert.strictEqual(calls.length, 1);
   assert.strictEqual(calls[0].function.name, 'list_files');
 });
 
 test('parses tool calls inside json fences', () => {
-  const content = 'Here is my call:\n```json\n{"name": "read_file", "arguments": {"path": "notes.md"}}\n```';
+  const content =
+    'Here is my call:\n```json\n{"name": "read_file", "arguments": {"path": "notes.md"}}\n```';
   const calls = parseFallbackToolCalls(content, TOOL_NAMES);
   assert.strictEqual(calls.length, 1);
   assert.strictEqual(calls[0].function.name, 'read_file');
@@ -28,10 +30,14 @@ test('parses tool calls inside json fences', () => {
 });
 
 test('parses an array of tool calls', () => {
-  const content = '[{"name": "bash", "parameters": {"command": "pwd"}}, {"name": "list_files", "parameters": {"path": "src"}}]';
+  const content =
+    '[{"name": "bash", "parameters": {"command": "pwd"}}, {"name": "list_files", "parameters": {"path": "src"}}]';
   const calls = parseFallbackToolCalls(content, TOOL_NAMES);
   assert.strictEqual(calls.length, 2);
-  assert.deepStrictEqual(calls.map((c) => c.function.name), ['bash', 'list_files']);
+  assert.deepStrictEqual(
+    calls.map((c) => c.function.name),
+    ['bash', 'list_files'],
+  );
 });
 
 test('ignores JSON with unknown tool names', () => {
@@ -53,13 +59,15 @@ test('handles braces inside string arguments', () => {
 });
 
 test('does not greedily swallow multiple separate objects', () => {
-  const content = '{"name": "bash", "parameters": {"command": "pwd"}} and then {"name": "list_files", "parameters": {"path": "."}}';
+  const content =
+    '{"name": "bash", "parameters": {"command": "pwd"}} and then {"name": "list_files", "parameters": {"path": "."}}';
   const calls = parseFallbackToolCalls(content, TOOL_NAMES);
   assert.strictEqual(calls.length, 2);
 });
 
 test('nested parameters objects survive parsing', () => {
-  const content = '{"name": "search_files", "parameters": {"pattern": "TODO", "path": "src", "file_glob": "*.js"}}';
+  const content =
+    '{"name": "search_files", "parameters": {"pattern": "TODO", "path": "src", "file_glob": "*.js"}}';
   const calls = parseFallbackToolCalls(content, TOOL_NAMES);
   assert.strictEqual(calls.length, 1);
   assert.strictEqual(calls[0].function.arguments.file_glob, '*.js');

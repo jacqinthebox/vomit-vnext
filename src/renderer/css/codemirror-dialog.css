@@ -45,8 +45,8 @@
 
 /* Search match highlighting */
 .CodeMirror-searching {
-  background: #eed49f !important;  /* Yellow */
-  color: #24273a !important;       /* Dark text */
+  background: #eed49f !important; /* Yellow */
+  color: #24273a !important; /* Dark text */
 }
 
 .cm-matchhighlight {

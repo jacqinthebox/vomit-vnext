@@ -40,7 +40,7 @@ function registerHandlers(ipcMain, { state, bus, terminalService }) {
       cols: 120,
       rows: 30,
       cwd: workingDir,
-      env: { ...process.env, TERM: 'xterm-256color' }
+      env: { ...process.env, TERM: 'xterm-256color' },
     });
 
     state.shellProcess.onData((data) => {

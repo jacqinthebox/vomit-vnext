@@ -23,12 +23,20 @@ function walkMarkdown(bucketRoot) {
   const found = [];
   const walk = (dir) => {
     let items;
-    try { items = fs.readdirSync(dir); } catch { return; }
+    try {
+      items = fs.readdirSync(dir);
+    } catch {
+      return;
+    }
     for (const item of items) {
       if (item.startsWith('.') || SKIPPED_DIRS.has(item)) continue;
       const fullPath = path.join(dir, item);
       let stat;
-      try { stat = fs.statSync(fullPath); } catch { continue; }
+      try {
+        stat = fs.statSync(fullPath);
+      } catch {
+        continue;
+      }
       if (stat.isDirectory()) {
         walk(fullPath);
       } else if (item.toLowerCase().endsWith('.md')) {
@@ -55,7 +63,7 @@ function stampType(content, defaultType = 'Note') {
   const insertAt = content.indexOf('\n') + 1; // right after the opening ---
   return {
     content: content.slice(0, insertAt) + `type: ${defaultType}\n` + content.slice(insertAt),
-    stamped: true
+    stamped: true,
   };
 }
 
@@ -78,7 +86,7 @@ function makeResolver(bucketRoot, files) {
     if (rows.length === 1) return rows[0];
     if (rows.length > 1) {
       const sourceDir = path.dirname(sourcePath);
-      const same = rows.find(r => path.dirname(r) === sourceDir);
+      const same = rows.find((r) => path.dirname(r) === sourceDir);
       if (same) return same;
       return [...rows].sort((a, b) => a.length - b.length)[0];
     }
@@ -110,8 +118,13 @@ function rewriteWikilinks(content, bucketRoot, filePath, resolve) {
       return whole;
     }
     // Percent-encode only what breaks markdown link syntax.
-    const rel = '/' + path.relative(bucketRoot, abs).split(path.sep).join('/')
-      .replace(/[ ()]/g, (c) => ({ ' ': '%20', '(': '%28', ')': '%29' }[c]));
+    const rel =
+      '/' +
+      path
+        .relative(bucketRoot, abs)
+        .split(path.sep)
+        .join('/')
+        .replace(/[ ()]/g, (c) => ({ ' ': '%20', '(': '%28', ')': '%29' })[c]);
     const label = (alias && alias.trim()) || name || heading || '';
     const suffix = heading ? `#${heading}` : '';
     rewritten++;
@@ -157,8 +170,8 @@ async function exportBucket(bucketRoot, outputPath = null) {
     fs.writeFileSync(dest, content);
   }
 
-  const out = outputPath
-    || path.join(os.homedir(), 'Downloads', `${path.basename(bucketRoot)}-okf.tar.gz`);
+  const out =
+    outputPath || path.join(os.homedir(), 'Downloads', `${path.basename(bucketRoot)}-okf.tar.gz`);
   fs.mkdirSync(path.dirname(out), { recursive: true });
 
   // tar ships with macOS, Linux, and Windows 10+.
