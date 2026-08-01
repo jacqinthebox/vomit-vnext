@@ -213,14 +213,9 @@ When the picker is closed, `↑`/`↓` navigate command history (persisted acros
 | `/help` | Show all available commands |
 | `/new` | Start a new conversation (clear history) |
 | `/doc <prompt>` | Include current document in prompt |
-| `/write <prompt>` | Insert AI response at cursor |
-| `/write-new <prompt>` | Create new file with AI response |
-| `/write-replace <prompt>` | Replace selection with AI response |
-| `/write-append <prompt>` | Research the web and append to the current document |
-| `/summarize-folder [subfolder]` | Summarize the current folder and all subfolders into a new doc |
-| `/pseudo` `[--ai]` `[--customer "Name"]` | Pseudonymize current document (fast/offline by default; `--ai` for smart scan) |
+| `/pseudo` `[--ai]` `[--customer "Name[=Replacement]"]` | Pseudonymize current document (fast/offline by default; `--ai` for smart scan) |
 | `/pseudo-selection` `[--ai]` | Pseudonymize selected editor text, result printed in terminal |
-| `/pseudo-repo` `[folder]` `[--all]` `[--ai]` `[--customer "Name"]` | Pseudonymize repos/folders in the bucket (`--all` = every folder, not just git repos) |
+| `/pseudo-repo` `[folder]` `[--all]` `[--ai]` `[--customer "Name[=Replacement]"]` | Pseudonymize repos/folders in the bucket (`--all` = every folder, not just git repos) |
 | `/pseudo-map` | Show current entity mapping |
 | `/pseudo-restore` `[repo-name]` | Restore original data (a pseudo repo if named, else the current document) |
 | `--customer "Name"` (flag) | Force a customer/company/person name into the mapping; repeatable, case-insensitive, works offline. Use `--customer "Name=Replacement"` to choose the replacement (e.g. `Lidl=GroceryShop`) |
@@ -229,9 +224,10 @@ When the picker is closed, `↑`/`↓` navigate command history (persisted acros
 | `/reindex` | Clear and rebuild current bucket's RAG index |
 | `/rag <query>` | Search current bucket index and ask AI with context |
 | `/presentation <topic>` | Generate a presentation on the topic |
-| `/agent <prompt>` | Agentic mode with tools (bash, file read/write, web search) |
 
-**Web search:** Set a [Tavily](https://tavily.com) API key via **AI menu → Set Tavily API Key...** to enable real-time web search in `/agent` mode.
+**Web search:** Set a [Tavily](https://tavily.com) API key via **AI menu → Set Tavily API Key...** — tool-capable commands like `/doc` and `/rag` can call web search when the model needs current information.
+
+**Default mode:** plain text (no slash) in the Vomit AI terminal runs the agent with the open document and current folder as context. Multi-step *code* work is a better fit for the **Pi tab** (pi.dev coding-agent harness).
 
 ---
 

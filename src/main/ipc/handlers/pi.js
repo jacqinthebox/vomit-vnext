@@ -65,12 +65,100 @@ function resolvePiPath() {
   }
 }
 
+// --- Vomit awareness -------------------------------------------------------
+// Pi learns which doc/folder is open in Vomit through two pieces:
+//   1. A context file (~/.config/vomit/pi-context.json) that the renderer
+//      refreshes on every tab switch, file open and bucket change.
+//   2. A pi extension (~/.pi/agent/extensions/vomit-context.ts, installed on
+//      spawn) that reads the context file on each prompt and injects the
+//      current doc/folder into the conversation. Reading per-prompt is what
+//      makes the context live — no respawn needed when the user switches tabs.
+
+const CONTEXT_FILE = path.join(os.homedir(), '.config', 'vomit', 'pi-context.json');
+const EXTENSION_FILE = path.join(os.homedir(), '.pi', 'agent', 'extensions', 'vomit-context.ts');
+
+const EXTENSION_SOURCE = `// Installed by Vomit (${'do not edit — overwritten on every Pi start in Vomit'}).
+// Injects the doc/folder currently open in the Vomit editor into each prompt.
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+
+const CONTEXT_FILE = path.join(os.homedir(), ".config", "vomit", "pi-context.json");
+const STALE_MS = 12 * 60 * 60 * 1000; // ignore leftovers from a long-dead session
+
+export default function (pi: any) {
+  pi.on("before_agent_start", async () => {
+    let ctx: any;
+    try {
+      if (Date.now() - fs.statSync(CONTEXT_FILE).mtimeMs > STALE_MS) return;
+      ctx = JSON.parse(fs.readFileSync(CONTEXT_FILE, "utf-8"));
+    } catch {
+      return; // Vomit not running or no context yet — stay silent
+    }
+    if (!ctx || (!ctx.currentFilePath && !ctx.projectRoot && !ctx.currentDirectory)) return;
+
+    // "The open folder" as the user thinks of it: the file-tree selection when
+    // it points below the workspace root, else the open doc's folder, else root.
+    const treeSelection =
+      ctx.currentDirectory && ctx.currentDirectory !== ctx.projectRoot ? ctx.currentDirectory : null;
+    const openFolder = treeSelection || ctx.basePath || ctx.projectRoot || ctx.currentDirectory;
+
+    const lines = ["Live context from the Vomit editor this session runs inside:"];
+    if (ctx.currentFilePath) lines.push("- Currently open document: " + ctx.currentFilePath);
+    else lines.push("- No document is open right now.");
+    if (openFolder) lines.push("- Currently open folder: " + openFolder);
+    if (ctx.projectRoot && openFolder !== ctx.projectRoot)
+      lines.push("- Workspace (bucket) root: " + ctx.projectRoot);
+    lines.push(
+      'When the user refers to "this doc"/"this file" or "this folder", they mean the ones above — ' +
+      "answer from these lines directly. " +
+      "This context changes when they switch tabs or folders, so trust this message over earlier ones. " +
+      "Read the document from disk when its content is needed."
+    );
+
+    return {
+      message: {
+        customType: "vomit-context",
+        content: lines.join("\\n"),
+        display: false,
+      },
+    };
+  });
+}
+`;
+
+// Written every spawn so app updates propagate; cheap enough to not bother diffing.
+function installExtension() {
+  try {
+    fs.mkdirSync(path.dirname(EXTENSION_FILE), { recursive: true });
+    fs.writeFileSync(EXTENSION_FILE, EXTENSION_SOURCE, 'utf-8');
+  } catch { /* pi still works, just without vomit awareness */ }
+}
+
+function writeContext(ctx) {
+  try {
+    fs.mkdirSync(path.dirname(CONTEXT_FILE), { recursive: true });
+    fs.writeFileSync(CONTEXT_FILE, JSON.stringify({
+      currentFilePath: ctx?.currentFilePath ?? null,
+      basePath: ctx?.basePath ?? null,
+      projectRoot: ctx?.projectRoot ?? null,
+      currentDirectory: ctx?.currentDirectory ?? null,
+      updatedAt: new Date().toISOString()
+    }, null, 2), 'utf-8');
+  } catch { /* non-fatal — pi just sees the previous context */ }
+}
+
 /**
  * Register pi terminal IPC handlers.
  * @param {import('electron').IpcMain} ipcMain
  * @param {{ state: import('../../services/sessionState').SessionState, bus: import('../rendererBus').RendererBus, terminalService: any }} deps
  */
 function registerHandlers(ipcMain, { state, bus, terminalService }) {
+  // Renderer pushes fresh context on tab switch / file open / bucket change.
+  ipcMain.on('pi-context-update', (event, ctx) => {
+    writeContext(ctx);
+  });
+
   // Detection — the renderer calls this before spawning so it can show an
   // install hint instead of a failed spawn when pi isn't on the machine.
   ipcMain.handle('pi-check', async () => {
@@ -89,6 +177,8 @@ function registerHandlers(ipcMain, { state, bus, terminalService }) {
     }
 
     const workingDir = cwd || os.homedir();
+
+    installExtension();
 
     // Pi installs as an npm shim. On Windows that shim is `pi.cmd`, a batch
     // file — CreateProcess (what node-pty uses) can't execute .cmd/.bat

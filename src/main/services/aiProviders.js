@@ -38,7 +38,8 @@ function getActiveProviderConfig(configStore) {
       baseUrl: configStore.getOpenAIBaseUrl(),
       apiKey: configStore.getOpenAIApiKey(),
       model: configStore.getOpenAIModel() || '',
-      maxTokens: configStore.getOpenAIMaxTokens()
+      maxTokens: configStore.getOpenAIMaxTokens(),
+      disableThinking: configStore.getOpenAIDisableThinking()
     };
   }
   return {
@@ -330,7 +331,7 @@ function streamOllamaChat({ baseUrl, model, messages, tools, onContent, isAborte
   });
 }
 
-function streamOpenAIChat({ baseUrl, apiKey, model, messages, tools, onContent, isAborted, onRequest, timeoutMs, maxTokens }) {
+function streamOpenAIChat({ baseUrl, apiKey, model, messages, tools, onContent, isAborted, onRequest, timeoutMs, maxTokens, disableThinking }) {
   return new Promise((resolve, reject) => {
     const startedAt = Date.now();
     let firstTokenAt = null;
@@ -362,6 +363,10 @@ function streamOpenAIChat({ baseUrl, apiKey, model, messages, tools, onContent, 
       stream_options: { include_usage: true }
     };
     if (tools && tools.length) payload.tools = tools;
+    // vLLM forwards chat_template_kwargs into the Jinja chat template — the
+    // reliable per-request off-switch for Qwen3-style thinking. Opt-in via
+    // AI menu; llama.cpp-based servers (Ollama, LM Studio) don't honour it.
+    if (disableThinking) payload.chat_template_kwargs = { enable_thinking: false };
 
     const body = JSON.stringify(payload);
     const headers = {

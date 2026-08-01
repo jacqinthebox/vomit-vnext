@@ -136,6 +136,7 @@ function registerHandlers(ipcMain, { state, bus, configStore, terminalService, p
         apiKey: cfg.apiKey,
         model: cfg.model,
         maxTokens: cfg.maxTokens,
+        disableThinking: cfg.disableThinking,
         numCtx,
         messages: state.chatHistory,
         onContent: (chunk, isReasoning) => {

@@ -52,13 +52,8 @@ class TerminalManager {
     // Inline command picker state
     this.pickerState = { active: false, items: [], selectedIndex: 0, blockEl: null };
 
-    // Write mode state (for streaming to editor)
-    this.writeMode = null; // null, 'cursor', 'new', 'replace', 'append'
-    this.writeBuffer = '';
-    this.writeNewPath = null; // disk path for /write-new, so we can persist on finish
-
     // When set, the next terminal Enter is captured as a free-text answer
-    // (e.g. the filename prompt for /write-new) instead of a command.
+    // (e.g. an agent permission prompt) instead of a command.
     this._pendingInputResolver = null;
     // Id of the agent permission prompt this window is currently showing.
     this._activePermissionId = null;
@@ -85,11 +80,6 @@ class TerminalManager {
 
       if (this.state.pseudoCollecting) {
         this.state.pseudoOutput += cleanOutput;
-      } else if (this.writeMode) {
-        // In write mode, stream to editor AND show in terminal
-        this.writeBuffer += cleanOutput;
-        this.streamToEditor(cleanOutput);
-        this.appendTerminalOutput(output, 'output');
       } else {
         this.appendTerminalOutput(output, 'output');
       }
@@ -109,13 +99,9 @@ class TerminalManager {
       this.state.isClaudeRunning = false;
       this.terminalStop.classList.add('hidden');
 
-      if (this.writeMode) {
-        this.finalizeWriteMode(e.detail === -1);
-      } else {
-        this.markOutputComplete();
-        if (e.detail === -1) {
-          this.appendTerminalOutput('Stopped.', 'system');
-        }
+      this.markOutputComplete();
+      if (e.detail === -1) {
+        this.appendTerminalOutput('Stopped.', 'system');
       }
     });
 
@@ -646,6 +632,7 @@ class TerminalManager {
       }
 
       const cwd = this.state.projectRoot || this.state.currentDirectory;
+      this._syncPiContext();
       const result = await window.vomit.piSpawn(cwd);
       if (!result || !result.ok) {
         if (this.piXterm) {
@@ -1001,20 +988,41 @@ class TerminalManager {
       }
     }
 
-    // Plain text or unrecognized slash command — route to agent mode (has tools + history)
+    // Plain text or unrecognized slash command — the terminal's default mode:
+    // agent execution (tools + shared history) with the open document and
+    // current folder as context.
     const cwd = this.state.projectRoot || this.state.currentDirectory;
     if (!cwd) {
       this.appendTerminalOutput('Error: No project folder open. Add or select a bucket from the Buckets menu first.', 'error');
       return;
     }
-
-    await this.executeAgentCommand(command, cwd);
+    await this.executeDefaultCommand(command, cwd);
   }
 
-  async executeDocCommand(prompt, cwd) {
+  // "Current folder" as the user thinks of it: the file-tree selection when it
+  // points below the bucket root, else the open doc's folder, else the bucket.
+  _currentFolderForContext(cwd) {
+    if (this.state.currentDirectory && this.state.currentDirectory !== this.state.projectRoot) {
+      return this.state.currentDirectory;
+    }
+    return this.state.basePath || cwd;
+  }
+
+  // Default mode for plain typed text: agent with tools, primed with the open
+  // document and the current folder so "this doc" / "this folder" just work.
+  async executeDefaultCommand(prompt, cwd) {
+    this.appendTerminalOutput(`❯ ${prompt}`, 'input');
+
+    const parts = [`Current folder: ${this._currentFolderForContext(cwd)}`];
     const docContent = this.host.getContent();
-    const finalCommand = `Here is the document I'm working on:\n\n---\n${docContent}\n---\n\nUser request: ${prompt}`;
-    this.appendTerminalOutput(`❯ ${prompt} (with document context)`, 'input');
+    if (docContent.trim()) {
+      const docLabel = this.state.currentFilePath
+        ? ` (${window.PathUtils.basename(this.state.currentFilePath)})`
+        : '';
+      parts.push(`Here is the document currently open in the editor${docLabel}:\n---\n${docContent}\n---`);
+    }
+    const finalCommand = `${parts.join('\n\n')}\n\nUser request: ${prompt}`;
+
     this.state.isClaudeRunning = true;
     this.terminalStop.classList.remove('hidden');
     this.showThinkingIndicator();
@@ -1029,35 +1037,16 @@ class TerminalManager {
     }
   }
 
-  async executeAgentCommand(prompt, cwd) {
-    this.appendTerminalOutput(`❯ /agent ${prompt}`, 'input');
-    this.appendTerminalOutput('Running in agent mode with tools...', 'system');
-
+  async executeDocCommand(prompt, cwd) {
+    const docContent = this.host.getContent();
+    const finalCommand = `Here is the document I'm working on:\n\n---\n${docContent}\n---\n\nUser request: ${prompt}`;
+    this.appendTerminalOutput(`❯ ${prompt} (with document context)`, 'input');
     this.state.isClaudeRunning = true;
     this.terminalStop.classList.remove('hidden');
     this.showThinkingIndicator();
 
     try {
-      await window.vomit.agentExecute(prompt, cwd);
-    } catch (err) {
-      this.hideThinkingIndicator();
-      this.appendTerminalOutput(`Error: ${err.message}`, 'error');
-      this.state.isClaudeRunning = false;
-      this.terminalStop.classList.add('hidden');
-    }
-  }
-
-  // /chat — same conversation history as agent mode, but no tool schemas in
-  // the request, so prompt eval (time to first token) is much faster.
-  async executeChatCommand(prompt, cwd) {
-    this.appendTerminalOutput(`❯ /chat ${prompt}`, 'input');
-
-    this.state.isClaudeRunning = true;
-    this.terminalStop.classList.remove('hidden');
-    this.showThinkingIndicator();
-
-    try {
-      await window.vomit.agentExecute(prompt, cwd, { noTools: true });
+      await window.vomit.agentExecute(finalCommand, cwd);
     } catch (err) {
       this.hideThinkingIndicator();
       this.appendTerminalOutput(`Error: ${err.message}`, 'error');
@@ -1176,7 +1165,7 @@ Now create the presentation about: ${topic}`;
     if (!id) return;
     if (this.state.isTerminalDetached) return;
     if (this._pendingInputResolver) {
-      // Another prompt (e.g. /write-new filename) is already waiting — deny
+      // Another prompt is already waiting — deny
       // rather than clobbering its resolver.
       window.vomit.agentPermissionResponse(id, 'n');
       return;
@@ -1218,605 +1207,6 @@ Now create the presentation about: ${topic}`;
     if (this._pendingInputResolver) {
       this._pendingInputResolver = null;
       this.appendTerminalOutput('(permission prompt answered elsewhere)', 'system');
-    }
-  }
-
-  // Turn a user-typed document name into a unique .md path inside baseDir,
-  // never clobbering an existing file (adds -1, -2, … if needed).
-  async resolveNewDocPath(baseDir, name) {
-    let fname = name.replace(/[\\/:*?"<>|]/g, '').trim();
-    if (!fname) return null;
-    if (!/\.md$/i.test(fname)) fname += '.md';
-
-    const stem = fname.replace(/\.md$/i, '');
-    let candidate = window.PathUtils.join(baseDir, fname);
-    let n = 1;
-    while (await this._pathExists(candidate)) {
-      candidate = window.PathUtils.join(baseDir, `${stem}-${n}.md`);
-      n++;
-    }
-    return candidate;
-  }
-
-  async _pathExists(filePath) {
-    try {
-      await window.vomit.readFile(filePath);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
-  // Metadata frontmatter for a new doc — mirrors the file-tree "new file"
-  // template so /write-new docs are consistent with manually-created ones.
-  _buildFrontmatter(filePath, baseDir) {
-    const d = new Date();
-    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    const title = window.PathUtils.basename(filePath)
-      .replace(/\.(md|markdown)$/i, '')
-      .replace(/[-_]/g, ' ');
-    const folder = window.PathUtils.basename(baseDir);
-    return `---\ntype: Note\ntitle: ${title}\nfolder: ${folder}\ncreated: ${today}\nmodified: ${today}\ndraft: true\ntags: []\n---\n\n`;
-  }
-
-  async executeWriteCommand(prompt, mode, cwd) {
-    const modeLabels = {
-      cursor: 'insert at cursor',
-      new: 'create new file',
-      replace: 'replace selection',
-      append: 'append to document'
-    };
-
-    const cmdName = mode === 'new' ? '/write-new' :
-                    mode === 'replace' ? '/write-replace' :
-                    mode === 'append' ? '/write-append' : '/write';
-
-    this.appendTerminalOutput(`❯ ${cmdName} ${prompt}`, 'input');
-    this.appendTerminalOutput(`Writing to editor (${modeLabels[mode]})...`, 'system');
-
-    // For replace mode, check if there's a selection
-    let selectedText = '';
-    if (mode === 'replace') {
-      selectedText = this.host.getSelection();
-      if (!selectedText) {
-        this.appendTerminalOutput('Error: No text selected. Select text first.', 'error');
-        return;
-      }
-    }
-
-    // Set up write mode
-    this.writeMode = mode;
-    this.writeBuffer = '';
-    this.writeStartCursor = null;
-    this.writeNewPath = null;
-
-    // For /write-new, ask for a name up front, create the file on disk, and open
-    // it as a saved tab — so the doc exists before streaming and auto-save
-    // covers the whole write. (window.vomit.newFile() only opens an inline
-    // filename input in the file tree, which left the output in the old doc and
-    // the new doc empty.)
-    if (mode === 'new') {
-      const bucketRoot = this.state.projectRoot || this.state.currentDirectory;
-      const baseDir = this.state.currentFilePath
-        ? window.PathUtils.dirname(this.state.currentFilePath)
-        : bucketRoot;
-
-      if (baseDir && this.tabManager) {
-        const name = await this.askTerminalInput('Name for the new document:');
-        if (!name) {
-          this.appendTerminalOutput('Cancelled.', 'system');
-          this.writeMode = null;
-          return;
-        }
-        const newPath = await this.resolveNewDocPath(baseDir, name);
-        if (!newPath) {
-          this.appendTerminalOutput('Cancelled: invalid name.', 'system');
-          this.writeMode = null;
-          return;
-        }
-        const frontmatter = this._buildFrontmatter(newPath, baseDir);
-        try {
-          await window.vomit.writeFile(newPath, frontmatter);
-        } catch (err) {
-          this.appendTerminalOutput(`Error creating file: ${err.message || err}`, 'error');
-          this.writeMode = null;
-          return;
-        }
-        this.writeNewPath = newPath;
-        this.tabManager.createTab(newPath, frontmatter);
-        this.writeTabId = this.tabManager.activeTabId;
-        this.appendTerminalOutput(`Created ${window.PathUtils.basename(newPath)}`, 'system');
-        // Surface the new file in the tree.
-        if (this.fileTreeManager && this.fileTreeManager.refreshFolder) {
-          this.fileTreeManager.refreshFolder(baseDir);
-        }
-        // /write-new always researches the web for current info, then inserts
-        // the final document body. (Plain model writes can't search and produce
-        // stale content.) This path is self-contained — return when done.
-        await this._runWebWriteNew(prompt, cwd, newPath);
-        return;
-      } else if (this.tabManager) {
-        // No bucket/folder context — fall back to an unsaved tab.
-        this.tabManager.createTab(null, '');
-      } else {
-        window.vomit.newFile();
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
-    }
-
-    // /write-append also researches the web (so additions start from current
-    // info), aware of what's already in the doc. Self-contained — return early.
-    if (mode === 'append') {
-      await this._runWebAppend(prompt, cwd);
-      return;
-    }
-
-    // Pin the write to the tab that's active now. A single CodeMirror instance
-    // is shared across tabs, so without this the stream would follow focus and
-    // land in whichever doc the user switches to mid-write.
-    this.writeTabId = this.tabManager ? this.tabManager.activeTabId : null;
-
-    // Remember cursor position for streaming
-    if (mode === 'cursor' || mode === 'new') {
-      this.writeStartCursor = this.host.getCursor();
-    } else if (mode === 'replace') {
-      // Capture the selection range, then delete it before streaming in.
-      const range = this.host.getSelectionRange();
-      this.writeSelectionStart = range.from;
-      this.writeSelectionEnd = range.to;
-      this.host.replaceSelection('');
-      this.writeStartCursor = this.host.getCursor();
-    } else if (mode === 'append') {
-      // Move cursor to end of document, then add newlines before appending.
-      this.host.setCursorToEnd();
-      this.host.replaceSelection('\n\n');
-      this.writeStartCursor = this.host.getCursor();
-    }
-
-    // Build the prompt with context if needed
-    let finalPrompt = prompt;
-    if (mode === 'replace') {
-      // Use the text captured before deletion (selection is gone now)
-      finalPrompt = `Rewrite/improve the following text based on this instruction: "${prompt}"\n\nOriginal text:\n${selectedText}\n\nProvide ONLY the rewritten text, no explanations.`;
-    } else if (mode !== 'new') {
-      // For cursor/append, provide document context
-      const docContent = this.host.getContent();
-      if (docContent.trim()) {
-        finalPrompt = `Context - current document:\n---\n${docContent}\n---\n\nTask: ${prompt}\n\nProvide ONLY the content to insert, no explanations or markdown code blocks.`;
-      }
-    }
-
-    this.state.isClaudeRunning = true;
-    this.terminalStop.classList.remove('hidden');
-    this.showThinkingIndicator();
-
-    try {
-      await window.vomit.claudeExecute(finalPrompt, cwd);
-    } catch (err) {
-      this.hideThinkingIndicator();
-      this.appendTerminalOutput(`Error: ${err.message}`, 'error');
-      this.writeMode = null;
-      this.state.isClaudeRunning = false;
-      this.terminalStop.classList.add('hidden');
-    }
-  }
-
-  // Research the web via the agent (tools enabled) and insert the resulting
-  // document body into the already-created /write-new doc, then save it. Tool
-  // activity streams to the terminal; only the final body goes into the editor.
-  async _runWebWriteNew(prompt, cwd, newPath) {
-    // Not the live streaming path — agent output goes to the terminal, not the
-    // editor, so keep writeMode off.
-    this.writeMode = null;
-    this.appendTerminalOutput('Researching the web and writing…', 'system');
-    this.state.isClaudeRunning = true;
-    this.terminalStop.classList.remove('hidden');
-    this.showThinkingIndicator();
-
-    let content = '';
-    try {
-      content = await window.vomit.agentExecuteEditor(prompt, cwd);
-    } catch (err) {
-      this.appendTerminalOutput(`Error: ${err.message || err}`, 'error');
-    } finally {
-      this.hideThinkingIndicator();
-      this.state.isClaudeRunning = false;
-      this.terminalStop.classList.add('hidden');
-    }
-
-    content = this.stripMarkdownCodeFence(content || '').trim();
-    if (!content) {
-      this.appendTerminalOutput('No content was generated.', 'system');
-      this.writeNewPath = null;
-      return;
-    }
-
-    // Make sure the new doc is the active tab before inserting.
-    if (this.writeTabId && this.tabManager &&
-        this.tabManager.activeTabId !== this.writeTabId &&
-        this.tabManager.tabs.has(this.writeTabId)) {
-      this.tabManager.switchToTab(this.writeTabId);
-    }
-    this.host.setCursorToEnd();
-    this.host.replaceSelection(content);
-
-    // Tidy any tables the research produced, then persist to disk.
-    window.dispatchEvent(new CustomEvent('vomit:format-tables'));
-    try {
-      await window.vomit.writeFile(newPath, this.host.getContent());
-      this.state.isDirty = false;
-      if (this.tabManager) this.tabManager.markCurrentTabClean();
-      this.appendTerminalOutput(`✓ Written and saved ${window.PathUtils.basename(newPath)}`, 'output');
-    } catch (err) {
-      this.appendTerminalOutput(`Error saving file: ${err.message || err}`, 'error');
-    }
-
-    this.writeNewPath = null;
-    this.writeTabId = null;
-    this.host.focus();
-  }
-
-  // Research the web and append new, doc-aware content to the end of the
-  // current document, then save it (if it has a path).
-  async _runWebAppend(prompt, cwd) {
-    this.writeMode = null;
-
-    const targetTabId = this.tabManager ? this.tabManager.activeTabId : null;
-    const targetPath = this.state.currentFilePath || null;
-    const existing = this.host.getContent();
-
-    // Give the agent the current document so it extends rather than repeats it.
-    const researchPrompt = `Here is the current document:\n---\n${existing}\n---\n\nWrite ONLY the additional Markdown content to append to it, based on this instruction: "${prompt}". Do not repeat existing content, and do not restate the title or frontmatter. Continue naturally from where the document ends.`;
-
-    this.appendTerminalOutput('Researching the web and writing…', 'system');
-    this.state.isClaudeRunning = true;
-    this.terminalStop.classList.remove('hidden');
-    this.showThinkingIndicator();
-
-    let content = '';
-    try {
-      content = await window.vomit.agentExecuteEditor(researchPrompt, cwd);
-    } catch (err) {
-      this.appendTerminalOutput(`Error: ${err.message || err}`, 'error');
-    } finally {
-      this.hideThinkingIndicator();
-      this.state.isClaudeRunning = false;
-      this.terminalStop.classList.add('hidden');
-    }
-
-    content = this.stripMarkdownCodeFence(content || '').trim();
-    if (!content) {
-      this.appendTerminalOutput('No content was generated.', 'system');
-      return;
-    }
-
-    // Append to the doc the command started on.
-    if (targetTabId && this.tabManager &&
-        this.tabManager.activeTabId !== targetTabId &&
-        this.tabManager.tabs.has(targetTabId)) {
-      this.tabManager.switchToTab(targetTabId);
-    }
-    this.host.setCursorToEnd();
-    this.host.replaceSelection(`\n\n${content}`);
-
-    // Tidy tables, then persist if the doc is saved on disk.
-    window.dispatchEvent(new CustomEvent('vomit:format-tables'));
-    if (targetPath) {
-      try {
-        await window.vomit.writeFile(targetPath, this.host.getContent());
-        this.state.isDirty = false;
-        if (this.tabManager) this.tabManager.markCurrentTabClean();
-        this.appendTerminalOutput(`✓ Appended and saved ${window.PathUtils.basename(targetPath)}`, 'output');
-      } catch (err) {
-        this.appendTerminalOutput(`Error saving file: ${err.message || err}`, 'error');
-      }
-    } else {
-      this.appendTerminalOutput('✓ Appended (unsaved — press Cmd+S to save).', 'output');
-    }
-
-    this.host.focus();
-  }
-
-  // Recursively gather markdown/text files under a directory. Hidden folders
-  // are already excluded by getDirectoryContents; a few build dirs are skipped
-  // explicitly. Bounded by depth and count to stay responsive.
-  async _collectTextFiles(dir, acc = [], depth = 0) {
-    const SKIP_DIRS = new Set(['node_modules', 'dist', 'build', 'out', '.git', 'vendor']);
-    if (depth > 8 || acc.length >= 300) return acc;
-    let items = [];
-    try {
-      items = await window.vomit.getDirectoryContents(dir);
-    } catch {
-      return acc;
-    }
-    for (const it of items) {
-      if (acc.length >= 300) break;
-      if (it.isDirectory) continue;
-      const lower = it.name.toLowerCase();
-      if (lower.endsWith('.md') || lower.endsWith('.markdown') || lower.endsWith('.txt')) {
-        acc.push(it);
-      }
-    }
-    for (const it of items) {
-      if (acc.length >= 300) break;
-      if (it.isDirectory && !SKIP_DIRS.has(it.name.toLowerCase())) {
-        await this._collectTextFiles(it.path, acc, depth + 1);
-      }
-    }
-    return acc;
-  }
-
-  // Resolve the folder currently in focus in the explorer tree (mirrors the
-  // file tree's own "create new file" logic): a focused directory → itself, a
-  // focused file → its parent; falling back to the open doc's folder, then root.
-  _resolveCurrentFolder(cwd) {
-    const ftm = this.fileTreeManager;
-    if (ftm && ftm.treeState && ftm.dataModel && ftm.treeState.focusedPath) {
-      const node = ftm.dataModel.getNode(ftm.treeState.focusedPath);
-      if (node) {
-        return node.isDirectory ? node.path : node.parentPath;
-      }
-    }
-    if (this.state.currentFilePath) {
-      return window.PathUtils.dirname(this.state.currentFilePath);
-    }
-    return (ftm && ftm.treeState && ftm.treeState.rootPath) || cwd;
-  }
-
-  // Summarize the current folder (or an optional subfolder) and everything
-  // beneath it into a new saved Markdown document.
-  async summarizeFolder(args, cwd) {
-    const arg = (args || '').trim();
-    this.appendTerminalOutput(`❯ /summarize-folder${arg ? ' ' + arg : ''}`, 'input');
-
-    // Resolve the "current folder" the same way the file tree does, so it
-    // matches what's selected in the sidebar. An explicit arg is treated as a
-    // subfolder of that current folder.
-    const baseFolder = this._resolveCurrentFolder(cwd);
-    const targetDir = arg ? window.PathUtils.join(baseFolder, arg) : baseFolder;
-
-    this.appendTerminalOutput(`Scanning ${targetDir} (including subfolders)…`, 'system');
-    const files = await this._collectTextFiles(targetDir);
-    if (files.length === 0) {
-      this.appendTerminalOutput('No markdown or text files found to summarize.', 'error');
-      return;
-    }
-    this.appendTerminalOutput(`Found ${files.length} file(s). Reading…`, 'system');
-
-    // Read files into a bounded corpus.
-    const PER_FILE = 4000;
-    const TOTAL = 60000;
-    let corpus = '';
-    let included = 0;
-    for (const f of files) {
-      if (corpus.length >= TOTAL) break;
-      let content = '';
-      try {
-        content = await window.vomit.readFile(f.path);
-      } catch {
-        continue;
-      }
-      let snippet = content.length > PER_FILE
-        ? content.slice(0, PER_FILE) + '\n…(truncated)'
-        : content;
-      const rel = window.PathUtils.relativeParts(f.path, targetDir).join('/') || f.name;
-      const block = `\n\n### FILE: ${rel}\n${snippet}`;
-      corpus += block.length > TOTAL - corpus.length
-        ? block.slice(0, TOTAL - corpus.length)
-        : block;
-      included++;
-    }
-    if (included < files.length) {
-      this.appendTerminalOutput(`Note: summarizing ${included} of ${files.length} files (size cap reached).`, 'system');
-    }
-
-    // Create the summary document (frontmatter + saved tab).
-    const folderName = window.PathUtils.basename(targetDir) || 'folder';
-    const newPath = await this.resolveNewDocPath(targetDir, `${folderName}-summary`);
-    if (!newPath || !this.tabManager) {
-      this.appendTerminalOutput('Could not create a summary document here.', 'error');
-      return;
-    }
-    const frontmatter = this._buildFrontmatter(newPath, targetDir);
-    try {
-      await window.vomit.writeFile(newPath, frontmatter);
-    } catch (err) {
-      this.appendTerminalOutput(`Error creating file: ${err.message || err}`, 'error');
-      return;
-    }
-    this.tabManager.createTab(newPath, frontmatter);
-    if (this.fileTreeManager && this.fileTreeManager.refreshFolder) {
-      this.fileTreeManager.refreshFolder(targetDir);
-    }
-
-    const prompt = `You are summarizing a folder of documents named "${folderName}" (including its subfolders). Below are the files with their relative paths and contents.
-
-Produce a clear, well-structured Markdown summary of the whole folder. Include:
-- A short overview of what the folder contains.
-- The main themes and topics across the documents.
-- A breakdown by subfolder or area where useful.
-- Any notable decisions, conclusions, or action items.
-
-Output ONLY the summary in GitHub-Flavored Markdown. Do not wrap it in code fences and do not add YAML frontmatter.
-
-FILES:
-${corpus}`;
-
-    // Stream the summary into the new doc using the write-mode machinery, which
-    // also saves it and tidies tables on completion (mode 'new' + writeNewPath).
-    this.writeMode = 'new';
-    this.writeBuffer = '';
-    this.writeNewPath = newPath;
-    this.writeTabId = this.tabManager.activeTabId;
-    this.host.setCursorToEnd();
-    this.writeStartCursor = this.host.getCursor();
-
-    this.appendTerminalOutput(`Summarizing into ${window.PathUtils.basename(newPath)}…`, 'system');
-    this.state.isClaudeRunning = true;
-    this.terminalStop.classList.remove('hidden');
-    this.showThinkingIndicator();
-    try {
-      await window.vomit.claudeExecute(prompt, cwd);
-    } catch (err) {
-      this.hideThinkingIndicator();
-      this.appendTerminalOutput(`Error: ${err.message}`, 'error');
-      this.writeMode = null;
-      this.writeNewPath = null;
-      this.state.isClaudeRunning = false;
-      this.terminalStop.classList.add('hidden');
-    }
-  }
-
-  streamToEditor(text) {
-    if (!this.writeMode) return;
-
-    // Keep the stream pinned to the tab the command started on. If the user
-    // switched tabs mid-write, snap back so the content lands in the intended
-    // doc rather than the now-focused one.
-    if (this.writeTabId && this.tabManager &&
-        this.tabManager.activeTabId !== this.writeTabId) {
-      if (!this.tabManager.tabs.has(this.writeTabId)) {
-        // Target tab was closed — abort the write rather than corrupt another doc.
-        this.writeMode = null;
-        this.appendTerminalOutput('Write cancelled: target document was closed.', 'error');
-        return;
-      }
-      this.tabManager.switchToTab(this.writeTabId);
-      // Continue inserting where the stream left off in the target doc.
-      if (this.writeStartCursor) {
-        this.host.setCursor(this.writeStartCursor);
-      }
-    }
-
-    // Insert the new text at current cursor position
-    this.host.replaceSelection(text);
-
-    // Track the cursor so a later snap-back resumes at the right spot.
-    this.writeStartCursor = this.host.getCursor();
-  }
-
-  finalizeWriteMode(wasStopped) {
-    if (!this.writeMode) return;
-
-    const mode = this.writeMode;
-    this.writeMode = null;
-
-    // Mark terminal output as complete
-    this.markOutputComplete();
-
-    if (wasStopped) {
-      this.appendTerminalOutput('Stopped.', 'system');
-    } else {
-      const modeLabels = {
-        cursor: 'inserted at cursor',
-        new: 'written to new file',
-        replace: 'replaced selection',
-        append: 'appended to document'
-      };
-      this.appendTerminalOutput(`✓ Content ${modeLabels[mode]}`, 'output');
-      // Tidy up any tables the AI produced.
-      window.dispatchEvent(new CustomEvent('vomit:format-tables'));
-    }
-
-    // For /write-new, persist the streamed content to the file we created so the
-    // doc is saved even when auto-save is off.
-    if (mode === 'new' && this.writeNewPath) {
-      const path = this.writeNewPath;
-      const isActiveDoc = this.tabManager && this.tabManager.activeTabId &&
-        this.tabManager.tabs.get(this.tabManager.activeTabId)?.filePath === path;
-      window.vomit.writeFile(path, this.host.getContent())
-        .then(() => {
-          if (isActiveDoc) {
-            this.state.isDirty = false;
-            this.tabManager.markCurrentTabClean();
-          }
-          this.appendTerminalOutput(`Saved ${window.PathUtils.basename(path)}`, 'system');
-        })
-        .catch((err) => {
-          this.appendTerminalOutput(`Error saving file: ${err.message || err}`, 'error');
-        });
-    }
-
-    this.writeBuffer = '';
-    this.writeStartCursor = null;
-    this.writeTabId = null;
-    this.writeNewPath = null;
-
-    // Focus the editor
-    this.host.focus();
-  }
-
-  stripMarkdownCodeFence(text) {
-    const trimmed = (text || '').trim();
-    const match = trimmed.match(/^```(?:markdown|md)?\s*\n([\s\S]*?)\n```$/i);
-    return match ? match[1].trim() : trimmed;
-  }
-
-  async formatToMarkdown(instruction, cwd) {
-    const extraInstruction = (instruction || '').trim();
-    const cmdLine = extraInstruction ? `/format-to-md ${extraInstruction}` : '/format-to-md';
-    this.appendTerminalOutput(`❯ ${cmdLine}`, 'input');
-    this.appendTerminalOutput('Formatting pasted Word text as Markdown...', 'system');
-
-    const hasSelection = this.host.somethingSelected();
-    const originalText = hasSelection ? this.host.getSelection() : this.host.getContent();
-
-    if (!originalText.trim()) {
-      this.appendTerminalOutput(
-        hasSelection ? 'Error: Selected text is empty.' : 'Error: Document is empty.',
-        'error'
-      );
-      return;
-    }
-
-    const range = hasSelection ? this.host.getSelectionRange() : null;
-    const selectionFrom = range ? range.from : null;
-    const selectionTo = range ? range.to : null;
-    const finalPrompt = `Convert the following content pasted from Microsoft Word into clean Markdown.
-
-Rules:
-- Preserve the original meaning, structure, headings, lists, links, and tables where possible.
-- Remove Word-specific artifacts, strange spacing, redundant blank lines, page headers/footers, and decorative formatting.
-- Use standard Markdown only.
-- Do not summarize or add new content.
-- Return ONLY the Markdown content, with no explanations and no fenced code block.
-${extraInstruction ? `- Additional instruction: ${extraInstruction}\n` : ''}
-Content:
----
-${originalText}
----`;
-
-    this.state.isClaudeRunning = true;
-    this.terminalStop.classList.remove('hidden');
-    this.showThinkingIndicator();
-    this.state.pseudoOutput = '';
-    this.state.pseudoCollecting = true;
-
-    try {
-      await window.vomit.claudeExecute(finalPrompt, cwd);
-      await this.waitForAIComplete();
-
-      const formatted = this.stripMarkdownCodeFence(this.state.pseudoOutput);
-      if (!formatted.trim()) {
-        this.appendTerminalOutput('Error: AI returned empty Markdown.', 'error');
-        return;
-      }
-
-      if (hasSelection) {
-        this.host.replaceRange(formatted, selectionFrom, selectionTo);
-        this.appendTerminalOutput('✓ Selection formatted as Markdown', 'output');
-      } else {
-        this.host.setContent(formatted);
-        this.appendTerminalOutput('✓ Document formatted as Markdown', 'output');
-      }
-      this.host.focus();
-      this.markOutputComplete();
-    } catch (err) {
-      this.state.pseudoCollecting = false;
-      this.hideThinkingIndicator();
-      this.appendTerminalOutput(`Error: ${err.message}`, 'error');
-      this.state.isClaudeRunning = false;
-      this.terminalStop.classList.add('hidden');
     }
   }
 
@@ -3720,7 +3110,7 @@ Provide a helpful, accurate answer based on the context above. Cite the source d
     // Pass the renderer's file/project context — main's SessionState doesn't
     // track projectRoot/currentDirectory, so the detached terminal would
     // otherwise not know which doc/folder is open and slash-commands like
-    // /doc or /agent would fail the "No project folder open" guard.
+    // /doc or /rag would fail the "No project folder open" guard.
     window.vomit.detachTerminal({
       terminalHTML: terminalOutputHTML,
       currentFilePath: this.state.currentFilePath,
@@ -3742,8 +3132,23 @@ Provide a helpful, accurate answer based on the context above. Cite the source d
     });
   }
 
+  // Keep pi's context file fresh so its vomit-context extension injects the
+  // doc/folder that is open right now, not the one open at spawn time. Runs
+  // unconditionally (unlike the detached sync) — pi may be spawned later.
+  _syncPiContext() {
+    window.vomit.piContextUpdate({
+      currentFilePath: this.state.currentFilePath,
+      basePath: this.state.basePath,
+      projectRoot: this.state.projectRoot,
+      currentDirectory: this.state.currentDirectory
+    });
+  }
+
   _setupDetachedContextSync() {
-    const sync = () => this._syncDetachedContext();
+    const sync = () => {
+      this._syncDetachedContext();
+      this._syncPiContext();
+    };
     this.state.addEventListener('change:currentFilePath', sync);
     this.state.addEventListener('change:basePath', sync);
     this.state.addEventListener('change:projectRoot', sync);

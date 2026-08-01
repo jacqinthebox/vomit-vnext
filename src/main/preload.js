@@ -371,7 +371,6 @@ contextBridge.exposeInMainWorld('vomit', {
   getFontSize: () => ipcRenderer.invoke('get-font-size'),
   // Agent mode with tool calling
   agentExecute: (prompt, cwd, opts) => ipcRenderer.invoke('agent-execute', prompt, cwd, opts),
-  agentExecuteEditor: (prompt, cwd) => ipcRenderer.invoke('agent-execute-editor', prompt, cwd),
   agentClearHistory: () => ipcRenderer.invoke('agent-clear-history'),
   agentPermissionResponse: (id, answer) => ipcRenderer.invoke('agent-permission-response', { id, answer }),
   // Git awareness
@@ -423,6 +422,7 @@ contextBridge.exposeInMainWorld('vomit', {
   piWrite: (data) => ipcRenderer.send('pi-write', data),
   piResize: (cols, rows) => ipcRenderer.send('pi-resize', cols, rows),
   piStop: () => ipcRenderer.send('pi-stop'),
+  piContextUpdate: (ctx) => ipcRenderer.send('pi-context-update', ctx),
   // Bucket management methods
   getBuckets: () => ipcRenderer.invoke('get-buckets'),
   getActiveBucket: () => ipcRenderer.invoke('get-active-bucket'),

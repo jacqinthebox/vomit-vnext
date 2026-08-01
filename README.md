@@ -231,19 +231,15 @@ All AI processing happens locally — your data never leaves your machine.
 
 Type `/` in the AI terminal to open an inline command picker. Navigate with `↑`/`↓`, press `Enter` to execute (or complete to name + space if the command needs arguments), `Tab` to complete without executing, and `Escape` to close.
 
+**Default mode:** typing plain text (no slash) runs the agent (tools + shared history) primed with the **open document** and the **current folder** — "summarize this doc" or "what's in this folder" just work. The current folder is the file-tree selection when one is set, otherwise the open doc's folder, otherwise the bucket root.
+
 **Special commands:**
 - `/doc <prompt>` - Include the current document in your prompt
-- `/write <prompt>` - Insert AI response at cursor position
-- `/write-new <prompt>` - Prompts for a document name, then **researches the web** (via the agent's Tavily search) and writes a new, web-grounded Markdown file with frontmatter — saved to disk automatically. Requires a tool-capable model and a Tavily API key (see below).
-- `/write-replace <prompt>` - Replace selection with AI response
-- `/summarize-folder [subfolder]` - Reads every Markdown/text file in the current folder (or an optional subfolder) and **all subfolders**, then writes a structured summary into a new `<folder>-summary.md` document
-- `/format-to-md [instruction]` - Convert selected text, or the whole document, from pasted Word-style formatting to clean Markdown
-- `/write-append <prompt>` - **Researches the web** and adds new, document-aware content at the end of the current doc (saving it if it's on disk). Like `/write-new`, it needs a tool-capable model and a Tavily API key.
 - `/presentation <topic>` - Generate a presentation with slides and speaker notes
 - **Pseudonymization** — commands are named by *scope*, and the engine defaults to a fast offline scan (add `--ai` for the smarter AI-assisted pass):
-- `/pseudo` `[--ai]` `[--customer "Name"]` - Pseudonymize the **current document**. Fast/offline by default; `--ai` uses the AI to also catch prose entities like names and companies.
+- `/pseudo` `[--ai]` `[--customer "Name[=Replacement]"]` - Pseudonymize the **current document**. Fast/offline by default; `--ai` uses the AI to also catch prose entities like names and companies.
 - `/pseudo-selection` `[--ai]` - Pseudonymize the **selected editor text** (or whole document if nothing is selected) and print the result inline in the terminal to copy — nothing is written to disk.
-- `/pseudo-repo` `[folder]` `[--all]` `[--ai]` `[--customer "Name"]` - Pseudonymize **repos/folders in the bucket** into `pseudo/<name>/` with a git baseline. With no folder it auto-detects top-level git repos; add `--all` to process **every** top-level folder (git or not); name a `folder` to target just one. Handles Terraform/IaC, Azure DevOps, Python/.NET config, Kubernetes, Docker, and common secrets while preserving structural API fields and Helm template syntax. `--ai` adds a hybrid AI pass for prose docs, HLDs, and legal/advisory text.
+- `/pseudo-repo` `[folder]` `[--all]` `[--ai]` `[--customer "Name[=Replacement]"]` - Pseudonymize **repos/folders in the bucket** into `pseudo/<name>/` with a git baseline. With no folder it auto-detects top-level git repos; add `--all` to process **every** top-level folder (git or not); name a `folder` to target just one. Handles Terraform/IaC, Azure DevOps, Python/.NET config, Kubernetes, Docker, and common secrets while preserving structural API fields and Helm template syntax. `--ai` adds a hybrid AI pass for prose docs, HLDs, and legal/advisory text.
 - `/pseudo-map` - Show the current entity mapping.
 - `/pseudo-restore` `[repo-name]` - Restore original data. Name a pseudo repo folder to reverse it, or omit the argument to restore the current document/selection using the session mapping.
 - **Forcing customer names** - The deterministic scanner only detects *structured* data (emails, IPs, GUIDs, resource fields, domains…), so a bare customer/company/person name in free text isn't caught automatically. Pass one or more `--customer "Name"` (alias `--name`) flags to force those names into the mapping so they are **always** replaced, even offline. To choose the replacement yourself, use `--customer "Name=Replacement"` (e.g. `--customer "Lidl=GroceryShop"`); without `=` an auto `Customer-NNN` token is used. Works on `/pseudo`, `/pseudo-repo` (and legacy aliases). Example: `/pseudo-repo my-repo --customer "Acme Corp=Globex" --customer Contoso`. Customer names are matched **case-insensitively** with word boundaries (e.g. `lidl`, `LIDL` and `Lidl.` all match; `Lidlish` is left intact).
@@ -254,18 +250,16 @@ Type `/` in the AI terminal to open an inline command picker. Navigate with `↑
 - `/reindex` - Clear and rebuild the current bucket's RAG index
 - `/rag <query>` - Search the current bucket index and ask AI with context
 - `/okf export` - Export the current bucket as an OKF bundle tar.gz (see OKF interoperability below)
-- `/agent <prompt>` - Agentic mode with tools (bash, file read/write/edit, project search, PDF text extraction, URL fetch, web search)
-- `/chat <prompt>` - Ask the AI directly, without tools. The request skips the tool schemas, so the model starts answering much sooner — ideal for plain questions on slow local backends. Shares conversation history with agent mode, so you can mix `/chat` and `/agent` turns freely.
 - `/new` - Start a new conversation (clear history)
 - `/help` - Show all available commands
 
 **Web search with Tavily:**
 
-The `/agent`, `/write-new`, and `/write-append` commands support real-time web search via [Tavily](https://tavily.com). Set your API key once via **AI menu → Set Tavily API Key...**. When you ask the agent to search the web (e.g. `/agent search for the latest news on...`), it will automatically call the Tavily search tool and include current results in its response. `/write-new` always searches the web before writing so new documents start from current information; the research activity is shown in the terminal while only the final document is written to the editor.
+Tool-capable commands (`/doc`, `/rag`) support real-time web search via [Tavily](https://tavily.com) — the model calls the search tool when it needs current information. Set your API key once via **AI menu → Set Tavily API Key...**.
 
-The agent can also read PDF documents directly. Ask `/agent summarize ./path/to/document.pdf` and Vomit extracts the PDF text internally, without requiring `pdftotext` or another system PDF utility.
+The agent loop behind `/doc` and `/rag` can also read PDF documents directly — mention a path like `./path/to/document.pdf` in your prompt and Vomit extracts the PDF text internally, without requiring `pdftotext` or another system PDF utility. (Free-form agent and chat work moved to the **Pi tab** — see the Pi terminal section below.)
 
-**Vision (multimodal models):** with a vision-capable model selected — via Ollama (llava, gemma, qwen-vl, …) or an OpenAI-compatible endpoint such as MLX-VLM/oMLX (gemma-4, …) — the agent can see images you reference. This makes OCR possible: ask `/agent transcribe the text in ./shot.png`. Mention an image path in your prompt (`what's in ./shot.png?`) or use `/doc` on a document containing image links — referenced images (up to 4) are downscaled to 1024px and attached to the request automatically; you'll see `(attached 1 image: shot.png)` in the terminal. Ollama receives raw base64 in the message's `images` array, while OpenAI-compatible providers receive `image_url` data-URI content parts. Remote URLs are not fetched. Text-only models will return an error if you attach images to them.
+**Vision (multimodal models):** with a vision-capable model selected — via Ollama (llava, gemma, qwen-vl, …) or an OpenAI-compatible endpoint such as MLX-VLM/oMLX (gemma-4, …) — the agent can see images you reference. This makes OCR possible: mention an image path in your prompt (`what's in ./shot.png?`) or use `/doc` on a document containing image links — referenced images (up to 4) are downscaled to 1024px and attached to the request automatically; you'll see `(attached 1 image: shot.png)` in the terminal. Ollama receives raw base64 in the message's `images` array, while OpenAI-compatible providers receive `image_url` data-URI content parts. Remote URLs are not fetched. Text-only models will return an error if you attach images to them.
 
 **Ollama context window:** Ollama serves every model with a 4096-token window by default, no matter what the model supports. Vomit requests a larger window (default 16384, capped by the model's own maximum) so long documents and images fit. Adjust via **AI menu → Set Ollama Context Size…** — larger values use more RAM. The context bar reflects the effective window.
 
@@ -296,6 +290,8 @@ Answer `y` to allow once, `n` (or Escape) to deny — the model is told and adju
 
 For OpenAI-compatible endpoints you can also raise the response length cap via **AI menu → Set Max Output Tokens…** (default 4096).
 
+**Disable model thinking (vLLM):** reasoning models like Qwen3 can burn their whole output budget on chain-of-thought. **AI menu → Disable Model Thinking (vLLM)** sends `chat_template_kwargs: {"enable_thinking": false}` with each request — vLLM forwards it into the chat template, reliably switching thinking off per request. Off by default; llama.cpp-based servers (Ollama, LM Studio) don't support this parameter, and strict OpenAI-compatible servers may reject it.
+
 **RAG (Retrieval Augmented Generation):**
 
 RAG allows the AI to answer questions using documents from the current bucket as context. First index the bucket with `/index`, then use `/rag <question>` to query that bucket with relevant context automatically retrieved. The source documents in the results list and the answer's citations are clickable links that open the document in the editor.
@@ -323,7 +319,7 @@ The index is stored in `~/.config/vomit/rag/` to keep your bucket clean. Each bu
 
 **OKF (Open Knowledge Format) interoperability:**
 
-Buckets speak [OKF](https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf) — plain markdown notes with YAML front matter, linked by standard markdown links. OKF requires a single front matter field, `type:`; new notes created in Vomit (file tree or `/write-new`) include `type: Note` by default.
+Buckets speak [OKF](https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf) — plain markdown notes with YAML front matter, linked by standard markdown links. OKF requires a single front matter field, `type:`; new notes created in Vomit's file tree include `type: Note` by default.
 
 - **Consume a bundle** — untar an OKF bundle into a folder, open it as a bucket, `/index`, then `/rag <question>`. Concept links between notes are followed for context, backlinks and the wiki graph work, and citations open the note in the editor. No conversion step.
 - **Publish a bundle** — `/okf export` packs the current bucket as `~/Downloads/<bucket>-okf.tar.gz`: it stamps `type:` where missing and rewrites `[[wikilinks]]` to bucket-root-relative markdown links, so any OKF consumer can ingest it. Source notes are never modified.
@@ -337,12 +333,14 @@ The AI menu shows all your installed Ollama models - just click one to switch.
 
 ### Pi terminal (external agent harness)
 
-The terminal panel has three tabs — **Pi**, **Vomit AI**, and **Shell**. Pi runs [Pi](https://pi.dev), a minimal, provider-agnostic coding-agent harness, in its own PTY started automatically in the current bucket. Pi is a stronger fit than the built-in Vomit AI terminal for multi-step *code* work, while the Vomit AI tab stays best for document-native tasks (`/write*`, `/doc`, `/rag`, pseudonymization) that reach into the open editor.
+The terminal panel has three tabs — **Pi**, **Vomit AI**, and **Shell**. Pi runs [Pi](https://pi.dev), a minimal, provider-agnostic coding-agent harness, in its own PTY started automatically in the current bucket. Pi is a stronger fit than the built-in Vomit AI terminal for multi-step *code* work, while the Vomit AI tab stays best for document-native tasks (`/doc`, `/rag`, `/presentation`, pseudonymization) that reach into the open editor.
 
 `Cmd+J` (**Toggle Terminal**) opens the **Pi** tab when Pi is installed, and falls back to the **Vomit AI** tab when it isn't — so you're never dropped onto an install-hint screen. Either way all three tabs are one click apart.
 
 - **Install:** `npm i -g @earendil-works/pi-coding-agent`. If `pi` isn't found, the tab shows the install command instead of failing.
 - The Pi session is independent of the Shell tab; both stay alive concurrently and are cleaned up when Vomit quits.
+
+**Vomit-aware context.** Pi automatically knows which document and folder are open in the editor. Ask it "summarize this doc" and it reads the file you're looking at — no path needed. Switch tabs or buckets and the very next prompt reflects the new doc; no restart required. How it works: Vomit keeps `~/.config/vomit/pi-context.json` up to date on every tab switch, file open and bucket change, and installs a small Pi extension (`~/.pi/agent/extensions/vomit-context.ts`, overwritten on each Pi start) that reads that file per prompt and injects the current doc/folder into the conversation. Delete the extension file if you use Pi outside Vomit and don't want editor context injected — Vomit will reinstall it the next time its Pi tab starts a session.
 
 **Point Pi at your local models.** Pi reads its providers from a `models.json` file — create it if it doesn't exist. The file location is the same relative path on every OS:
 

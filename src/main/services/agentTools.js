@@ -2,8 +2,8 @@
 'use strict';
 
 /**
- * Agent tool definitions and execution, shared by both agent loops
- * (agent-execute and agent-execute-editor in src/main/ipc/handlers/agent.js).
+ * Agent tool definitions and execution for the agent loop
+ * (agent-execute in src/main/ipc/handlers/agent.js).
  *
  * This module must stay free of require('electron') so its pure helpers
  * (classifier, truncation, fallback parser, edit matching, history trimming)

@@ -132,6 +132,7 @@ function registerHandlers(ipcMain, { state, bus, configStore, terminalService, p
       apiKey: cfg.apiKey,
       model: cfg.model,
       maxTokens: cfg.maxTokens,
+      disableThinking: cfg.disableThinking,
       numCtx: cfg.numCtx,
       messages,
       tools,
@@ -432,101 +433,6 @@ After using tools, provide a summary of what you did. You have access to convers
       sendOutput('claude-error', `Agent error: ${e.message}\n`);
       sendOutput('claude-done', 1);
       return 1;
-    }
-  });
-
-  // Agent execution that researches the web (and other tools) and returns the
-  // final document content for /write-new. Tool activity streams to the terminal
-  // via 'claude-output'; the resolved value is the clean document body to insert
-  // into the editor. Does NOT touch agent conversation history (one-shot).
-  ipcMain.handle('agent-execute-editor', async (event, prompt, cwd) => {
-    const cfg = aiProviders.getActiveProviderConfig(configStore);
-    if (!ensureProviderReady(cfg)) return '';
-
-    state.agentAborted = false;
-    const workingDir = cwd || process.env.HOME;
-    const today = new Date().toISOString().split('T')[0];
-    const editorContextLimit = await modelInfo.getEffectiveContextLimit(configStore);
-    if (cfg.provider === aiProviders.PROVIDER_OLLAMA) {
-      cfg.numCtx = editorContextLimit;
-    }
-
-    const systemMessage = {
-      role: 'system',
-      content: `You are a research-and-writing assistant with web access. The current working directory is: ${workingDir}. Today's date is ${today}.
-
-ALWAYS use the tavily_search tool to gather the latest, most accurate information BEFORE writing — do not rely on memory, as it may be outdated. Use fetch_url to read a promising source in full.
-
-After researching, output ONLY the final document body in GitHub-Flavored Markdown. Do NOT include a preamble, a description of your steps, or a summary of what you did. Do NOT wrap the document in code fences. Do NOT add YAML frontmatter (the editor adds it). Use tables, headings, and lists where they improve clarity.`
-    };
-
-    // Cap oversized prompts (e.g. /write-append embeds the current document).
-    const editorPromptBudget = editorContextLimit - estimateTokens([systemMessage]) - 1024;
-    let editorPrompt = prompt;
-    if (estimateTokens([{ content: prompt }]) > editorPromptBudget) {
-      editorPrompt = truncateForModel(prompt, editorPromptBudget * 4);
-      sendOutput('claude-status', `(prompt truncated to fit the ${editorContextLimit}-token context window)`);
-    }
-
-    const messages = [systemMessage, { role: 'user', content: editorPrompt }];
-
-    // Suppress the model's streamed prose from the terminal — it lands in the
-    // editor instead. Tool announcements/results (sent via sendOutput inside
-    // processToolCalls) stay visible so the user can watch the research happen.
-    const quietOutput = (channel, ...args) => {
-      if (channel === 'claude-output') return;
-      sendOutput(channel, ...args);
-    };
-
-    try {
-      let iterations = 0;
-      const maxIterations = 20;
-      let finalContent = '';
-      let lastMetrics = null;
-
-      while (iterations < maxIterations && !state.agentAborted) {
-        iterations++;
-
-        const assistantMessage = await streamChatWithRetry(cfg, messages, quietOutput);
-
-        if (!assistantMessage) {
-          throw new Error('No response from model');
-        }
-        if (assistantMessage.metrics) lastMetrics = assistantMessage.metrics;
-
-        messages.push(assistantMessage);
-
-        let toolCalls = assistantMessage.tool_calls || [];
-        if (toolCalls.length === 0 && assistantMessage.content) {
-          toolCalls = parseFallbackToolCalls(assistantMessage.content, TOOL_NAMES);
-        }
-
-        if (toolCalls.length > 0) {
-          await processToolCalls(toolCalls, messages, cfg, workingDir, { persistHistory: false });
-        } else {
-          // No tool calls — this is the final document.
-          finalContent = assistantMessage.content || '';
-          break;
-        }
-      }
-
-      if (iterations >= maxIterations) {
-        sendOutput('claude-output', '\n(Reached maximum iterations)\n');
-      }
-
-      bus.send('context-stats-updated');
-      bus.sendToTerminal('context-stats-updated');
-      if (lastMetrics) sendOutput('claude-metrics', lastMetrics);
-      sendOutput('claude-done', 0);
-      return finalContent;
-    } catch (e) {
-      if (state.agentAborted) {
-        sendOutput('claude-done', -1);
-        return '';
-      }
-      sendOutput('claude-error', `Agent error: ${e.message}\n`);
-      sendOutput('claude-done', 1);
-      return '';
     }
   });
 

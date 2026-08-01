@@ -35,6 +35,11 @@ const store = new Store({
     agentDiffGate: true,
     // Max output tokens for OpenAI-compatible chat completions.
     openaiMaxTokens: 4096,
+    // Send chat_template_kwargs {enable_thinking:false} on OpenAI-compatible
+    // requests. vLLM forwards this into the chat template — the only reliable
+    // per-request off-switch for Qwen3-style thinking loops. Off by default:
+    // strict servers may reject unknown body fields.
+    openaiDisableThinking: false,
     // Requested Ollama context window (num_ctx). Ollama defaults to 4096
     // regardless of what the model supports; we ask for more, capped by the
     // model's own maximum. Larger values cost RAM (KV cache).
@@ -174,6 +179,11 @@ function setOpenAIMaxTokens(n) {
   const value = Number.isFinite(n) && n > 0 ? Math.floor(n) : 4096;
   store.set('openaiMaxTokens', value);
 }
+
+/** @returns {boolean} */
+function getOpenAIDisableThinking() { return store.get('openaiDisableThinking') === true; }
+/** @param {boolean} enabled */
+function setOpenAIDisableThinking(enabled) { store.set('openaiDisableThinking', enabled === true); }
 
 /** @returns {string} */
 function getTavilyApiKey() { return store.get('tavilyApiKey') || ''; }
@@ -449,6 +459,8 @@ module.exports = {
   setAgentDiffGate,
   getOpenAIMaxTokens,
   setOpenAIMaxTokens,
+  getOpenAIDisableThinking,
+  setOpenAIDisableThinking,
   getOllamaNumCtx,
   setOllamaNumCtx,
   getOpenAIEmbedModel,

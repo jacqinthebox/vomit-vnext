@@ -37,7 +37,7 @@ Modular, with clear separation of concerns.
 
 ## Key Features
 
-- **AI Terminal (Ollama)** — toggle `Cmd+J`; commands `/doc`, `/pseudo`, `/depseudo`, `/index`, `/rag`, `/agent`; models detected via direct path checks
+- **AI Terminal (Ollama)** — toggle `Cmd+J`; plain text = agent mode with open-doc + current-folder context; commands `/doc`, `/pseudo*`, `/index`, `/rag`, `/presentation`; code-agent work lives in the Pi tab (pi.dev); models detected via direct path checks
 - **RAG** — `/index [subfolder]` builds embeddings (nomic-embed-text), `/rag <query>` searches + queries AI; DB in `~/.config/vomit/rag/<project>-<hash>.db` (cosine similarity)
 - **Presentation** — `Cmd+Shift+P` present, `Cmd+Alt+P` presenter view; slides split on `---`, speaker notes after `???`
 
@@ -90,3 +90,5 @@ The pipeline uses **semantic versioning**. On every push to `main`, semantic-rel
 6. **IPC pattern** — handlers in `src/main/ipc/handlers/`, bridges in `preload.js`, renderer calls via `window.vomit.*`.
 7. **RAG embeddings** — require `ollama pull nomic-embed-text`.
 8. **Cross-platform paths** — use `window.PathUtils` (basename/dirname/join/subpath) and `toVomitFileUrl()` for preview URLs. Never split paths on `'/'` or concatenate `vomit-file://` URLs.
+
+See ~/dear-cowie/AGENTS.md

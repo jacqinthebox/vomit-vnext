@@ -147,6 +147,15 @@ function buildAISubmenu() {
     }
   });
   submenu.push({
+    label: 'Disable Model Thinking (vLLM)',
+    type: 'checkbox',
+    checked: _configStore.getOpenAIDisableThinking(),
+    click: (menuItem) => {
+      _configStore.setOpenAIDisableThinking(menuItem.checked);
+      createMenu();
+    }
+  });
+  submenu.push({
     label: 'Set Max Output Tokens…',
     click: () => setMaxOutputTokens()
   });

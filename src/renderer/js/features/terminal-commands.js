@@ -31,66 +31,6 @@ const COMMAND_REGISTRY = [
       ctx.updateContextBar();
     }
   },
-  {
-    name: '/write-new',
-    description: 'Create new file with AI response',
-    args: 'required',
-    argsHint: '<prompt>',
-    requiresCwd: true,
-    async handler(args, ctx, cwd) {
-      await ctx.executeWriteCommand(args, 'new', cwd);
-    }
-  },
-  {
-    name: '/write',
-    description: 'Insert AI response at cursor position',
-    args: 'required',
-    argsHint: '<prompt>',
-    requiresCwd: true,
-    async handler(args, ctx, cwd) {
-      await ctx.executeWriteCommand(args, 'cursor', cwd);
-    }
-  },
-  {
-    name: '/write-replace',
-    description: 'Replace selection with AI response',
-    args: 'required',
-    argsHint: '<prompt>',
-    requiresCwd: true,
-    async handler(args, ctx, cwd) {
-      await ctx.executeWriteCommand(args, 'replace', cwd);
-    }
-  },
-  {
-    name: '/summarize-folder',
-    description: 'Summarize the current folder and all subfolders into a new doc',
-    args: 'optional',
-    argsHint: '[subfolder]',
-    requiresCwd: true,
-    async handler(args, ctx, cwd) {
-      await ctx.summarizeFolder(args, cwd);
-    }
-  },
-  {
-    name: '/format-to-md',
-    description: 'Format pasted Word text as Markdown',
-    args: 'optional',
-    argsHint: '[instruction]',
-    requiresCwd: true,
-    async handler(args, ctx, cwd) {
-      await ctx.formatToMarkdown(args, cwd);
-    }
-  },
-  {
-    name: '/write-append',
-    description: 'Research the web and append to the current document',
-    args: 'required',
-    argsHint: '<prompt>',
-    requiresCwd: true,
-    async handler(args, ctx, cwd) {
-      await ctx.executeWriteCommand(args, 'append', cwd);
-    }
-  },
   // ---- Pseudonymization -------------------------------------------------
   // Commands are named by SCOPE: /pseudo (current document), /pseudo-selection
   // (selected text), /pseudo-repo (repos/folders in the bucket). The engine is
@@ -99,7 +39,7 @@ const COMMAND_REGISTRY = [
   // aliases further down so existing muscle memory and scripts keep working.
   {
     name: '/pseudo-selection',
-    description: 'Pseudonymize selected editor text; prints result in terminal (add --ai for smart scan)',
+    description: 'Pseudonymize the selection (whole doc if none). Prints to the terminal only, disk untouched. --ai = smart scan',
     args: 'optional',
     argsHint: '[--ai]',
     requiresCwd: true,
@@ -110,7 +50,7 @@ const COMMAND_REGISTRY = [
   },
   {
     name: '/pseudo-restore',
-    description: 'Restore original data (a pseudo repo folder if named, otherwise the current document/selection)',
+    description: 'Undo pseudonymization: a pseudo repo if named, else the current document/selection',
     args: 'optional',
     argsHint: '[repo-name]',
     requiresCwd: true,
@@ -133,9 +73,9 @@ const COMMAND_REGISTRY = [
   },
   {
     name: '/pseudo-repo',
-    description: 'Pseudonymize repos/folders in the bucket (--all = every folder, --ai = smart scan, --customer "X")',
+    description: 'Pseudonymize repos/folders into pseudo/<name>/. Bare = all git repos, --all = every folder, --ai = smart scan',
     args: 'optional',
-    argsHint: '[folder] [--all] [--ai] [--customer "Name"]',
+    argsHint: '[folder] [--all] [--ai] [--customer "Name[=Replacement]"]',
     requiresCwd: true,
     async handler(args, ctx, cwd) {
       const { folder, customers, ai, all } = ctx.parsePseudoArgs(args);
@@ -144,7 +84,7 @@ const COMMAND_REGISTRY = [
   },
   {
     name: '/pseudo-map',
-    description: 'Show the current entity mapping',
+    description: 'Show the real-name to replacement mapping',
     args: 'none',
     argsHint: '',
     requiresCwd: true,
@@ -154,9 +94,9 @@ const COMMAND_REGISTRY = [
   },
   {
     name: '/pseudo',
-    description: 'Pseudonymize the current document (fast by default; add --ai for smart, --customer "Name")',
+    description: 'Pseudonymize the current document into a -pseudo copy. --ai = smart scan. --customer "Acme" or "Acme=Globex" forces a name',
     args: 'optional',
-    argsHint: '[--ai] [--customer "Name"]',
+    argsHint: '[--ai] [--customer "Name[=Replacement]"]',
     requiresCwd: true,
     async handler(args, ctx, cwd) {
       const { folder, customers, ai } = ctx.parsePseudoArgs(args);
@@ -330,26 +270,6 @@ const COMMAND_REGISTRY = [
     }
   },
   {
-    name: '/agent',
-    description: 'Run in agent mode with tools',
-    args: 'required',
-    argsHint: '<prompt>',
-    requiresCwd: true,
-    async handler(args, ctx, cwd) {
-      await ctx.executeAgentCommand(args, cwd);
-    }
-  },
-  {
-    name: '/chat',
-    description: 'Ask the AI without tools (faster first token)',
-    args: 'required',
-    argsHint: '<prompt>',
-    requiresCwd: true,
-    async handler(args, ctx, cwd) {
-      await ctx.executeChatCommand(args, cwd);
-    }
-  },
-  {
     name: '/presentation',
     description: 'Generate a presentation',
     args: 'required',
@@ -383,7 +303,7 @@ const COMMAND_REGISTRY = [
 ];
 
 // Sorted by name length descending so the most specific prefix always wins
-// (e.g. /write-new before /write, /pseudo-ai before /pseudo).
+// (e.g. /pseudo-ai before /pseudo).
 const _sortedRegistry = [...COMMAND_REGISTRY].sort((a, b) => b.name.length - a.name.length);
 
 /**

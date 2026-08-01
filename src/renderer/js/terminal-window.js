@@ -490,12 +490,6 @@
   // the main TerminalManager and shows the streamed output (which is
   // broadcast to both windows by terminalService.syncTerminalOutput).
   const EDITOR_COMMANDS = new Set([
-    '/write',
-    '/write-new',
-    '/write-replace',
-    '/summarize-folder',
-    '/format-to-md',
-    '/write-append',
     '/presentation',
     '/pseudo',
     '/pseudo-selection',
@@ -541,34 +535,29 @@
     }
   }
 
-  // Helper: /agent — plain agent execution with tools + shared history.
-  async function executeAgentCommand(prompt, cwd) {
-    appendTerminalOutput(`❯ /agent ${prompt}`, 'input');
-    appendTerminalOutput('Running in agent mode with tools...', 'system');
-    window.vomit.syncTerminalInput(`/agent ${prompt}`);
+  // Default mode for plain typed text — agent with tools, primed with the open
+  // document and current folder. Mirrors features/terminal.js.
+  async function executeDefaultCommand(prompt, cwd) {
+    appendTerminalOutput(`❯ ${prompt}`, 'input');
+    window.vomit.syncTerminalInput(prompt);
+
+    const folder = (terminalState.currentDirectory && terminalState.currentDirectory !== terminalState.projectRoot)
+      ? terminalState.currentDirectory
+      : (terminalState.basePath || cwd);
+    const parts = [`Current folder: ${folder}`];
+    try {
+      const editorData = await window.vomit.getEditorContent();
+      if (editorData && editorData.content && editorData.content.trim()) {
+        parts.push(`Here is the document currently open in the editor:\n---\n${editorData.content}\n---`);
+      }
+    } catch { /* no editor content — folder context only */ }
+    const finalCommand = `${parts.join('\n\n')}\n\nUser request: ${prompt}`;
 
     terminalState.isClaudeRunning = true;
     terminalStop.classList.remove('hidden');
 
     try {
-      await window.vomit.agentExecute(prompt, cwd);
-    } catch (err) {
-      appendTerminalOutput(`Error: ${err.message}`, 'error');
-      terminalState.isClaudeRunning = false;
-      terminalStop.classList.add('hidden');
-    }
-  }
-
-  // Helper: /chat — shared history, no tool schemas (faster first token).
-  async function executeChatCommand(prompt, cwd) {
-    appendTerminalOutput(`❯ /chat ${prompt}`, 'input');
-    window.vomit.syncTerminalInput(`/chat ${prompt}`);
-
-    terminalState.isClaudeRunning = true;
-    terminalStop.classList.remove('hidden');
-
-    try {
-      await window.vomit.agentExecute(prompt, cwd, { noTools: true });
+      await window.vomit.agentExecute(finalCommand, cwd);
     } catch (err) {
       appendTerminalOutput(`Error: ${err.message}`, 'error');
       terminalState.isClaudeRunning = false;
@@ -839,8 +828,6 @@ Provide a helpful, accurate answer based on the context above. Cite the source d
       showAvailableCommands,
       updateContextBar,
       executeDocCommand,
-      executeAgentCommand,
-      executeChatCommand,
       indexFolderForRAG,
       reindexRAG,
       searchWithRAG,
@@ -870,15 +857,14 @@ Provide a helpful, accurate answer based on the context above. Cite the source d
       }
     }
 
-    // Plain text or unrecognized slash command — route to agent mode for
-    // parity with the main TerminalManager (tools + shared history).
+    // Plain text or unrecognized slash command — default mode: agent with
+    // doc + folder context (parity with the main TerminalManager).
     const cwd = terminalState.projectRoot || terminalState.currentDirectory;
     if (!cwd) {
       appendTerminalOutput('Error: No project folder open. Add or select a bucket from the Buckets menu first.', 'error');
       return;
     }
-
-    await executeAgentCommand(command, cwd);
+    await executeDefaultCommand(command, cwd);
   }
 
   // --- Event handlers ---
