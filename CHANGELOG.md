@@ -1,3 +1,15 @@
+## [1.18.6](https://github.com/jacqinthebox/vomit-vnext/compare/v1.18.5...v1.18.6) (2026-08-13)
+
+
+### Bug Fixes
+
+* add prefill rate and descriptive two-line AI metrics footer ([4bceef3](https://github.com/jacqinthebox/vomit-vnext/commit/4bceef3d3e5f2140f37484a059f68455c5f52438))
+
+
+### Chores
+
+* wire up pre-commit hooks with eslint flat config and prettier ([76fb1c8](https://github.com/jacqinthebox/vomit-vnext/commit/76fb1c89ab24dd8ba4c578349f3aabef1d708c0d))
+
 ## [1.18.5](https://github.com/jacqinthebox/vomit-vnext/compare/v1.18.4...v1.18.5) (2026-08-01)
 
 
