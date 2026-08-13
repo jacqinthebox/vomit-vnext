@@ -3333,24 +3333,36 @@ Provide a helpful, accurate answer based on the context above. Cite the source d
     }
   }
 
-  // Format LLM performance metrics into a compact one-line summary for
-  // comparing backends/models (e.g. Ollama vs MLX). Returns '' if empty.
+  // Format LLM performance metrics into a two-line summary — first line what
+  // happened, second line how fast — with labels descriptive enough to need
+  // no legend. Used for comparing backends/models (e.g. Ollama vs MLX).
+  // Returns '' if empty; the '\n' renders because .terminal-line is pre-wrap.
   _formatMetrics(m) {
     if (!m) return '';
     const fmtMs = (ms) => (ms >= 1000 ? `${(ms / 1000).toFixed(1)}s` : `${Math.round(ms)}ms`);
-    const parts = [];
-    if (m.model) parts.push(`${m.model}${m.provider ? ` (${m.provider})` : ''}`);
-    if (m.genTokens != null) parts.push(`${m.genTokens} tok`);
+    const facts = [];
+    if (m.model) facts.push(`${m.model}${m.provider ? ` (${m.provider})` : ''}`);
+    if (m.genTokens != null) facts.push(`${m.estimated ? '~' : ''}${m.genTokens} tok generated`);
+    if (m.ttftMs != null) facts.push(`first token after ${fmtMs(m.ttftMs)}`);
+    if (m.totalMs != null) facts.push(`${fmtMs(m.totalMs)} total`);
+
+    const speeds = [];
     // Headline rate is overall throughput (gen tokens / total time) — the same
     // measurement for every backend, so it's comparable.
     if (m.tokensPerSec != null)
-      parts.push(`${m.estimated ? '~' : ''}${m.tokensPerSec.toFixed(1)} tok/s`);
-    // Extras only available when the backend reports them (Ollama).
-    if (m.decodeTps != null) parts.push(`${m.decodeTps.toFixed(0)} tok/s decode`);
-    if (m.ttftMs != null) parts.push(`TTFT ${fmtMs(m.ttftMs)}`);
-    if (m.totalMs != null) parts.push(fmtMs(m.totalMs));
-    if (!parts.length) return '';
-    return `⚡ ${parts.join(' · ')}`;
+      speeds.push(`${m.estimated ? '~' : ''}${m.tokensPerSec.toFixed(1)} tok/s overall`);
+    if (m.decodeTps != null) speeds.push(`${m.decodeTps.toFixed(0)} tok/s decode (generation)`);
+    // Prefill is exact from Ollama's prompt_eval timing; for OpenAI-compatible
+    // servers it's derived from client TTFT, so it's marked as an estimate.
+    if (m.prefillTps != null)
+      speeds.push(
+        `${m.prefillEstimated ? '~' : ''}${m.prefillTps.toFixed(0)} tok/s prefill (prompt reading)`,
+      );
+
+    const lines = [];
+    if (facts.length) lines.push(`⚡ ${facts.join(' · ')}`);
+    if (speeds.length) lines.push(`   speed: ${speeds.join(' · ')}`);
+    return lines.join('\n');
   }
 
   markOutputComplete() {

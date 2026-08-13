@@ -187,6 +187,7 @@ function buildOllamaMetrics({ model, startedAt, firstTokenAt, stats }) {
   let genTokens = null;
   let promptTokens = null;
   let decodeTps = null;
+  let prefillTps = null;
   let ttftMs = null;
   if (stats) {
     genTokens = stats.eval_count != null ? stats.eval_count : null;
@@ -199,6 +200,11 @@ function buildOllamaMetrics({ model, startedAt, firstTokenAt, stats }) {
     if (stats.load_duration != null || stats.prompt_eval_duration != null) {
       ttftMs = ((stats.load_duration || 0) + (stats.prompt_eval_duration || 0)) / 1e6;
     }
+    // Same guard as decode: a rate over a few cached tokens or a sub-100ms
+    // window is noise. With prompt caching Ollama only counts uncached tokens.
+    if (promptTokens != null && promptTokens >= 4 && stats.prompt_eval_duration >= 1e8) {
+      prefillTps = promptTokens / (stats.prompt_eval_duration / 1e9);
+    }
   }
   if (ttftMs == null && firstTokenAt) ttftMs = firstTokenAt - startedAt;
   const tokensPerSec = genTokens != null && totalMs > 0 ? genTokens / (totalMs / 1000) : null;
@@ -209,6 +215,8 @@ function buildOllamaMetrics({ model, startedAt, firstTokenAt, stats }) {
     genTokens,
     tokensPerSec,
     decodeTps,
+    prefillTps,
+    prefillEstimated: false,
     ttftMs,
     totalMs,
     estimated: false,
@@ -235,6 +243,14 @@ function buildOpenAIMetrics({ model, startedAt, firstTokenAt, usage, content }) 
     decodeMs != null && decodeMs > 300 && decodeMs > totalMs * 0.25 && genTokens >= 16;
   const decodeTps = streamed ? genTokens / (decodeMs / 1000) : null;
   const ttftMs = streamed ? firstTokenAt - startedAt : null;
+  // No server-side prompt timing here — approximate prefill as prompt tokens
+  // over client TTFT. Upper-bounded by reality: TTFT also includes network and
+  // queueing, so the true rate is at least this. Only meaningful when the
+  // response genuinely streamed and TTFT is long enough to dominate noise.
+  const prefillTps =
+    streamed && promptTokens != null && promptTokens >= 4 && ttftMs > 300
+      ? promptTokens / (ttftMs / 1000)
+      : null;
 
   return {
     provider: 'openai',
@@ -243,6 +259,8 @@ function buildOpenAIMetrics({ model, startedAt, firstTokenAt, usage, content }) 
     genTokens,
     tokensPerSec,
     decodeTps,
+    prefillTps,
+    prefillEstimated: true,
     ttftMs,
     totalMs,
     estimated: !reported,
