@@ -120,6 +120,31 @@ function registerHandlers(
     return true;
   }
 
+  // Text-only models reject requests carrying image parts — llama.cpp answers
+  // "image input is not supported … you may need to provide the mmproj",
+  // Ollama "missing data required for image input", LM Studio "does not
+  // support images". Any of those means: drop the pixels and ask again.
+  function isImageUnsupportedError(e) {
+    return /image input is not supported|missing data required for image|not support images?|mmproj/i.test(
+      (e && e.message) || '',
+    );
+  }
+
+  // Remove attached images from outgoing messages (both the Ollama `images`
+  // array and the mimes the OpenAI conversion builds parts from). Returns
+  // whether anything was removed, so the caller knows a retry can help.
+  function stripImagesFromMessages(messages) {
+    let stripped = false;
+    for (const msg of messages) {
+      if (msg && (msg.images || msg.imageMimes)) {
+        delete msg.images;
+        delete msg.imageMimes;
+        stripped = true;
+      }
+    }
+    return stripped;
+  }
+
   /**
    * Stream one chat completion. Tracks the in-flight request on session state
    * so claude-stop can destroy it, and retries once on pre-content connection
@@ -158,6 +183,18 @@ function registerHandlers(
       const code = e && e.code;
       if (!contentStarted && !state.agentAborted && RETRYABLE_CODES.has(code)) {
         sendOutput('claude-status', '(connection error, retrying...)');
+        return await doStream();
+      }
+      if (
+        !contentStarted &&
+        !state.agentAborted &&
+        isImageUnsupportedError(e) &&
+        stripImagesFromMessages(messages)
+      ) {
+        sendOutput(
+          'claude-status',
+          '(model does not support images — retrying without the attached images)',
+        );
         return await doStream();
       }
       throw e;
