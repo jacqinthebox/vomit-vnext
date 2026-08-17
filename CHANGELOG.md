@@ -1,3 +1,10 @@
+## [1.18.7](https://github.com/jacqinthebox/vomit-vnext/compare/v1.18.6...v1.18.7) (2026-08-17)
+
+
+### Bug Fixes
+
+* retry without images when model rejects image input ([c300218](https://github.com/jacqinthebox/vomit-vnext/commit/c300218d73ff9a02efb4b3d5a5058c9cf28e9639))
+
 ## [1.18.6](https://github.com/jacqinthebox/vomit-vnext/compare/v1.18.5...v1.18.6) (2026-08-13)
 
 
