@@ -123,9 +123,13 @@ body {
 .slide img {
   max-width: 100%;
   max-height: 60vh;
+  /* Keep aspect ratio even when the =WxH size syntax pins both dimensions
+     and max-height clamps one of them. */
+  object-fit: contain;
   display: block;
   margin: 1em auto;
   border-radius: 8px;
+  cursor: zoom-in;
 }
 
 .slide table {
@@ -237,9 +241,35 @@ body.laser-active {
 .slide .plantuml-diagram {
   max-width: 100%;
   max-height: 60vh;
+  object-fit: contain;
   display: block;
   margin: 1em auto;
   background: white;
   padding: 20px;
   border-radius: 8px;
+}
+
+/* Image zoom lightbox — click an image to open, wheel or +/- to zoom,
+   drag to pan, Esc or click outside to close */
+#image-zoom-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.92);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  cursor: zoom-out;
+}
+
+#image-zoom-overlay.active {
+  display: flex;
+}
+
+#image-zoom-overlay img {
+  max-width: 95vw;
+  max-height: 95vh;
+  object-fit: contain;
+  transform-origin: center center;
+  border-radius: 4px;
 }

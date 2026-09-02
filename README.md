@@ -49,6 +49,7 @@ Keyboard shortcuts shown as **Cmd** on macOS use **Ctrl** on Windows/Linux. **Op
 - **Tag & Todo Explorers** - Browse tags and open todos across the current bucket
 - **Search in Files** - Search across all markdown files (Cmd+Shift+F)
 - **Laser Pointer** - Press L during presentation to highlight
+- **Image Zoom** - Click an image while presenting to zoom (wheel/+/- up to 8x, drag to pan)
 - **PDF Export** - Export slides to PDF for sharing
 - **Image Support** - Paste images directly, resize with simple syntax
 - **Themes** - Default, Dark, Catppuccin, Nord, Tokyo Night, Solarized Dark

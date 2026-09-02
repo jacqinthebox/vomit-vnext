@@ -57,6 +57,7 @@ Shortcut tables use macOS notation: use **Ctrl** instead of **Cmd** and **Alt** 
 | Cmd+F        | Find in file                                         |
 | Cmd+Option+F | Find and replace                                     |
 | Cmd+Shift+F  | Search in files                                      |
+| Cmd+Shift+K  | Search files by name                                 |
 | Cmd+Up       | Go to parent folder                                  |
 | Cmd+`        | Toggle shell terminal                                |
 | Cmd+/        | Show keyboard shortcuts                              |
@@ -182,6 +183,16 @@ Double-tap **Option**, then press **Option+Up** or **Option+Down** to add cursor
 | L             | Toggle laser pointer       |
 | R             | Reset timer                |
 | Escape        | End presentation           |
+
+### Image Zoom (during presentation)
+
+| Shortcut               | Action                                                       |
+| ---------------------- | ------------------------------------------------------------ |
+| Click image            | Open zoom (click again toggles 2x)                           |
+| Scroll wheel / + / -   | Zoom in/out (up to 8x)                                       |
+| Drag                   | Pan while zoomed                                             |
+| 0                      | Reset zoom                                                   |
+| Escape / click outside | Close zoom (Esc ends presentation only when no zoom is open) |
 
 ---
 

@@ -72,7 +72,7 @@ function createPresentationService({ state, bus, configStore, windowManager }) {
     bus.getPresentationWindow().focus();
   }
 
-  function endPresentation() {
+  function closePresentationWindows() {
     if (bus.getPresentationWindow()) {
       bus.getPresentationWindow().setFullScreen(false);
       bus.getPresentationWindow().close();
@@ -80,6 +80,17 @@ function createPresentationService({ state, bus, configStore, windowManager }) {
     if (bus.getPresenterWindow()) {
       bus.getPresenterWindow().close();
     }
+  }
+
+  // Escape is a menu accelerator, so the presentation renderer never sees the
+  // keypress. Route it through the renderer, which closes its image-zoom
+  // overlay if one is open and calls back on 'end-presentation' otherwise.
+  function endPresentation() {
+    if (bus.getPresentationWindow()) {
+      bus.sendToPresentation('presentation-escape');
+      return;
+    }
+    closePresentationWindows();
   }
 
   function sendFormatCommand(command) {
@@ -189,6 +200,12 @@ function createPresentationService({ state, bus, configStore, windowManager }) {
     ipcMain.on('go-to-slide', (event, index) => {
       bus.sendToPresentation('go-to-slide', index);
       bus.sendToPresenter('go-to-slide', index);
+    });
+
+    // Callback from the presentation renderer's escape routing (see
+    // endPresentation above).
+    ipcMain.on('end-presentation', () => {
+      closePresentationWindows();
     });
 
     // Command palette IPC handlers

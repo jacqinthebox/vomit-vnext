@@ -44,6 +44,10 @@ ipcRenderer.on('toggle-search', () => {
   window.dispatchEvent(new CustomEvent('vomit:toggle-search'));
 });
 
+ipcRenderer.on('toggle-file-search', () => {
+  window.dispatchEvent(new CustomEvent('vomit:toggle-file-search'));
+});
+
 ipcRenderer.on('find-in-file', () => {
   window.dispatchEvent(new CustomEvent('vomit:find-in-file'));
 });
@@ -103,6 +107,10 @@ ipcRenderer.on('load-presentation', (event, content, basePath) => {
   window.dispatchEvent(
     new CustomEvent('vomit:load-presentation', { detail: { content, basePath } }),
   );
+});
+
+ipcRenderer.on('presentation-escape', () => {
+  window.dispatchEvent(new CustomEvent('vomit:presentation-escape'));
 });
 
 ipcRenderer.on('update-content', (event, content) => {
@@ -348,6 +356,7 @@ contextBridge.exposeInMainWorld('vomit', {
   startPresentation: () => ipcRenderer.send('start-presentation'),
   startPresentationWithPresenter: () => ipcRenderer.send('start-presentation-with-presenter'),
   navigateSlide: (direction) => ipcRenderer.send('navigate-slide', direction),
+  endPresentation: () => ipcRenderer.send('end-presentation'),
   goToSlide: (index) => ipcRenderer.send('go-to-slide', index),
   saveImage: (imageData, suggestedName) =>
     ipcRenderer.invoke('save-image', imageData, suggestedName),
@@ -356,6 +365,7 @@ contextBridge.exposeInMainWorld('vomit', {
   reloadFile: (filePath) => ipcRenderer.invoke('reload-file', filePath),
   getAutoSaveEnabled: () => ipcRenderer.invoke('get-auto-save-enabled'),
   getBucketPath: () => ipcRenderer.invoke('get-bucket-path'),
+  getAllFiles: () => ipcRenderer.invoke('get-all-files'),
   newFile: () => ipcRenderer.send('new-file'),
   newPresentation: () => ipcRenderer.send('new-presentation'),
   createPresentationFile: (filePath) => ipcRenderer.invoke('create-presentation-file', filePath),

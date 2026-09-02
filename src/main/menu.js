@@ -664,6 +664,13 @@ function createMenu() {
             _bus.send('toggle-search');
           },
         },
+        {
+          label: 'Search Files by Name',
+          accelerator: 'CmdOrCtrl+Shift+K',
+          click: () => {
+            _bus.send('toggle-file-search');
+          },
+        },
       ],
     },
     {

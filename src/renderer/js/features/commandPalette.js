@@ -166,6 +166,12 @@ class CommandPaletteManager {
       },
       {
         section: 'View',
+        label: 'Search Files by Name',
+        shortcut: '⌘⇧K',
+        action: () => actions.fileSearchManager.toggle(),
+      },
+      {
+        section: 'View',
         label: 'Toggle Tag Explorer',
         shortcut: '⌘⇧H',
         action: () => actions.tagExplorerManager.toggleTagExplorer(),

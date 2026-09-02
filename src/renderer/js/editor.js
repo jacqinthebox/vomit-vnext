@@ -155,6 +155,7 @@ class Editor {
       getSearchManager: () => this.searchManager,
       getTabManager: () => this.tabManager,
     });
+    this.fileSearchManager = new FileSearchManager();
     this.commandPalette = new CommandPaletteManager({
       host: this.host,
       getEditorActions: () => ({
@@ -168,6 +169,7 @@ class Editor {
         settingsManager: this.settingsManager,
         terminalManager: this.terminalManager,
         wikiGraphManager: this.wikiGraphManager,
+        fileSearchManager: this.fileSearchManager,
         getValue: () => this.getValue(),
       }),
     });
@@ -182,6 +184,7 @@ class Editor {
     this.settingsManager.setupRightSidebarResize();
     this.fileTreeManager.setupFileTreeContextMenu();
     this.searchManager.setup();
+    this.fileSearchManager.setup();
     this.settingsManager.setupKeyboardNavigation();
     this.terminalManager.setupTerminal();
     this.terminalManager.setupShellTerminal();
@@ -724,6 +727,10 @@ class Editor {
 
     window.addEventListener('vomit:toggle-search', () => {
       this.searchManager.toggleSearch();
+    });
+
+    window.addEventListener('vomit:toggle-file-search', () => {
+      this.fileSearchManager.toggle();
     });
 
     window.addEventListener('vomit:toggle-tags', () => {

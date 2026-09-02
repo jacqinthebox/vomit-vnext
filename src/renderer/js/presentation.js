@@ -238,8 +238,111 @@
 
   window.addEventListener('vomit:go-to-slide', (e) => goToSlide(e.detail));
 
+  // Escape arrives via the menu accelerator (never as a renderer keydown):
+  // close the zoom overlay if open, otherwise really end the presentation.
+  window.addEventListener('vomit:presentation-escape', () => {
+    if (zoomIsOpen()) closeZoom();
+    else window.vomit.endPresentation();
+  });
+
   window.addEventListener('vomit:set-theme', (e) => {
     document.body.className = `theme-${e.detail} presentation`;
+  });
+
+  // Image zoom lightbox: click a slide image to open it full-screen, wheel
+  // or +/- to zoom, drag to pan, Esc / click outside / click the image at
+  // 1x to close. Slide keys are swallowed while it is open.
+  const zoomOverlay = document.getElementById('image-zoom-overlay');
+  const zoomImg = document.getElementById('image-zoom-img');
+  const ZOOM_MIN = 1;
+  const ZOOM_MAX = 8;
+  let zoomScale = 1;
+  let zoomPanX = 0;
+  let zoomPanY = 0;
+  let zoomDrag = null;
+  let zoomDragMoved = false;
+
+  function applyZoom() {
+    zoomImg.style.transform = `translate(${zoomPanX}px, ${zoomPanY}px) scale(${zoomScale})`;
+    zoomImg.style.cursor = zoomScale > 1 ? 'grab' : 'zoom-in';
+  }
+
+  function setZoomScale(next) {
+    zoomScale = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, next));
+    if (zoomScale === 1) {
+      zoomPanX = 0;
+      zoomPanY = 0;
+    }
+    applyZoom();
+  }
+
+  function openZoom(src) {
+    zoomImg.src = src;
+    zoomScale = 1;
+    zoomPanX = 0;
+    zoomPanY = 0;
+    applyZoom();
+    zoomOverlay.classList.add('active');
+  }
+
+  function closeZoom() {
+    zoomOverlay.classList.remove('active');
+    zoomImg.removeAttribute('src');
+  }
+
+  function zoomIsOpen() {
+    return zoomOverlay.classList.contains('active');
+  }
+
+  slideContent.addEventListener('click', (e) => {
+    const img = e.target.closest('img');
+    if (img && img.src) {
+      e.preventDefault();
+      openZoom(img.src);
+    }
+  });
+
+  zoomOverlay.addEventListener('click', (e) => {
+    if (zoomDragMoved) return;
+    // Click outside closes; click on the image toggles 1x <-> 2x.
+    if (e.target !== zoomImg) closeZoom();
+    else if (zoomScale === 1) setZoomScale(2);
+    else setZoomScale(1);
+  });
+
+  zoomOverlay.addEventListener(
+    'wheel',
+    (e) => {
+      e.preventDefault();
+      setZoomScale(zoomScale * (e.deltaY < 0 ? 1.2 : 1 / 1.2));
+    },
+    { passive: false },
+  );
+
+  zoomImg.addEventListener('mousedown', (e) => {
+    if (zoomScale <= 1) return;
+    e.preventDefault();
+    zoomDrag = { x: e.clientX - zoomPanX, y: e.clientY - zoomPanY };
+    zoomDragMoved = false;
+    zoomImg.style.cursor = 'grabbing';
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!zoomDrag) return;
+    zoomPanX = e.clientX - zoomDrag.x;
+    zoomPanY = e.clientY - zoomDrag.y;
+    zoomDragMoved = true;
+    applyZoom();
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (!zoomDrag) return;
+    zoomDrag = null;
+    applyZoom();
+    // Let the click handler see the drag, then clear the flag.
+    setTimeout(() => {
+      zoomDragMoved = false;
+    }, 0);
   });
 
   // Laser pointer
@@ -271,6 +374,25 @@
 
   // Keyboard controls
   document.addEventListener('keydown', (e) => {
+    if (zoomIsOpen()) {
+      switch (e.key) {
+        case 'Escape':
+          closeZoom();
+          break;
+        case '+':
+        case '=':
+          setZoomScale(zoomScale * 1.2);
+          break;
+        case '-':
+          setZoomScale(zoomScale / 1.2);
+          break;
+        case '0':
+          setZoomScale(1);
+          break;
+      }
+      e.preventDefault();
+      return;
+    }
     switch (e.key) {
       case 'ArrowRight':
       case ' ':

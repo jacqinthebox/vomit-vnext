@@ -724,6 +724,31 @@ Questions?
       configStore.setFileSortOrder(order);
     });
 
+    // List all markdown files in bucket for filename search
+    ipcMain.handle('get-all-files', async () => {
+      const bucketPath = configStore.getBucketPath();
+      if (!bucketPath) return [];
+
+      const files = [];
+      function walk(dir, relDir) {
+        try {
+          const entries = fs.readdirSync(dir, { withFileTypes: true });
+          for (const entry of entries) {
+            if (entry.name.startsWith('.') || entry.name === 'node_modules') continue;
+            const fullPath = path.join(dir, entry.name);
+            const relPath = relDir ? relDir + '/' + entry.name : entry.name;
+            if (entry.isDirectory()) {
+              walk(fullPath, relPath);
+            } else if (entry.name.endsWith('.md') || entry.name.endsWith('.markdown')) {
+              files.push({ name: entry.name, path: fullPath, relativePath: relPath });
+            }
+          }
+        } catch (e) {}
+      }
+      walk(bucketPath, '');
+      return files.sort((a, b) => a.name.localeCompare(b.name));
+    });
+
     // Scan all markdown files for tags
     ipcMain.handle('get-all-tags', async () => {
       const bucketPath = configStore.getBucketPath();
