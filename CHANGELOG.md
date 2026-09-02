@@ -1,3 +1,10 @@
+## [1.18.8](https://github.com/jacqinthebox/vomit-vnext/compare/v1.18.7...v1.18.8) (2026-09-02)
+
+
+### Bug Fixes
+
+* add filename search (Cmd+Shift+K) and presentation image zoom ([894bea8](https://github.com/jacqinthebox/vomit-vnext/commit/894bea815b5c9af3063562ef39062dc121c66205))
+
 ## [1.18.7](https://github.com/jacqinthebox/vomit-vnext/compare/v1.18.6...v1.18.7) (2026-08-17)
 
 
