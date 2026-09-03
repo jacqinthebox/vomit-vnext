@@ -21,59 +21,90 @@
       }
 
       .slide-page {
-        width: 100%;
-        min-height: 100vh;
-        padding: 60px 80px;
-        page-break-after: always;
+        width: 297mm;
+        height: 210mm;
+        padding: 16mm 20mm;
+        position: relative;
+        overflow: hidden;
         display: flex;
         flex-direction: column;
+        align-items: center;
         justify-content: center;
+        break-after: page;
+        break-inside: avoid;
+        page-break-after: always;
+        page-break-inside: avoid;
       }
 
       .slide-page:last-child {
+        break-after: auto;
         page-break-after: avoid;
       }
 
-      .slide-page h1 {
+      .slide-content {
+        width: 100%;
+        transform-origin: center center;
+      }
+
+      #slides-container.document-export .slide-page {
+        width: auto;
+        height: auto;
+        min-height: 0;
+        padding: 0 20mm;
+        overflow: visible;
+        display: block;
+        break-after: auto;
+        page-break-after: auto;
+      }
+
+      #slides-container.document-export .slide-number {
+        display: none;
+      }
+
+      #slides-container.document-export .slide-content img {
+        max-height: 250mm;
+      }
+
+      .slide-content h1 {
         font-size: 2.5em;
         font-weight: 600;
         margin-bottom: 0.5em;
         color: #333;
       }
 
-      .slide-page h2 {
+      .slide-content h2 {
         font-size: 2em;
         font-weight: 500;
         margin-bottom: 0.5em;
         color: #555;
       }
 
-      .slide-page h3 {
+      .slide-content h3 {
         font-size: 1.5em;
         font-weight: 500;
         margin-bottom: 0.5em;
         color: #555;
       }
 
-      .slide-page p {
+      .slide-content p {
         font-size: 1.2em;
         line-height: 1.6;
         margin-bottom: 0.8em;
       }
 
-      .slide-page ul,
-      .slide-page ol {
+      .slide-content ul,
+      .slide-content ol {
         font-size: 1.2em;
         line-height: 1.8;
         margin-left: 1.5em;
         margin-bottom: 0.8em;
       }
 
-      .slide-page li {
+      .slide-content li {
         margin-bottom: 0.3em;
       }
 
-      .slide-page blockquote {
+      .slide-content blockquote {
         font-size: 1.1em;
         padding: 1em 1.5em;
         border-left: 4px solid #4a90d9;
@@ -81,7 +112,7 @@
         margin: 1em 0;
       }
 
-      .slide-page code {
+      .slide-content code {
         font-family: 'SF Mono', 'Menlo', 'Monaco', monospace;
         font-size: 0.9em;
         padding: 0.2em 0.4em;
@@ -89,7 +120,7 @@
         border-radius: 3px;
       }
 
-      .slide-page pre {
+      .slide-content pre {
         font-size: 0.9em;
         padding: 1em;
         background: #f5f5f5;
@@ -98,35 +129,51 @@
         margin: 1em 0;
       }
 
-      .slide-page pre code {
+      .slide-content pre code {
         padding: 0;
         background: none;
       }
 
-      .slide-page img {
+      .slide-content img {
         max-width: 100%;
         max-height: 50vh;
+        object-fit: contain;
         display: block;
         margin: 1em auto;
       }
 
-      .slide-page table {
+      .slide-content table {
         width: 100%;
         border-collapse: collapse;
         font-size: 1em;
         margin: 1em 0;
       }
 
-      .slide-page th,
-      .slide-page td {
+      .slide-content th,
+      .slide-content td {
         padding: 8px 12px;
         border: 1px solid #ddd;
         text-align: left;
       }
 
-      .slide-page th {
+      .slide-content th {
         background: #f5f5f5;
         font-weight: 600;
+      }
+
+      #slides-container.document-export h1,
+      #slides-container.document-export h2,
+      #slides-container.document-export h3 {
+        break-after: avoid;
+        page-break-after: avoid;
+      }
+
+      #slides-container.document-export img,
+      #slides-container.document-export pre,
+      #slides-container.document-export blockquote,
+      #slides-container.document-export table {
+        break-inside: avoid;
+        page-break-inside: avoid;
       }
 
       .slide-number {
@@ -135,13 +182,6 @@
         right: 30px;
         font-size: 0.9em;
         color: #999;
-      }
-
-      @media print {
-        .slide-page {
-          height: 100vh;
-          page-break-after: always;
-        }
       }
     </style>
   </head>
@@ -155,19 +195,13 @@
     <script src="js/katex.min.js"></script>
     <script src="js/katex-auto-render.min.js"></script>
     <script src="js/frontmatter.js"></script>
+    <script src="js/slideParser.js"></script>
     <script>
       let basePath = null;
 
       function parseSlides(content) {
         const markdown = window.Frontmatter.strip(content || '').trim();
-        const slideTexts = markdown.split(/\n---\n/).filter((s) => s.trim());
-        return slideTexts.map((slideText) => {
-          const parts = slideText.split(/\n\?\?\?\n/);
-          return {
-            content: parts[0].trim(),
-            notes: parts[1] ? parts[1].trim() : '',
-          };
-        });
+        return window.SlideParser.parseSlides(markdown);
       }
 
       function renderMarkdown(text) {
@@ -214,11 +248,14 @@
         basePath = bp;
         const slides = parseSlides(content);
         const container = document.getElementById('slides-container');
+        const isDocumentExport = slides.length === 1;
 
+        window.pdfIsDocumentExport = isDocumentExport;
+        container.classList.toggle('document-export', isDocumentExport);
         container.innerHTML = slides
           .map((slide, index) => {
             const html = renderMarkdown(slide.content);
-            return `<div class="slide-page">${html}<div class="slide-number">${index + 1} / ${slides.length}</div></div>`;
+            return `<div class="slide-page"><div class="slide-content">${html}</div><div class="slide-number">${index + 1} / ${slides.length}</div></div>`;
           })
           .join('');
 
@@ -240,10 +277,34 @@
           });
         }
 
-        // Signal ready for PDF export
-        setTimeout(() => {
+        const images = Array.from(container.querySelectorAll('img'));
+        const imageLoads = images.map((image) => {
+          if (image.complete) return Promise.resolve();
+          return new Promise((resolve) => {
+            image.addEventListener('load', resolve, { once: true });
+            image.addEventListener('error', resolve, { once: true });
+          });
+        });
+
+        Promise.all([document.fonts.ready, ...imageLoads]).then(() => {
+          if (!isDocumentExport) {
+            container.querySelectorAll('.slide-page').forEach((page) => {
+              const content = page.querySelector('.slide-content');
+              const style = window.getComputedStyle(page);
+              const availableWidth =
+                page.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+              const availableHeight =
+                page.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
+              const scale = Math.min(
+                1,
+                availableWidth / content.scrollWidth,
+                availableHeight / content.scrollHeight,
+              );
+              content.style.transform = `scale(${scale})`;
+            });
+          }
           window.pdfReady = true;
-        }, 500);
+        });
       }
 
       // Listen for content via custom event (from preload)

@@ -880,13 +880,13 @@ class PreviewManager {
   renderMarkdownWithSlides(content) {
     const markdown = window.Frontmatter.strip(content).trim();
 
-    const slides = markdown.split(/\n---\n/);
+    const slides = window.SlideParser.splitSlides(markdown);
 
     return slides
       .map((slide, index) => {
-        const parts = slide.split(/\n\?\?\?\n/);
-        const slideContent = parts[0].trim();
-        const notes = parts[1] ? parts[1].trim() : '';
+        const parsedSlide = window.SlideParser.parseSlides(slide)[0];
+        const slideContent = parsedSlide.content;
+        const notes = parsedSlide.notes;
 
         let html = '';
 
@@ -996,7 +996,7 @@ class PreviewManager {
     }
 
     const markdown = window.Frontmatter.strip(content);
-    const slides = markdown.split(/\n---\n/).filter((s) => s.trim());
+    const slides = window.SlideParser.splitSlides(markdown);
     this.dom.statusSlides.textContent = `${slides.length} slide${slides.length !== 1 ? 's' : ''}`;
 
     const words = content.split(/\s+/).filter((w) => w.length > 0).length;

@@ -40,14 +40,7 @@
 
   function parseSlides(content) {
     const markdown = window.Frontmatter.strip(content || '').trim();
-    const slideTexts = markdown.split(/\n---\n/).filter((s) => s.trim());
-    return slideTexts.map((slideText) => {
-      const parts = slideText.split(/\n\?\?\?\n/);
-      return {
-        content: parts[0].trim(),
-        notes: parts[1] ? parts[1].trim() : '',
-      };
-    });
+    return window.SlideParser.parseSlides(markdown);
   }
 
   function renderMarkdown(text) {

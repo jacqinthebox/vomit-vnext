@@ -6,6 +6,7 @@ const path = require('path');
 const fs = require('fs');
 
 const mainDir = path.join(__dirname, '..', '..');
+const DOCUMENT_PAGE_MARGIN_INCHES = 0.6;
 
 /**
  * Create presentation service with presentation functions and IPC handlers.
@@ -140,24 +141,56 @@ function createPresentationService({ state, bus, configStore, windowManager }) {
       // Send content to render
       pdfWindow.webContents.send('render-for-pdf', state.currentContent, basePath);
 
-      // Wait for rendering to complete
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
       try {
+        const isDocumentExport = await pdfWindow.webContents.executeJavaScript(`
+          new Promise((resolve, reject) => {
+            const timeout = setTimeout(
+              () => reject(new Error('PDF rendering timed out')),
+              15000
+            );
+            const waitUntilReady = () => {
+              if (window.pdfReady) {
+                clearTimeout(timeout);
+                resolve(window.pdfIsDocumentExport);
+                return;
+              }
+              requestAnimationFrame(waitUntilReady);
+            };
+            waitUntilReady();
+          })
+        `);
+
         const pdfData = await pdfWindow.webContents.printToPDF({
           printBackground: true,
-          landscape: true,
+          landscape: !isDocumentExport,
           pageSize: 'A4',
-          margins: { top: 0, bottom: 0, left: 0, right: 0 },
+          margins: isDocumentExport
+            ? {
+                top: DOCUMENT_PAGE_MARGIN_INCHES,
+                bottom: DOCUMENT_PAGE_MARGIN_INCHES,
+                left: 0,
+                right: 0,
+              }
+            : { top: 0, bottom: 0, left: 0, right: 0 },
         });
 
-        fs.writeFileSync(result.filePath, pdfData);
+        await fs.promises.writeFile(result.filePath, pdfData);
 
-        dialog.showMessageBox(bus.getMainWindow(), {
+        const { response } = await dialog.showMessageBox(bus.getMainWindow(), {
           type: 'info',
           title: 'Export Complete',
           message: `PDF exported successfully to:\n${result.filePath}`,
+          buttons: ['Open PDF', 'Close'],
+          defaultId: 0,
+          cancelId: 1,
         });
+
+        if (response === 0) {
+          const openError = await shell.openPath(result.filePath);
+          if (openError) {
+            dialog.showErrorBox('Open Failed', `Failed to open PDF: ${openError}`);
+          }
+        }
       } catch (err) {
         dialog.showErrorBox('Export Failed', `Failed to export PDF: ${err.message}`);
       } finally {

@@ -1,6 +1,6 @@
 {
   "name": "vomit-vnext",
-  "version": "1.18.8",
+  "version": "1.18.9",
   "description": "A keyboard-centric markdown editor and presentation app with IntelliSense, live preview, and presenter view",
   "main": "src/main/main.js",
   "scripts": {
@@ -28,7 +28,7 @@
   "devDependencies": {
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/git": "^10.0.1",
-    "electron": "41.7.1",
+    "electron": "41.10.7",
     "electron-builder": "^26.8.1",
     "semantic-release": "^25.0.3"
   },
