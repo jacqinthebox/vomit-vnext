@@ -1,3 +1,10 @@
+## [1.18.9](https://github.com/jacqinthebox/vomit-vnext/compare/v1.18.8...v1.18.9) (2026-09-03)
+
+
+### Bug Fixes
+
+* **pdf:** improve export pagination ([df5e02a](https://github.com/jacqinthebox/vomit-vnext/commit/df5e02ad2efc5bc53c99a76ff5895baef1ff9e2f))
+
 ## [1.18.8](https://github.com/jacqinthebox/vomit-vnext/compare/v1.18.7...v1.18.8) (2026-09-02)
 
 
