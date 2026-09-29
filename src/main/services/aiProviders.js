@@ -40,6 +40,7 @@ function getActiveProviderConfig(configStore) {
       model: configStore.getOpenAIModel() || '',
       maxTokens: configStore.getOpenAIMaxTokens(),
       disableThinking: configStore.getOpenAIDisableThinking(),
+      reasoningEffort: configStore.getOpenAIReasoningEffort(),
     };
   }
   return {
@@ -400,6 +401,7 @@ function streamOpenAIChat({
   timeoutMs,
   maxTokens,
   disableThinking,
+  reasoningEffort,
 }) {
   return new Promise((resolve, reject) => {
     const startedAt = Date.now();
@@ -438,8 +440,16 @@ function streamOpenAIChat({
     if (tools && tools.length) payload.tools = tools;
     // vLLM forwards chat_template_kwargs into the Jinja chat template — the
     // reliable per-request off-switch for Qwen3-style thinking. Opt-in via
-    // AI menu; llama.cpp-based servers (Ollama, LM Studio) don't honour it.
-    if (disableThinking) payload.chat_template_kwargs = { enable_thinking: false };
+    // AI menu or per-endpoint config; llama.cpp-based servers (Ollama, LM
+    // Studio) don't honour it. reasoningEffort dials down (rather than fully
+    // disables) thinking on models that support graded effort levels
+    // (e.g. Qwen3.8-style xhigh/medium/low); it's ignored if disableThinking
+    // is also set, since there's nothing to grade once thinking is off.
+    if (disableThinking) {
+      payload.chat_template_kwargs = { enable_thinking: false };
+    } else if (reasoningEffort) {
+      payload.chat_template_kwargs = { enable_thinking: true, reasoning_effort: reasoningEffort };
+    }
 
     const body = JSON.stringify(payload);
     const headers = {

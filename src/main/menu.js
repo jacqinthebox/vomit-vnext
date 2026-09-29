@@ -371,12 +371,28 @@ async function promptEndpoint(defaults) {
   const ctxNum = parseInt(String(ctxRaw).replace(/[_,\s]/g, ''), 10);
   const contextLength = Number.isFinite(ctxNum) && ctxNum > 0 ? ctxNum : undefined;
 
+  const disableThinkingRaw = await promptString(
+    'Disable thinking? (y/n; sends chat_template_kwargs enable_thinking:false):',
+    d.disableThinking ? 'y' : 'n',
+  );
+  if (disableThinkingRaw === null) return null;
+  const disableThinking = /^y(es)?$/i.test(String(disableThinkingRaw).trim());
+
+  const reasoningEffortRaw = await promptString(
+    'Reasoning effort (blank = no override, uses the model\'s own chat-template default — e.g. \'medium\' on our patched Flash-Next build; or set low / medium / high / xhigh):',
+    d.reasoningEffort || '',
+  );
+  if (reasoningEffortRaw === null) return null;
+  const reasoningEffort = String(reasoningEffortRaw).trim().toLowerCase();
+
   return {
     name: name || baseUrl,
     baseUrl,
     apiKey,
     model,
     contextLength,
+    disableThinking,
+    reasoningEffort,
   };
 }
 

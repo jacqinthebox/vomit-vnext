@@ -206,13 +206,31 @@ function setOpenAIMaxTokens(n) {
   store.set('openaiMaxTokens', value);
 }
 
-/** @returns {boolean} */
+/** @returns {boolean} Per-endpoint value if set, else the global legacy default. */
 function getOpenAIDisableThinking() {
+  const ep = getActiveOpenAIEndpoint();
+  if (ep && typeof ep.disableThinking === 'boolean') return ep.disableThinking;
   return store.get('openaiDisableThinking') === true;
 }
 /** @param {boolean} enabled */
 function setOpenAIDisableThinking(enabled) {
-  store.set('openaiDisableThinking', enabled === true);
+  const ep = getActiveOpenAIEndpoint();
+  if (ep) updateOpenAIEndpoint(getActiveOpenAIEndpointIndex(), { disableThinking: enabled === true });
+  else store.set('openaiDisableThinking', enabled === true);
+}
+
+/** @returns {string} Per-endpoint reasoning effort ('', 'low', 'medium', 'high', 'xhigh'). */
+function getOpenAIReasoningEffort() {
+  const ep = getActiveOpenAIEndpoint();
+  if (ep && typeof ep.reasoningEffort === 'string' && ep.reasoningEffort) return ep.reasoningEffort;
+  return store.get('openaiReasoningEffort') || '';
+}
+/** @param {string} effort */
+function setOpenAIReasoningEffort(effort) {
+  const value = typeof effort === 'string' ? effort : '';
+  const ep = getActiveOpenAIEndpoint();
+  if (ep) updateOpenAIEndpoint(getActiveOpenAIEndpointIndex(), { reasoningEffort: value });
+  else store.set('openaiReasoningEffort', value);
 }
 
 /** @returns {string} */
@@ -269,7 +287,7 @@ function setAIProvider(provider) {
 // --- OpenAI-compatible endpoints (multi) ---
 
 /**
- * @typedef {{ name: string, baseUrl: string, apiKey: string, model: string, contextLength?: number }} OpenAIEndpoint
+ * @typedef {{ name: string, baseUrl: string, apiKey: string, model: string, contextLength?: number, disableThinking?: boolean, reasoningEffort?: string }} OpenAIEndpoint
  */
 
 /** @returns {OpenAIEndpoint[]} */
@@ -314,6 +332,12 @@ function addOpenAIEndpoint(ep) {
   if (typeof ep.contextLength === 'number' && ep.contextLength > 0) {
     entry.contextLength = ep.contextLength;
   }
+  if (typeof ep.disableThinking === 'boolean') {
+    entry.disableThinking = ep.disableThinking;
+  }
+  if (typeof ep.reasoningEffort === 'string' && ep.reasoningEffort) {
+    entry.reasoningEffort = ep.reasoningEffort;
+  }
   list.push(entry);
   setOpenAIEndpoints(list);
   return list.length - 1;
@@ -343,6 +367,21 @@ function updateOpenAIEndpoint(index, patch) {
     }
   } else if (typeof current.contextLength === 'number' && current.contextLength > 0) {
     next.contextLength = current.contextLength;
+  }
+  // disableThinking is a real boolean (false is meaningfully different from
+  // "not set"), so — unlike contextLength — an explicit false in the patch
+  // must be stored as false, not dropped/treated as absent.
+  if (Object.prototype.hasOwnProperty.call(patch, 'disableThinking')) {
+    next.disableThinking = patch.disableThinking === true;
+  } else if (typeof current.disableThinking === 'boolean') {
+    next.disableThinking = current.disableThinking;
+  }
+  if (Object.prototype.hasOwnProperty.call(patch, 'reasoningEffort')) {
+    if (typeof patch.reasoningEffort === 'string' && patch.reasoningEffort) {
+      next.reasoningEffort = patch.reasoningEffort;
+    }
+  } else if (typeof current.reasoningEffort === 'string' && current.reasoningEffort) {
+    next.reasoningEffort = current.reasoningEffort;
   }
   list[index] = next;
   setOpenAIEndpoints(list);
@@ -523,6 +562,8 @@ module.exports = {
   setOpenAIMaxTokens,
   getOpenAIDisableThinking,
   setOpenAIDisableThinking,
+  getOpenAIReasoningEffort,
+  setOpenAIReasoningEffort,
   getOllamaNumCtx,
   setOllamaNumCtx,
   getOpenAIEmbedModel,
