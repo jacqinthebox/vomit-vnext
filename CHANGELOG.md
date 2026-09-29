@@ -1,3 +1,10 @@
+# [1.19.0](https://github.com/jacqinthebox/vomit-vnext/compare/v1.18.9...v1.19.0) (2026-09-29)
+
+
+### Features
+
+* add per-endpoint reasoning-effort and disable-thinking config ([6eef37d](https://github.com/jacqinthebox/vomit-vnext/commit/6eef37d1f09e4bcdd80d8b3f312cc77c323f68c7))
+
 ## [1.18.9](https://github.com/jacqinthebox/vomit-vnext/compare/v1.18.8...v1.18.9) (2026-09-03)
 
 
