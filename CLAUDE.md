@@ -94,4 +94,4 @@ The pipeline uses **semantic versioning**. On every push to `main`, semantic-rel
 7. **RAG embeddings** — require `ollama pull nomic-embed-text`.
 8. **Cross-platform paths** — use `window.PathUtils` (basename/dirname/join/subpath) and `toVomitFileUrl()` for preview URLs. Never split paths on `'/'` or concatenate `vomit-file://` URLs.
 
-See ~/dear-cowie/AGENTS.md
+See ~/dear-lucy/AGENTS.md
